@@ -4,7 +4,7 @@ organization := "org.cert-bdf"
 
 organizationName := "CERT-BDF"
 
-organizationHomepage := Some(url("https://cert.banque-france.fr/"))
+organizationHomepage := Some(url("https://thehive-project.org/"))
 
 licenses += "AGPL-V3" -> url("https://www.gnu.org/licenses/agpl-3.0.html")
 
