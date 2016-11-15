@@ -2,21 +2,18 @@ package org.elastic4play.models
 
 import java.util.{ Date, Map, UUID }
 
-import javax.inject.Singleton
-
 import scala.language.{ existentials, implicitConversions, postfixOps }
 import scala.math.BigDecimal.{ int2bigDecimal, long2bigDecimal }
 import scala.reflect.ClassTag
 import scala.util.Try
 
+import play.api.Logger
 import play.api.libs.json.{ Format, JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsSuccess, JsValue, Json }
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 
-import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
-import org.elastic4play.{ MissingAttributeError, UnknownAttributeError, UpdateReadOnlyAttributeError }
+import org.elastic4play.{ AttributeError, InvalidFormatAttributeError, MissingAttributeError, UnknownAttributeError, UpdateReadOnlyAttributeError }
 import org.elastic4play.JsonFormat.dateFormat
-import org.elastic4play.controllers.{ FileInputValue, InputValue }
-import org.elastic4play.controllers.{ JsonInputValue, NullInputValue, StringInputValue }
+import org.elastic4play.controllers.{ AttachmentInputValue, FileInputValue, InputValue, JsonInputValue, NullInputValue, StringInputValue }
 import org.elastic4play.controllers.JsonFormat.{ fileInputValueFormat, inputValueFormat }
 import org.elastic4play.models.JsonFormat.{ binaryFormats, multiFormat, optionFormat }
 import org.elastic4play.services.{ Attachment, DBLists }
@@ -25,9 +22,8 @@ import org.scalactic.{ Bad, Every, Good, One, Or }
 import org.scalactic.Accumulation.convertGenTraversableOnceToValidatable
 
 import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.{ TypedFieldDefinition, attributes }
 import com.sksamuel.elastic4s.mappings.FieldType.{ BinaryType, BooleanType, DateType, LongType, NestedType, ObjectType, StringType }
-import play.api.Logger
+import com.sksamuel.elastic4s.mappings.{ attributes, TypedFieldDefinition }
 
 abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Format[T]) {
   def checkJson(subNames: Seq[String], value: JsValue): JsValue Or Every[AttributeError]
@@ -263,9 +259,12 @@ object HashAttributeFormat extends AttributeFormat[String]("hash") {
 }
 
 object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment") {
-  override def checkJson(subNames: Seq[String], value: JsValue) = fileInputValueFormat.reads(value) match {
-    case JsSuccess(_, _) if subNames.isEmpty => Good(value)
-    case _                                   => Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
+  override def checkJson(subNames: Seq[String], value: JsValue) = {
+    lazy val validJson = fileInputValueFormat.reads(value).asOpt orElse jsFormat.reads(value).asOpt
+    if (subNames.isEmpty && validJson.isDefined)
+      Good(value)
+    else
+      Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
   }
   val forbiddenChar = Seq('/', '\n', '\r', '\t', '\u0000', '\f', '`', '?', '*', '\\', '<', '>', '|', '\"', ':', ';')
   override def inputValueToJson(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] = {
@@ -274,6 +273,7 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
     else
       value match {
         case fiv: FileInputValue if fiv.name.intersect(forbiddenChar).isEmpty => Good(Json.toJson(fiv)(fileInputValueFormat))
+        case aiv: AttachmentInputValue => Good(Json.toJson(aiv.toAttachment)(jsFormat))
         case _ => Bad(One(InvalidFormatAttributeError("", name, value)))
       }
   }
