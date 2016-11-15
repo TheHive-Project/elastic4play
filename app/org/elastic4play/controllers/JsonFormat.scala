@@ -52,6 +52,7 @@ object JsonFormat {
 
   val inputValueReads = Reads { json ⇒
     (json \ "type").validate[String].flatMap {
+      case "StringInputValue"     => (json \ "value").validate(stringInputValueReads)
       case "JsonInputValue"       => (json \ "value").validate(jsonInputValueReads)
       case "FileInputValue"       => (json \ "value").validate(fileInputValueReads)
       case "AttachmentInputValue" => (json \ "value").validate(attachmentInputValueReads)
