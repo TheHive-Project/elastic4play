@@ -14,11 +14,13 @@ import org.elastic4play.services.MigrationSrv
  * Migration controller : start migration process
  */
 @Singleton
-class MigrationCtrl @Inject() (migrationSrv: MigrationSrv,
-                               implicit val ec: ExecutionContext) extends Controller {
+class MigrationCtrl @Inject() (
+  migrationSrv: MigrationSrv,
+    implicit val ec: ExecutionContext
+) extends Controller {
 
   @Timed("controllers.MigrationCtrl.migrate")
   def migrate = Action.async {
-    migrationSrv.migrate.map(_ => NoContent)
+    migrationSrv.migrate.map(_ ⇒ NoContent)
   }
 }

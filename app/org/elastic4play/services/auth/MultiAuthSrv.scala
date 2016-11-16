@@ -13,17 +13,19 @@ import org.elastic4play.services.{ AuthContext, AuthSrv, AuthSrvFactory }
 
 object MultiAuthSrv {
   lazy val log = Logger(classOf[MultiAuthSrv])
-  def getAuthProviders(authTypes: Seq[String],
-                       authModules: immutable.Set[AuthSrv],
-                       authFactoryModules: immutable.Set[AuthSrvFactory]) = {
+  def getAuthProviders(
+    authTypes: Seq[String],
+    authModules: immutable.Set[AuthSrv],
+    authFactoryModules: immutable.Set[AuthSrvFactory]
+  ) = {
 
-    authTypes.flatMap { authType =>
+    authTypes.flatMap { authType ⇒
       authFactoryModules
         .find(_.name == authType)
-        .flatMap { authFactory =>
+        .flatMap { authFactory ⇒
           Try(authFactory.getAuthSrv)
             .recoverWith {
-              case error =>
+              case error ⇒
                 log.error(s"Initialization of authentication module $authType has failed", error)
                 Failure(error)
             }
@@ -39,26 +41,34 @@ object MultiAuthSrv {
 }
 
 @Singleton
-class MultiAuthSrv(val authProviders: Seq[AuthSrv],
-                   implicit val ec: ExecutionContext) extends AuthSrv {
+class MultiAuthSrv(
+  val authProviders: Seq[AuthSrv],
+    implicit val ec: ExecutionContext
+) extends AuthSrv {
 
   lazy val log = Logger(getClass)
 
-  @Inject() def this(configuration: Configuration,
-                     authModules: immutable.Set[AuthSrv],
-                     authFactoryModules: immutable.Set[AuthSrvFactory],
-                     ec: ExecutionContext) =
-    this(MultiAuthSrv.getAuthProviders(configuration.getStringSeq("auth.type").getOrElse(Seq("local")),
+  @Inject() def this(
+    configuration: Configuration,
+    authModules: immutable.Set[AuthSrv],
+    authFactoryModules: immutable.Set[AuthSrvFactory],
+    ec: ExecutionContext
+  ) =
+    this(
+      MultiAuthSrv.getAuthProviders(
+      configuration.getStringSeq("auth.type").getOrElse(Seq("local")),
       authModules,
-      authFactoryModules),
-      ec)
+      authFactoryModules
+    ),
+      ec
+    )
 
   val name = "multi"
   def capabilities = authProviders.flatMap(_.capabilities).toSet
 
-  private[auth] def forAllAuthProvider[A](body: AuthSrv => Future[A]) = {
+  private[auth] def forAllAuthProvider[A](body: AuthSrv ⇒ Future[A]) = {
     authProviders.foldLeft(Future.failed[A](new Exception("no authentication provider found"))) {
-      (f, a) => f.recoverWith { case _ => body(a) }
+      (f, a) ⇒ f.recoverWith { case _ ⇒ body(a) }
     }
   }
 

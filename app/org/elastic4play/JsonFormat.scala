@@ -16,18 +16,19 @@ object JsonFormat {
   val updateReadOnlyAttributeErrorWrites = Json.writes[UpdateReadOnlyAttributeError]
   val missingAttributeErrorWrites = Json.writes[MissingAttributeError]
 
-  implicit val attributeCheckingExceptionWrites = Writes[AttributeCheckingError]((ace: AttributeCheckingError) => JsObject(Seq(
-    "tableName" -> JsString(ace.tableName),
-    "message" -> JsString(ace.toString),
-    "errors" -> JsArray(ace.errors.map {
-      case e: InvalidFormatAttributeError  => invalidFormatAttributeErrorWrites.writes(e)
-      case e: UnknownAttributeError        => unknownAttributeErrorWrites.writes(e)
-      case e: UpdateReadOnlyAttributeError => updateReadOnlyAttributeErrorWrites.writes(e)
-      case e: MissingAttributeError        => missingAttributeErrorWrites.writes(e)
-    }))))
+  implicit val attributeCheckingExceptionWrites = Writes[AttributeCheckingError]((ace: AttributeCheckingError) ⇒ JsObject(Seq(
+    "tableName" → JsString(ace.tableName),
+    "message" → JsString(ace.toString),
+    "errors" → JsArray(ace.errors.map {
+      case e: InvalidFormatAttributeError  ⇒ invalidFormatAttributeErrorWrites.writes(e)
+      case e: UnknownAttributeError        ⇒ unknownAttributeErrorWrites.writes(e)
+      case e: UpdateReadOnlyAttributeError ⇒ updateReadOnlyAttributeErrorWrites.writes(e)
+      case e: MissingAttributeError        ⇒ missingAttributeErrorWrites.writes(e)
+    })
+  )))
 
   implicit def tryWrites[A](implicit aWrites: Writes[A]) = Writes[Try[A]] {
-    case Success(a) => aWrites.writes(a)
-    case Failure(t) => JsString(t.getMessage)
+    case Success(a) ⇒ aWrites.writes(a)
+    case Failure(t) ⇒ JsString(t.getMessage)
   }
 }

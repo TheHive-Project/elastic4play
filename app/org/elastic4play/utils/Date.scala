@@ -1,6 +1,6 @@
 package org.elastic4play.utils
 
-import java.util.{ Date => JDate }
+import java.util.{ Date ⇒ JDate }
 
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat

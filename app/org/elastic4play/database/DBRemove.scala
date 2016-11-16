@@ -11,14 +11,16 @@ import com.sksamuel.elastic4s.ElasticDsl.delete
 import com.sksamuel.elastic4s.IndexAndTypes.apply
 
 @Singleton
-class DBRemove @Inject() (db: DBConfiguration,
-                          implicit val ec: ExecutionContext) {
+class DBRemove @Inject() (
+  db: DBConfiguration,
+    implicit val ec: ExecutionContext
+) {
 
   def apply(model: BaseModelDef, entity: BaseEntity): Future[Boolean] = {
     db.execute {
-      delete id entity.id from db.indexName -> model.name routing entity.routing refresh true
+      delete id entity.id from db.indexName → model.name routing entity.routing refresh true
     }
-      .map { deleteResponse =>
+      .map { deleteResponse ⇒
         deleteResponse.isFound()
       }
   }

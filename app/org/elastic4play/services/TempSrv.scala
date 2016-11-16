@@ -19,12 +19,13 @@ import org.elastic4play.utils.Instance
 @Singleton
 class TempSrv @Inject() (
     lifecycle: ApplicationLifecycle,
-    implicit val ec: ExecutionContext) {
+    implicit val ec: ExecutionContext
+) {
 
   lazy val log = Logger(getClass)
 
   private[TempSrv] val tempDir = Files.createTempDirectory(Paths.get(System.getProperty("java.io.tmpdir")), "").resolve("play-request")
-  lifecycle.addStopHook { () => Future { delete(tempDir) } }
+  lifecycle.addStopHook { () ⇒ Future { delete(tempDir) } }
 
   private[TempSrv] object deleteVisitor extends SimpleFileVisitor[Path] {
     override def visitFile(file: Path, attrs: BasicFileAttributes) = {
@@ -40,8 +41,9 @@ class TempSrv @Inject() (
   private[TempSrv] def delete(directory: Path): Unit = try {
     Files.walkFileTree(directory, deleteVisitor)
     ()
-  } catch {
-    case t: Throwable => log.warn(s"Fail to remove temporary files ($directory) : $t")
+  }
+  catch {
+    case t: Throwable ⇒ log.warn(s"Fail to remove temporary files ($directory) : $t")
   }
 
   def newTemporaryFile(prefix: String, suffix: String)(implicit authContext: AuthContext) = {
@@ -63,11 +65,13 @@ class TempSrv @Inject() (
   }
 }
 
-class TempFilter @Inject() (tempSrv: TempSrv,
-                            implicit val ec: ExecutionContext,
-                            implicit val mat: Materializer) extends Filter {
-  def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] = {
+class TempFilter @Inject() (
+  tempSrv: TempSrv,
+    implicit val ec: ExecutionContext,
+    implicit val mat: Materializer
+) extends Filter {
+  def apply(nextFilter: RequestHeader ⇒ Future[Result])(requestHeader: RequestHeader): Future[Result] = {
     nextFilter(requestHeader)
-      .andThen { case _ => tempSrv.releaseTemporaryFiles(requestHeader) }
+      .andThen { case _ ⇒ tempSrv.releaseTemporaryFiles(requestHeader) }
   }
 }
