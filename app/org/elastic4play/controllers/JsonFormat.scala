@@ -13,22 +13,22 @@ import org.elastic4play.utils.Hash
 
 object JsonFormat {
 
-  val fileReads = Reads[File] { json => json.validate[String].map(filepath => new File(filepath)) }
-  val fileWrites = Writes[File]((file: File) => JsString(file.getAbsolutePath))
+  val fileReads = Reads[File] { json ⇒ json.validate[String].map(filepath ⇒ new File(filepath)) }
+  val fileWrites = Writes[File]((file: File) ⇒ JsString(file.getAbsolutePath))
   implicit val fileFormat = Format[File](fileReads, fileWrites)
 
-  val pathReads = Reads[Path] { json => json.validate[String].map(filepath => Paths.get(filepath)) }
-  val pathWrites = Writes[Path]((path: Path) => JsString(path.toString))
+  val pathReads = Reads[Path] { json ⇒ json.validate[String].map(filepath ⇒ Paths.get(filepath)) }
+  val pathWrites = Writes[Path]((path: Path) ⇒ JsString(path.toString))
   implicit val pathFormat = Format[Path](pathReads, pathWrites)
 
-  val fileInputValueWrites = Writes[FileInputValue] { (fiv: FileInputValue) => fiv.jsonValue + ("type" -> JsString("FileInputValue")) }
-  val stringInputValueReads = Reads[StringInputValue] { json => (json \ "value").validate[Seq[String]].map(s => StringInputValue(s)) }
-  val jsonInputValueReads = Reads[JsonInputValue] { json => (json \ "value").validate[JsValue].map(v => JsonInputValue(v)) }
-  val fileInputValueReads = Reads[FileInputValue] { json =>
+  val fileInputValueWrites = Writes[FileInputValue] { (fiv: FileInputValue) ⇒ fiv.jsonValue + ("type" → JsString("FileInputValue")) }
+  val stringInputValueReads = Reads[StringInputValue] { json ⇒ (json \ "value").validate[Seq[String]].map(s ⇒ StringInputValue(s)) }
+  val jsonInputValueReads = Reads[JsonInputValue] { json ⇒ (json \ "value").validate[JsValue].map(v ⇒ JsonInputValue(v)) }
+  val fileInputValueReads = Reads[FileInputValue] { json ⇒
     for {
-      name <- (json \ "name").validate[String]
-      filepath <- (json \ "filepath").validate[Path]
-      contentType <- (json \ "contentType").validate[String]
+      name ← (json \ "name").validate[String]
+      filepath ← (json \ "filepath").validate[Path]
+      contentType ← (json \ "contentType").validate[String]
     } yield FileInputValue(name, filepath, contentType)
   }
 
@@ -50,9 +50,8 @@ object JsonFormat {
     case NullInputValue          => Json.obj("type" -> "NullInputValue")
   })
 
-  val inputValueReads = Reads { json =>
+  val inputValueReads = Reads { json ⇒
     (json \ "type").validate[String].flatMap {
-      case "StringInputValue"     => (json \ "value").validate(stringInputValueReads)
       case "JsonInputValue"       => (json \ "value").validate(jsonInputValueReads)
       case "FileInputValue"       => (json \ "value").validate(fileInputValueReads)
       case "AttachmentInputValue" => (json \ "value").validate(attachmentInputValueReads)
@@ -65,8 +64,8 @@ object JsonFormat {
   implicit val inputValueFormat = Format[InputValue](inputValueReads, inputValueWrites)
 
   implicit val fieldsReader = Reads {
-    case json: JsObject => JsSuccess(Fields(json))
-    case _              => JsError("Expecting JSON object body")
+    case json: JsObject ⇒ JsSuccess(Fields(json))
+    case _              ⇒ JsError("Expecting JSON object body")
   }
 
 }

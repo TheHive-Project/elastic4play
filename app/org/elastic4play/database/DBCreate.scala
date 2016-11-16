@@ -28,8 +28,10 @@ import org.elastic4play.models.BaseEntity
  * This service doesn't check any attribute conformity (according to model)
  */
 @Singleton
-class DBCreate @Inject() (db: DBConfiguration,
-                          implicit val ec: ExecutionContext) {
+class DBCreate @Inject() (
+  db: DBConfiguration,
+    implicit val ec: ExecutionContext
+) {
   val log = Logger(getClass)
 
   /**
@@ -74,13 +76,13 @@ class DBCreate @Inject() (db: DBConfiguration,
     if (params.isEmpty)
       return Future.successful(Nil)
     db.execute(bulk(params.map(_.indexDef)) refresh true)
-      .map { bulkResult =>
+      .map { bulkResult ⇒
         bulkResult.items.zip(params).map {
-          case (bulkItemResponse, p) if bulkItemResponse.isFailure =>
+          case (bulkItemResponse, p) if bulkItemResponse.isFailure ⇒
             val failure = bulkItemResponse.failure
             log.warn(s"create failure : ${failure.getId} ${failure.getType} ${failure.getMessage} ${failure.getStatus}")
             Failure(CreateError(Option(failure.getStatus.name), failure.getMessage, p.attributes))
-          case (bulkItemResponse, p) =>
+          case (bulkItemResponse, p) ⇒
             Success(p.result(bulkItemResponse.original.getResponse[IndexResponse].getId))
         }
       }
@@ -95,33 +97,34 @@ class DBCreate @Inject() (db: DBConfiguration,
    */
   private[database] def create(params: CreateParams): Future[JsObject] = {
     db.execute(params.indexDef refresh true).transform(
-      indexResponse => params.result(indexResponse.getId), {
-        case t: RemoteTransportException => CreateError(None, t.getCause.getMessage, params.attributes)
-        case t                           => CreateError(None, t.getMessage, params.attributes)
-      })
+      indexResponse ⇒ params.result(indexResponse.getId), {
+        case t: RemoteTransportException ⇒ CreateError(None, t.getCause.getMessage, params.attributes)
+        case t                           ⇒ CreateError(None, t.getMessage, params.attributes)
+      }
+    )
   }
 
   /**
    * add id information in index definition
    */
-  private def addId(id: Option[String]): IndexDefinition => IndexDefinition = id match {
-    case Some(i) => _ id i
-    case None    => identity
+  private def addId(id: Option[String]): IndexDefinition ⇒ IndexDefinition = id match {
+    case Some(i) ⇒ _ id i
+    case None    ⇒ identity
   }
   /**
    * add parent information in index definition
    */
-  private def addParent(parent: Option[String]): IndexDefinition => IndexDefinition = parent match {
-    case Some(p) => _ parent p
-    case None    => identity
+  private def addParent(parent: Option[String]): IndexDefinition ⇒ IndexDefinition = parent match {
+    case Some(p) ⇒ _ parent p
+    case None    ⇒ identity
   }
 
   /**
    * add routing information in index definition
    */
-  private def addRouting(routing: Option[String]): IndexDefinition => IndexDefinition = routing match {
-    case Some(r) => _ routing r
-    case None    => identity
+  private def addRouting(routing: Option[String]): IndexDefinition ⇒ IndexDefinition = routing match {
+    case Some(r) ⇒ _ routing r
+    case None    ⇒ identity
   }
 
   /**
@@ -142,7 +145,7 @@ class DBCreate @Inject() (db: DBConfiguration,
       // remove attributes that starts with "_" because we wan't permit to interfere with elasticsearch internal fields
       val docSource = JsonDocumentSource(JsObject(attributes.fields.filterNot(_._1.startsWith("_"))).toString)
       addId(id).andThen(addParent(parentId)).andThen(addRouting(routing)) {
-        index into db.indexName -> modelName doc docSource update true
+        index into db.indexName → modelName doc docSource update true
       }
     }
 
@@ -151,10 +154,10 @@ class DBCreate @Inject() (db: DBConfiguration,
      */
     def result(id: String): JsObject = {
       attributes +
-        ("_type" -> JsString(modelName)) +
-        ("_id" -> JsString(id)) +
-        ("_parent" -> parentId.fold[JsValue](JsNull)(JsString)) +
-        ("_routing" -> JsString(routing.getOrElse(id)))
+        ("_type" → JsString(modelName)) +
+        ("_id" → JsString(id)) +
+        ("_parent" → parentId.fold[JsValue](JsNull)(JsString)) +
+        ("_routing" → JsString(routing.getOrElse(id)))
     }
   }
 
@@ -169,7 +172,7 @@ class DBCreate @Inject() (db: DBConfiguration,
       val parent = (attributes \ "_parent").asOpt[String]
       val routing = (attributes \ "_routing").asOpt[String] orElse parent orElse id
       addId(id).andThen(addParent(parent)).andThen(addRouting(routing)) {
-        index into db.indexName -> modelName doc docSource update true
+        index into db.indexName → modelName doc docSource update true
       }
     }
   }

@@ -12,8 +12,10 @@ import org.elastic4play.Timed
 import org.elastic4play.models.{ ChildModelDef, ModelAttributes, ModelDef }
 
 @Singleton
-class DBIndex @Inject() (db: DBConfiguration,
-                         implicit val ec: ExecutionContext) {
+class DBIndex @Inject() (
+  db: DBConfiguration,
+    implicit val ec: ExecutionContext
+) {
 
   /**
    * Create a new index. Collect mapping for all attributes of all entities
@@ -23,14 +25,14 @@ class DBIndex @Inject() (db: DBConfiguration,
   def createIndex(models: Iterable[ModelAttributes]) = {
     val modelsMapping = models
       .map {
-        case model: ModelDef[_, _]            => mapping(model.name) fields model.attributes.filterNot(_.name == "_id").map(_.elasticMapping) dateDetection false numericDetection false
-        case model: ChildModelDef[_, _, _, _] => mapping(model.name) fields model.attributes.filterNot(_.name == "_id").map(_.elasticMapping) parent model.parentModel.name dateDetection false numericDetection false
+        case model: ModelDef[_, _]            ⇒ mapping(model.name) fields model.attributes.filterNot(_.name == "_id").map(_.elasticMapping) dateDetection false numericDetection false
+        case model: ChildModelDef[_, _, _, _] ⇒ mapping(model.name) fields model.attributes.filterNot(_.name == "_id").map(_.elasticMapping) parent model.parentModel.name dateDetection false numericDetection false
       }
       .toSeq
     db.execute {
       com.sksamuel.elastic4s.ElasticDsl.create index db.indexName mappings (modelsMapping: _*)
     }
-      .map { _ => () }
+      .map { _ ⇒ () }
   }
 
   /**
@@ -40,7 +42,7 @@ class DBIndex @Inject() (db: DBConfiguration,
   def getIndexStatus: Future[Boolean] = {
     db.execute {
       index exists db.indexName
-    } map { indicesExistsResponse =>
+    } map { indicesExistsResponse ⇒
       indicesExistsResponse.isExists
     }
   }
@@ -59,10 +61,10 @@ class DBIndex @Inject() (db: DBConfiguration,
    * @return document count
    */
   def getSize(modelName: String): Future[Long] = db.execute {
-    search in db.indexName -> modelName size 0
-  } map { searchResponse =>
+    search in db.indexName → modelName size 0
+  } map { searchResponse ⇒
     searchResponse.totalHits
   } recover {
-    case _ => 0L
+    case _ ⇒ 0L
   }
 }

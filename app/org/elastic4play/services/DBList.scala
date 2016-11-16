@@ -19,12 +19,12 @@ import play.api.libs.json.Json
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 
 import org.elastic4play.database.DBCreate
-import org.elastic4play.models.{ AttributeFormat => F, EntityDef, ModelDef }
+import org.elastic4play.models.{ AttributeFormat ⇒ F, EntityDef, ModelDef }
 
 import org.elastic4play.utils.{ Hasher, RichFuture }
 
 @Singleton
-class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName) { model =>
+class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName) { model ⇒
   @Inject def this(configuration: Configuration) = this(configuration.getString("dblist.name").get)
 
   val value = attribute("value", F.stringFmt, "Content of the dblist item")
@@ -35,7 +35,7 @@ class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEn
 
 class DBListItemEntity(model: DBListModel, attributes: JsObject) extends EntityDef[DBListModel, DBListItemEntity](model, attributes) with DBListItem {
   def mapTo[T](implicit reads: Reads[T]) = Json.parse((attributes \ "value").as[String]).as[T]
-  override def toJson = super.toJson - "value" + ("value" -> mapTo[JsValue])
+  override def toJson = super.toJson - "value" + ("value" → mapTo[JsValue])
 }
 
 trait DBListItem {
@@ -51,13 +51,15 @@ trait DBList {
 }
 
 @Singleton
-class DBLists @Inject() (findSrv: FindSrv,
-                         deleteSrv: Provider[DeleteSrv],
-                         dbCreate: DBCreate,
-                         dblistModel: DBListModel,
-                         cache: CacheApi,
-                         implicit val ec: ExecutionContext,
-                         implicit val mat: Materializer) {
+class DBLists @Inject() (
+  findSrv: FindSrv,
+    deleteSrv: Provider[DeleteSrv],
+    dbCreate: DBCreate,
+    dblistModel: DBListModel,
+    cache: CacheApi,
+    implicit val ec: ExecutionContext,
+    implicit val mat: Materializer
+) {
   /**
    * Returns list of all dblist name
    */
@@ -81,14 +83,14 @@ class DBLists @Inject() (findSrv: FindSrv,
 
     def getItems[A](implicit reads: Reads[A]): (Source[(String, A), NotUsed], Future[Long]) = {
       val (src, total) = getItems()
-      val items = src.map(item => (item.id, item.mapTo[A]))
+      val items = src.map(item ⇒ (item.id, item.mapTo[A]))
       (items, total)
     }
 
     def addItem[A](item: A)(implicit writes: Writes[A]): Future[DBListItem] = {
       val value = Json.toJson(item)
       val id = Hasher("MD5").fromString(value.toString).head.toString
-      dbCreate(dblistModel.name, None, Json.obj("_id" -> id, "dblist" -> name, "value" -> JsString(value.toString)))
+      dbCreate(dblistModel.name, None, Json.obj("_id" → id, "dblist" → name, "value" → JsString(value.toString)))
         .map(dblistModel(_))
     }
   }

@@ -33,26 +33,32 @@ import org.elastic4play.Timed
  * It add timed annotation in order to measure storage metrics
  */
 @Singleton
-class DBConfiguration(searchHost: Seq[String],
-                      searchCluster: String,
-                      baseIndexName: String,
-                      lifecycle: ApplicationLifecycle,
-                      val version: Int,
-                      implicit val ec: ExecutionContext,
-                      implicit val actorSystem: ActorSystem) {
+class DBConfiguration(
+  searchHost: Seq[String],
+    searchCluster: String,
+    baseIndexName: String,
+    lifecycle: ApplicationLifecycle,
+    val version: Int,
+    implicit val ec: ExecutionContext,
+    implicit val actorSystem: ActorSystem
+) {
 
-  @Inject() def this(configuration: Configuration,
-                     lifecycle: ApplicationLifecycle,
-                     @Named("databaseVersion") version: Int,
-                     ec: ExecutionContext,
-                     actorSystem: ActorSystem) = {
-    this(configuration.getStringSeq("search.host").get,
+  @Inject() def this(
+    configuration: Configuration,
+    lifecycle: ApplicationLifecycle,
+    @Named("databaseVersion") version: Int,
+    ec: ExecutionContext,
+    actorSystem: ActorSystem
+  ) = {
+    this(
+      configuration.getStringSeq("search.host").get,
       configuration.getString("search.cluster").get,
       configuration.getString("search.index").get,
       lifecycle,
       version,
       ec,
-      actorSystem)
+      actorSystem
+    )
   }
 
   lazy val log = Logger(getClass)
@@ -62,9 +68,10 @@ class DBConfiguration(searchHost: Seq[String],
    */
   private val client: ElasticClient = ElasticClient.transport(
     Settings.settingsBuilder().put("cluster.name", searchCluster).build(),
-    ElasticsearchClientUri(searchHost.mkString(",")))
+    ElasticsearchClientUri(searchHost.mkString(","))
+  )
   // when application close, close also ElasticSearch connection
-  lifecycle.addStopHook { () => Future { client.close() } }
+  lifecycle.addStopHook { () ⇒ Future { client.close() } }
 
   @Timed("database.index")
   def execute(indexDefinition: IndexDefinition): Future[IndexResult] = client.execute(indexDefinition)
@@ -104,17 +111,17 @@ class DBConfiguration(searchHost: Seq[String],
    */
   def sink[T](implicit builder: RequestBuilder[T]): Sink[T, Future[Unit]] = {
     val end = Promise[Unit]
-      def complete() = {
-        if (!end.isCompleted)
-          end.success(())
-        ()
-      }
-      def failure(t: Throwable) = {
-        end.failure(t)
-        ()
-      }
+    def complete() = {
+      if (!end.isCompleted)
+        end.success(())
+      ()
+    }
+    def failure(t: Throwable) = {
+      end.failure(t)
+      ()
+    }
     Sink.fromSubscriber(client.subscriber[T](failureWait = 1.second, maxAttempts = 10, listener = sinkListener, completionFn = complete _, errorFn = failure _))
-      .mapMaterializedValue { _ => end.future }
+      .mapMaterializedValue { _ ⇒ end.future }
   }
 
   /**

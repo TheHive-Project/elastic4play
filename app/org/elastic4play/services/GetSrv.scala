@@ -9,10 +9,12 @@ import org.elastic4play.models.{ AbstractModelDef, Attribute, EntityDef }
 import scala.concurrent.Future
 
 @Singleton
-class GetSrv @Inject() (dbGet: DBGet,
-                        implicit val ec: ExecutionContext) {
+class GetSrv @Inject() (
+  dbGet: DBGet,
+    implicit val ec: ExecutionContext
+) {
 
   def apply[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, id: String, fields: Option[Seq[Attribute[_]]] = None): Future[E] = {
-    dbGet(model.name, id, fields).map(attrs => model(attrs))
+    dbGet(model.name, id, fields).map(attrs ⇒ model(attrs))
   }
 }

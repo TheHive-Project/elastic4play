@@ -16,28 +16,33 @@ import org.elastic4play.{ AuthenticationError, AuthorizationError }
 import org.elastic4play.services.{ AuthCapability, AuthContext, AuthSrv, AuthSrvFactory, UserSrv }
 
 @Singleton
-class ADAuthSrvFactory @Inject() (configuration: Configuration,
-                                  userSrv: UserSrv,
-                                  ec: ExecutionContext) extends AuthSrvFactory { factory =>
+class ADAuthSrvFactory @Inject() (
+  configuration: Configuration,
+    userSrv: UserSrv,
+    ec: ExecutionContext
+) extends AuthSrvFactory { factory ⇒
   val name = "ad"
   def getAuthSrv: AuthSrv = new ADAuthSrv(
     configuration.getString("auth.ad.domainFQDN").getOrElse(sys.error("Configuration error (auth.ad.domainFQDN is missing)")),
     configuration.getString("auth.ad.domainName").getOrElse(sys.error("Configuration error (auth.ad.domainName is missing)")),
     configuration.getBoolean("auth.ad.useSSL").getOrElse(false),
     userSrv,
-    ec)
+    ec
+  )
 
-  private class ADAuthSrv(DomainFQDN: String,
-                          domainName: String,
-                          useSSL: Boolean,
-                          userSrv: UserSrv,
-                          implicit val ec: ExecutionContext) extends AuthSrv {
+  private class ADAuthSrv(
+    DomainFQDN: String,
+      domainName: String,
+      useSSL: Boolean,
+      userSrv: UserSrv,
+      implicit val ec: ExecutionContext
+  ) extends AuthSrv {
 
     lazy val log = Logger(getClass)
     val name = factory.name
     val capabilities = Set(AuthCapability.changePassword)
 
-    private[auth] def connect[A](username: String, password: String)(f: InitialDirContext => A): Try[A] = {
+    private[auth] def connect[A](username: String, password: String)(f: InitialDirContext ⇒ A): Try[A] = {
       val protocol = if (useSSL) "ldaps://" else "ldap://"
       val env = new Hashtable[Any, Any]
       env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
@@ -66,12 +71,12 @@ class ADAuthSrvFactory @Inject() (configuration: Configuration,
 
     def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] = {
       (for {
-        _ <- Future.fromTry(connect(domainName + "\\" + username, password)(identity))
-        u <- userSrv.get(username)
-        authContext <- userSrv.getFromUser(request, u)
+        _ ← Future.fromTry(connect(domainName + "\\" + username, password)(identity))
+        u ← userSrv.get(username)
+        authContext ← userSrv.getFromUser(request, u)
       } yield authContext)
         .recoverWith {
-          case t =>
+          case t ⇒
             log.error("AD authentication failure", t)
             Future.failed(AuthenticationError("Authentication failure"))
         }
@@ -80,11 +85,12 @@ class ADAuthSrvFactory @Inject() (configuration: Configuration,
     def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] = {
       val unicodeOldPassword = ("\"" + oldPassword + "\"").getBytes("UTF-16LE")
       val unicodeNewPassword = ("\"" + newPassword + "\"").getBytes("UTF-16LE")
-      val changeTry = connect(domainName + "\\" + username, oldPassword) { ctx =>
-        getUserDN(ctx, username).map { userDN =>
+      val changeTry = connect(domainName + "\\" + username, oldPassword) { ctx ⇒
+        getUserDN(ctx, username).map { userDN ⇒
           val mods = Array(
             new ModificationItem(DirContext.REMOVE_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeOldPassword)),
-            new ModificationItem(DirContext.ADD_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeNewPassword)))
+            new ModificationItem(DirContext.ADD_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeNewPassword))
+          )
           ctx.modifyAttributes(userDN, mods)
         }
       }
@@ -92,7 +98,7 @@ class ADAuthSrvFactory @Inject() (configuration: Configuration,
       Future
         .fromTry(changeTry)
         .recoverWith {
-          case t =>
+          case t ⇒
             log.error("LDAP change password failure", t)
             Future.failed(AuthorizationError("Change password failure"))
         }
