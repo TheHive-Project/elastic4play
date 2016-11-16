@@ -35,21 +35,27 @@ case object ExpirationError extends ExpirationStatus
  * Check and manager user security (authentication and authorization)
  */
 @Singleton
-class Authenticated(maxSessionInactivity: FiniteDuration,
-                    sessionWarning: FiniteDuration,
-                    userSrv: UserSrv,
-                    authSrv: AuthSrv,
-                    implicit val ec: ExecutionContext) {
+class Authenticated(
+  maxSessionInactivity: FiniteDuration,
+    sessionWarning: FiniteDuration,
+    userSrv: UserSrv,
+    authSrv: AuthSrv,
+    implicit val ec: ExecutionContext
+) {
 
-  @Inject() def this(configuration: Configuration,
-                     userSrv: UserSrv,
-                     authSrv: AuthSrv,
-                     ec: ExecutionContext) =
-    this(configuration.getMilliseconds("session.inactivity").get.millis,
+  @Inject() def this(
+    configuration: Configuration,
+    userSrv: UserSrv,
+    authSrv: AuthSrv,
+    ec: ExecutionContext
+  ) =
+    this(
+      configuration.getMilliseconds("session.inactivity").get.millis,
       configuration.getMilliseconds("session.warning").get.millis,
       userSrv,
       authSrv,
-      ec)
+      ec
+    )
 
   private def now = (new Date).getTime
 
@@ -58,29 +64,29 @@ class Authenticated(maxSessionInactivity: FiniteDuration,
    * Cookie is signed by Play framework (it cannot be modified by user)
    */
   def setSessingUser(result: Result, authContext: AuthContext)(implicit request: RequestHeader): Result =
-    result.addingToSession(Security.username -> authContext.userId, "expire" -> (now + maxSessionInactivity.toMillis).toString)
+    result.addingToSession(Security.username → authContext.userId, "expire" → (now + maxSessionInactivity.toMillis).toString)
 
   /**
    * Retrieve authentication information form cookie
    */
   def getFromSession(request: RequestHeader): Future[AuthContext] = {
     val userId = for {
-      userId <- request.session.get(Security.username)
+      userId ← request.session.get(Security.username)
       if expirationStatus(request) != ExpirationError
     } yield userId
-    userId.fold(Future.failed[AuthContext](AuthenticationError("Not authenticated")))(id => userSrv.getFromId(request, id))
+    userId.fold(Future.failed[AuthContext](AuthenticationError("Not authenticated")))(id ⇒ userSrv.getFromId(request, id))
   }
 
   def expirationStatus(request: RequestHeader): ExpirationStatus = {
     request.session.get("expire")
-      .flatMap { expireStr =>
+      .flatMap { expireStr ⇒
         Try(expireStr.toLong).toOption
       }
-      .map { expire => (expire - now).millis }
+      .map { expire ⇒ (expire - now).millis }
       .map {
-        case duration if duration.length < 0       => ExpirationError
-        case duration if duration < sessionWarning => ExpirationWarning(duration)
-        case duration                              => ExpirationOk(duration)
+        case duration if duration.length < 0       ⇒ ExpirationError
+        case duration if duration < sessionWarning ⇒ ExpirationWarning(duration)
+        case duration                              ⇒ ExpirationOk(duration)
       }
       .getOrElse(ExpirationError)
   }
@@ -93,13 +99,13 @@ class Authenticated(maxSessionInactivity: FiniteDuration,
       .headers
       .get(HeaderNames.AUTHORIZATION)
       .collect {
-        case auth if auth.startsWith("Basic ") =>
+        case auth if auth.startsWith("Basic ") ⇒
           val authWithoutBasic = auth.substring(6)
           val decodedAuth = new String(java.util.Base64.getDecoder.decode(authWithoutBasic), "UTF-8")
           decodedAuth.split(":")
       }
       .collect {
-        case Array(username, password) => authSrv.authenticate(username, password)(request)
+        case Array(username, password) ⇒ authSrv.authenticate(username, password)(request)
       }
       .getOrElse(Future.failed[AuthContext](new Exception("TODO")))
 
@@ -110,7 +116,7 @@ class Authenticated(maxSessionInactivity: FiniteDuration,
     getFromSession(request)
       .fallbackTo(getFromApiKey(request))
       .fallbackTo(userSrv.getInitialUser(request))
-      .recoverWith { case _ => Future.failed(AuthenticationError("Not authenticated")) }
+      .recoverWith { case _ ⇒ Future.failed(AuthenticationError("Not authenticated")) }
 
   /**
    * Create an action for authenticated controller
@@ -118,11 +124,11 @@ class Authenticated(maxSessionInactivity: FiniteDuration,
    * otherwise, action returns a not authorized error
    */
   def apply(requiredRole: Role.Type) = new ActionBuilder[({ type R[A] = AuthenticatedRequest[A] })#R] {
-    def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) => Future[Result]) = {
-      getContext(request).flatMap { authContext =>
+    def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) ⇒ Future[Result]) = {
+      getContext(request).flatMap { authContext ⇒
         if (authContext.roles.contains(requiredRole))
           block(new AuthenticatedRequest(authContext, request))
-            .map(result => setSessingUser(result, authContext)(request))
+            .map(result ⇒ setSessingUser(result, authContext)(request))
         else
           Future.failed(new Exception(s"Insufficient rights to perform this action"))
       }

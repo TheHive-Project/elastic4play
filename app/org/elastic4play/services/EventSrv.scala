@@ -29,7 +29,8 @@ case class AuditOperation(
   action: AuditableAction.Type,
   details: JsObject,
   authContext: AuthContext,
-  date: Date = new Date()) extends EventMessage
+  date: Date = new Date()
+) extends EventMessage
 
 @Singleton
 class EventSrv extends ActorEventBus with SubchannelClassification {

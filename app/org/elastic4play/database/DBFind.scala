@@ -28,21 +28,27 @@ import org.elastic4play.{ InternalError, SearchError, Timed }
  * Service class responsible for entity search
  */
 @Singleton
-class DBFind(pageSize: Int,
-             keepAlive: FiniteDuration,
-             db: DBConfiguration,
-             implicit val ec: ExecutionContext,
-             implicit val mat: Materializer) {
+class DBFind(
+  pageSize: Int,
+    keepAlive: FiniteDuration,
+    db: DBConfiguration,
+    implicit val ec: ExecutionContext,
+    implicit val mat: Materializer
+) {
 
-  @Inject def this(configuration: Configuration,
-                   db: DBConfiguration,
-                   ec: ExecutionContext,
-                   mat: Materializer) =
-    this(configuration.getInt("search.pagesize").get,
+  @Inject def this(
+    configuration: Configuration,
+    db: DBConfiguration,
+    ec: ExecutionContext,
+    mat: Materializer
+  ) =
+    this(
+      configuration.getInt("search.pagesize").get,
       configuration.getMilliseconds("search.keepalive").get.millis,
       db,
       ec,
-      mat)
+      mat
+    )
 
   private[database] val indexName = db.indexName
   private[database] val keepAliveStr = keepAlive.toMillis + "ms"
@@ -60,9 +66,9 @@ class DBFind(pageSize: Int,
    */
   private[database] def getOffsetAndLimitFromRange(range: Option[String]): (Int, Int) = {
     range match {
-      case None        => (0, 10)
-      case Some("all") => (0, Int.MaxValue)
-      case Some(r) =>
+      case None        ⇒ (0, 10)
+      case Some("all") ⇒ (0, Int.MaxValue)
+      case Some(r) ⇒
         val Array(_offset, _end, _*) = (r + "-0").split("-", 3)
         val offset = Try(Math.max(0, _offset.toInt)).getOrElse(0)
         val end = Try(_end.toInt).getOrElse(offset + 10)
@@ -86,13 +92,15 @@ class DBFind(pageSize: Int,
         db,
         searchDefinition limit pageSize,
         keepAliveStr,
-        limit))
+        limit
+      )
+    )
       .toMat(Sink.asPublisher(true))(Keep.both)
       .run()
     val total = (actorRef ? SearchPublisher.Start).flatMap {
-      case Success(l: Long) => Future.successful(l)
-      case Failure(t)       => Future.failed(t)
-      case r                => Future.failed(InternalError(s"Unexpected actor response : %r"))
+      case Success(l: Long) ⇒ Future.successful(l)
+      case Failure(t)       ⇒ Future.failed(t)
+      case r                ⇒ Future.failed(InternalError(s"Unexpected actor response : %r"))
     }
     (Source.fromPublisher(pub), total)
   }
@@ -105,7 +113,7 @@ class DBFind(pageSize: Int,
     val total = resp.map(_.totalHits)
     val src = Source
       .fromFuture(resp)
-      .mapConcat { resp => resp.hits.toList }
+      .mapConcat { resp ⇒ resp.hits.toList }
     (src, total)
   }
 
@@ -116,10 +124,10 @@ class DBFind(pageSize: Int,
   private[database] def hit2json(hit: RichSearchHit) = {
     val id = JsString(hit.id)
     Json.parse(hit.sourceAsString).as[JsObject] +
-      ("_type" -> JsString(hit.`type`)) +
-      ("_routing" -> hit.fields.get("_routing").map(r => JsString(r.value[String])).getOrElse(id)) +
-      ("_parent" -> hit.fields.get("_parent").map(r => JsString(r.value[String])).getOrElse(JsNull)) +
-      ("_id" -> id)
+      ("_type" → JsString(hit.`type`)) +
+      ("_routing" → hit.fields.get("_routing").map(r ⇒ JsString(r.value[String])).getOrElse(id)) +
+      ("_parent" → hit.fields.get("_parent").map(r ⇒ JsString(r.value[String])).getOrElse(JsNull)) +
+      ("_id" → id)
   }
 
   /**
@@ -130,7 +138,7 @@ class DBFind(pageSize: Int,
    * @param query a function that build a SearchDefinition using the index name
    * @return Source (akka stream) of JsObject. The source is materialized as future of long that contains the total number of entities.
    */
-  def apply(range: Option[String], sortBy: Seq[String])(query: (String) => SearchDefinition): (Source[JsObject, NotUsed], Future[Long]) = {
+  def apply(range: Option[String], sortBy: Seq[String])(query: (String) ⇒ SearchDefinition): (Source[JsObject, NotUsed], Future[Long]) = {
     val (offset, limit) = getOffsetAndLimitFromRange(range)
     val sortDef = DBUtils.sortDefinition(sortBy)
     val searchDefinition = query(indexName) fields ("_source", "_routing", "_parent") start offset sort (sortDef: _*)
@@ -138,7 +146,8 @@ class DBFind(pageSize: Int,
     log.debug(s"search ${searchDefinition._builder}")
     val (src, total) = if (limit > pageSize) {
       searchWithScroll(searchDefinition, limit)
-    } else {
+    }
+    else {
       searchWithoutScroll(searchDefinition, limit)
     }
 
@@ -149,12 +158,12 @@ class DBFind(pageSize: Int,
    * Execute the search definition
    * This function is used to run aggregations
    */
-  def apply(query: (String) => SearchDefinition) = {
+  def apply(query: (String) ⇒ SearchDefinition) = {
     val searchDefinition = query(indexName)
     db.execute(searchDefinition)
       .recoverWith {
-        case t if DBUtils.isIndexMissing(t) => Future.failed(t)
-        case t                              => Future.failed(SearchError("Invalid search query", t))
+        case t if DBUtils.isIndexMissing(t) ⇒ Future.failed(t)
+        case t                              ⇒ Future.failed(SearchError("Invalid search query", t))
       }
   }
 }
@@ -176,7 +185,8 @@ class SearchPublisher(
     db: DBConfiguration,
     searchDefinition: SearchDefinition,
     keepAliveStr: String,
-    max: Int) extends ActorPublisher[RichSearchHit] with Stash {
+    max: Int
+) extends ActorPublisher[RichSearchHit] with Stash {
   import SearchPublisher._
   import context.dispatcher
   import akka.stream.actor.ActorPublisherMessage._
@@ -190,22 +200,22 @@ class SearchPublisher(
    * It can only receive "Start" message. All other messages are stashed
    */
   def receive = {
-    case Start =>
+    case Start ⇒
       val _sender = sender
       db.execute(searchDefinition.scroll(keepAliveStr)).onComplete {
-        case Success(result) =>
+        case Success(result) ⇒
           scrollId = result.scrollIdOpt
           _sender ! Success(result.totalHits)
           self ! result
 
-        case f @ Failure(t) =>
+        case f @ Failure(t) ⇒
           _sender ! f
           onError(t)
           self ! PoisonPill
       }
       context become fetching
       unstashAll()
-    case _ =>
+    case _ ⇒
       stash()
   }
 
@@ -215,19 +225,19 @@ class SearchPublisher(
    * If the queue is not enough change
    */
   def ready: Receive = {
-    case Request(n) if n > queue.size =>
+    case Request(n) if n > queue.size ⇒
       require(scrollId.isDefined)
       db.execute(searchScroll(scrollId.get).keepAlive(keepAliveStr)).onComplete {
-        case Success(result) =>
+        case Success(result) ⇒
           self ! result
-        case Failure(t) =>
+        case Failure(t) ⇒
           onError(t)
           self ! PoisonPill
       }
       context become fetching
       self ! Request(n - queue.size)
       send(queue.size.toLong)
-    case Request(n) =>
+    case Request(n) ⇒
       send(n)
   }
 
@@ -236,16 +246,16 @@ class SearchPublisher(
    * and add in local queue
    */
   def fetching: Receive = {
-    case Request(n) =>
+    case Request(n) ⇒
       require(queue.isEmpty) // must be empty or why did we not send it before switching to this mode?
       stash()
-    case resp: RichSearchResponse if resp.isTimedOut =>
+    case resp: RichSearchResponse if resp.isTimedOut ⇒
       onError(SearchError("Request terminated early or timed out", null))
       context.stop(self)
-    case resp: RichSearchResponse if resp.isEmpty =>
+    case resp: RichSearchResponse if resp.isEmpty ⇒
       onComplete()
       context.stop(self)
-    case resp: RichSearchResponse =>
+    case resp: RichSearchResponse ⇒
       queue.enqueue(resp.hits: _*)
       context become ready
       unstashAll()
@@ -253,13 +263,13 @@ class SearchPublisher(
 
   private def send(k: Long): Unit = {
     require(queue.size >= k)
-    for (_ <- 0l until k) {
+    for (_ ← 0l until k) {
       if (max == 0 || processed < max) {
         onNext(queue.dequeue())
         processed = processed + 1
         if (processed == max && max > 0) {
           onComplete()
-          scrollId.foreach { s => db.execute(clear scroll s) }
+          scrollId.foreach { s ⇒ db.execute(clear scroll s) }
           context.stop(self)
         }
       }

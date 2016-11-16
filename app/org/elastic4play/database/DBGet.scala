@@ -13,10 +13,12 @@ import org.elastic4play.{ NotFoundError, Timed }
 import org.elastic4play.models.Attribute
 
 @Singleton
-class DBGet @Inject() (db: DBConfiguration,
-                       implicit val ec: ExecutionContext) {
+class DBGet @Inject() (
+  db: DBConfiguration,
+    implicit val ec: ExecutionContext
+) {
 
-    /**
+  /**
    * Retrieve entities from ElasticSearch
    * @param modelName the name of the model (ie. document type)
    * @param id identifier of the entity to retrieve
@@ -25,17 +27,17 @@ class DBGet @Inject() (db: DBConfiguration,
    */
 
   def apply(modelName: String, id: String, fields: Option[Seq[Attribute[_]]] = None): Future[JsObject] = {
-    val fieldsName = fields.fold(Seq("_source", "_routing", "_parent"))(f => "_routing" +: "_parent" +: f.map(_.name))
+    val fieldsName = fields.fold(Seq("_source", "_routing", "_parent"))(f ⇒ "_routing" +: "_parent" +: f.map(_.name))
     db
       .execute {
         // Search by id is not possible on child entity without routing information => id query
         search in db.indexName query { idsQuery(id).types(modelName) } fields (fieldsName: _*)
       }
-      .map { searchResponse =>
+      .map { searchResponse ⇒
         searchResponse
           .hits
           .headOption
-          .fold[JsObject](throw NotFoundError(s"$modelName $id not found")) { hit =>
+          .fold[JsObject](throw NotFoundError(s"$modelName $id not found")) { hit ⇒
             DBUtils.hit2json(fields, hit)
           }
       }
