@@ -55,11 +55,11 @@ case class FileInputValue(name: String, filepath: Path, contentType: String) ext
  */
 case class AttachmentInputValue(name: String, hashes: Seq[Hash], size: Long, contentType: String, id: String) extends InputValue {
   def jsonValue: JsObject = Json.obj(
-    "name" -> name,
-    "hashes" -> hashes.map(_.toString),
-    "size" -> size,
-    "contentType" -> contentType,
-    "id" -> id)
+    "name" → name,
+    "hashes" → hashes.map(_.toString),
+    "size" → size,
+    "contentType" → contentType,
+    "id" → id)
   def toAttachment = Attachment(name, hashes, size, contentType, id)
 }
 object AttachmentInputValue {

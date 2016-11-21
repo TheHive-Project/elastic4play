@@ -52,14 +52,13 @@ trait DBList {
 
 @Singleton
 class DBLists @Inject() (
-  findSrv: FindSrv,
+    findSrv: FindSrv,
     deleteSrv: Provider[DeleteSrv],
     dbCreate: DBCreate,
     dblistModel: DBListModel,
     cache: CacheApi,
     implicit val ec: ExecutionContext,
-    implicit val mat: Materializer
-) {
+    implicit val mat: Materializer) {
   /**
    * Returns list of all dblist name
    */

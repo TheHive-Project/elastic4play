@@ -29,26 +29,23 @@ import org.elastic4play.{ InternalError, SearchError, Timed }
  */
 @Singleton
 class DBFind(
-  pageSize: Int,
+    pageSize: Int,
     keepAlive: FiniteDuration,
     db: DBConfiguration,
     implicit val ec: ExecutionContext,
-    implicit val mat: Materializer
-) {
+    implicit val mat: Materializer) {
 
   @Inject def this(
     configuration: Configuration,
     db: DBConfiguration,
     ec: ExecutionContext,
-    mat: Materializer
-  ) =
+    mat: Materializer) =
     this(
       configuration.getInt("search.pagesize").get,
       configuration.getMilliseconds("search.keepalive").get.millis,
       db,
       ec,
-      mat
-    )
+      mat)
 
   private[database] val indexName = db.indexName
   private[database] val keepAliveStr = keepAlive.toMillis + "ms"
@@ -92,9 +89,7 @@ class DBFind(
         db,
         searchDefinition limit pageSize,
         keepAliveStr,
-        limit
-      )
-    )
+        limit))
       .toMat(Sink.asPublisher(true))(Keep.both)
       .run()
     val total = (actorRef ? SearchPublisher.Start).flatMap {
@@ -185,8 +180,7 @@ class SearchPublisher(
     db: DBConfiguration,
     searchDefinition: SearchDefinition,
     keepAliveStr: String,
-    max: Int
-) extends ActorPublisher[RichSearchHit] with Stash {
+    max: Int) extends ActorPublisher[RichSearchHit] with Stash {
   import SearchPublisher._
   import context.dispatcher
   import akka.stream.actor.ActorPublisherMessage._

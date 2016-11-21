@@ -17,10 +17,9 @@ import org.elastic4play.services.{ AuthCapability, AuthContext, AuthSrv, AuthSrv
 
 @Singleton
 class LdapAuthSrvFactory @Inject() (
-  configuration: Configuration,
+    configuration: Configuration,
     userSrv: UserSrv,
-    ec: ExecutionContext
-) extends AuthSrvFactory { factory ⇒
+    ec: ExecutionContext) extends AuthSrvFactory { factory ⇒
   val name = "ldap"
   def getAuthSrv: AuthSrv = new LdapAuthSrv(
     configuration.getString("auth.ldap.serverName").getOrElse(sys.error("Configuration error (auth.ldap.serverName is missing)")),
@@ -30,19 +29,17 @@ class LdapAuthSrvFactory @Inject() (
     configuration.getString("auth.ldap.baseDN").getOrElse(sys.error("Configuration error (auth.ldap.baseDN is missing)")),
     configuration.getString("auth.ldap.filter").getOrElse(sys.error("Configuration error (auth.ldap.filter is missing)")),
     userSrv,
-    ec
-  )
+    ec)
 
   private class LdapAuthSrv(
-    serverName: String,
+      serverName: String,
       useSSL: Boolean,
       bindDN: String,
       bindPW: String,
       baseDN: String,
       filter: String,
       userSrv: UserSrv,
-      implicit val ec: ExecutionContext
-  ) extends AuthSrv {
+      implicit val ec: ExecutionContext) extends AuthSrv {
 
     lazy val log = Logger(getClass)
     val name = "ldap"
@@ -51,8 +48,7 @@ class LdapAuthSrvFactory @Inject() (
     @Inject() def this(
       configuration: Configuration,
       userSrv: UserSrv,
-      ec: ExecutionContext
-    ) =
+      ec: ExecutionContext) =
       this(
         configuration.getString("auth.ldap.serverName").getOrElse(sys.error("Configuration error (auth.ldap.serverName is missing)")),
         configuration.getBoolean("auth.ldap.useSSL").getOrElse(false),
@@ -61,8 +57,7 @@ class LdapAuthSrvFactory @Inject() (
         configuration.getString("auth.ldap.baseDN").getOrElse(sys.error("Configuration error (auth.ldap.baseDN is missing)")),
         configuration.getString("auth.ldap.filter").getOrElse(sys.error("Configuration error (auth.ldap.filter is missing)")),
         userSrv,
-        ec
-      )
+        ec)
 
     private[auth] def connect[A](username: String, password: String)(f: InitialDirContext ⇒ A): Try[A] = {
       val protocol = if (useSSL) "ldaps://" else "ldap://"

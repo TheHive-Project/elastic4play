@@ -13,9 +13,8 @@ import org.elastic4play.models.{ ChildModelDef, ModelAttributes, ModelDef }
 
 @Singleton
 class DBIndex @Inject() (
-  db: DBConfiguration,
-    implicit val ec: ExecutionContext
-) {
+    db: DBConfiguration,
+    implicit val ec: ExecutionContext) {
 
   /**
    * Create a new index. Collect mapping for all attributes of all entities

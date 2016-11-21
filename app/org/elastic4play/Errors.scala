@@ -17,8 +17,7 @@ case class MultiError(message: String, exceptions: Seq[Exception]) extends Excep
 
 case class AttributeCheckingError(
   tableName: String,
-  errors: Seq[AttributeError] = Nil
-)
+  errors: Seq[AttributeError] = Nil)
     extends Exception(errors.mkString("[", "][", "]")) {
   override def toString = errors.mkString("[", "][", "]")
 }

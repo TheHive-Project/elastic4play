@@ -272,9 +272,9 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
       Bad(One(InvalidFormatAttributeError("", name, value)))
     else
       value match {
-        case fiv: FileInputValue if fiv.name.intersect(forbiddenChar).isEmpty => Good(Json.toJson(fiv)(fileInputValueFormat))
-        case aiv: AttachmentInputValue => Good(Json.toJson(aiv.toAttachment)(jsFormat))
-        case _ => Bad(One(InvalidFormatAttributeError("", name, value)))
+        case fiv: FileInputValue if fiv.name.intersect(forbiddenChar).isEmpty ⇒ Good(Json.toJson(fiv)(fileInputValueFormat))
+        case aiv: AttachmentInputValue ⇒ Good(Json.toJson(aiv.toAttachment)(jsFormat))
+        case _ ⇒ Bad(One(InvalidFormatAttributeError("", name, value)))
       }
   }
   override def fromInputValue(subNames: Seq[String], value: InputValue): Attachment Or Every[AttributeError] = sys.error("not implemented")
@@ -291,8 +291,7 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
         "hashes" → hashes,
         "size" → size,
         "contentType" → contentType,
-        "id" → id
-      ))
+        "id" → id))
     case _ ⇒ None
   }
   override val swaggerType = Json.obj("type" → "File", "required" → true) // swagger bug : File input must be required
@@ -301,8 +300,7 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
     field("hashes", StringType) index "not_analyzed",
     field("size", LongType),
     field("contentType", StringType),
-    field("id", StringType)
-  )
+    field("id", StringType))
 }
 
 case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends AttributeFormat[JsObject]("nested") {
@@ -473,8 +471,7 @@ case class Attribute[T](
     format: AttributeFormat[T],
     options: Seq[AttributeOption.Type],
     defaultValue: Option[() ⇒ T],
-    description: String
-) {
+    description: String) {
   def defaultValueJson = defaultValue.map(d ⇒ format.jsFormat.writes(d()))
   lazy val isMulti = format match {
     case _: MultiAttributeFormat[_] ⇒ true

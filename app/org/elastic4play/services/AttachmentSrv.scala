@@ -44,15 +44,14 @@ class AttachmentChunk(model: AttachmentModel, attributes: JsObject) extends Enti
 
 @Singleton
 class AttachmentSrv(
-  mainHash: String,
+    mainHash: String,
     extraHashes: Seq[String],
     chunkSize: Int,
     dbCreate: DBCreate,
     getSrv: GetSrv,
     attachmentModel: AttachmentModel,
     implicit val ec: ExecutionContext,
-    implicit val mat: Materializer
-) {
+    implicit val mat: Materializer) {
 
   @Inject() def this(configuration: Configuration, dbCreate: DBCreate,
     getSrv: GetSrv,
@@ -67,8 +66,7 @@ class AttachmentSrv(
       getSrv,
       attachmentModel,
       ec,
-      mat
-    )
+      mat)
 
   val mainHasher = Hasher(mainHash)
   val extraHashers = Hasher(mainHash +: extraHashes: _*)
@@ -86,18 +84,18 @@ class AttachmentSrv(
           inputValue
             .map {
               // save attachment and replace FileInputValue json representation to JsObject containing attachment attributes
-              case fiv: FileInputValue => save(fiv).map { attachment =>
-                a - name + (name -> Json.toJson(attachment))
+              case fiv: FileInputValue ⇒ save(fiv).map { attachment ⇒
+                a - name + (name → Json.toJson(attachment))
               }
-              case aiv: AttachmentInputValue => Future.successful(a - name + (name -> Json.toJson(aiv.toAttachment)))
+              case aiv: AttachmentInputValue ⇒ Future.successful(a - name + (name → Json.toJson(aiv.toAttachment)))
             }
             // if conversion to FileInputValue fails, it means that attribute is missing or format is invalid
             .getOrElse {
               (a \ name).asOpt[JsValue] match {
-                case Some(v) if v != JsNull && v != JsArray(Nil) =>
+                case Some(v) if v != JsNull && v != JsArray(Nil) ⇒
                   Future.failed(AttributeCheckingError(model.name, Seq(
                     InvalidFormatAttributeError(name, "attachment", (a \ name).asOpt[FileInputValue].getOrElse(JsonInputValue((a \ name).as[JsValue]))))))
-                case _ =>
+                case _ ⇒
                   if (isRequired)
                     Future.failed(AttributeCheckingError(model.name, Seq(MissingAttributeError(name))))
                   else

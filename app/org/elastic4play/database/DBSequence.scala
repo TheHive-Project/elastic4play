@@ -16,9 +16,8 @@ class SequenceModel extends ModelAttributes("sequence") {
 }
 @Singleton
 class DBSequence @Inject() (
-  db: DBConfiguration,
-    implicit val ec: ExecutionContext
-) {
+    db: DBConfiguration,
+    implicit val ec: ExecutionContext) {
 
   def apply(seqId: String): Future[Int] = {
     db.execute {

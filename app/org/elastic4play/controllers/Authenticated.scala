@@ -36,26 +36,23 @@ case object ExpirationError extends ExpirationStatus
  */
 @Singleton
 class Authenticated(
-  maxSessionInactivity: FiniteDuration,
+    maxSessionInactivity: FiniteDuration,
     sessionWarning: FiniteDuration,
     userSrv: UserSrv,
     authSrv: AuthSrv,
-    implicit val ec: ExecutionContext
-) {
+    implicit val ec: ExecutionContext) {
 
   @Inject() def this(
     configuration: Configuration,
     userSrv: UserSrv,
     authSrv: AuthSrv,
-    ec: ExecutionContext
-  ) =
+    ec: ExecutionContext) =
     this(
       configuration.getMilliseconds("session.inactivity").get.millis,
       configuration.getMilliseconds("session.warning").get.millis,
       userSrv,
       authSrv,
-      ec
-    )
+      ec)
 
   private def now = (new Date).getTime
 

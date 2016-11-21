@@ -12,12 +12,11 @@ import org.elastic4play.models.{ AbstractModelDef, EntityDef }
 
 @Singleton
 class DeleteSrv @Inject() (
-  updateSrv: UpdateSrv,
+    updateSrv: UpdateSrv,
     getSrv: GetSrv,
     dbremove: DBRemove,
     eventSrv: EventSrv,
-    implicit val ec: ExecutionContext
-) {
+    implicit val ec: ExecutionContext) {
 
   def apply[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, id: String)(implicit authContext: AuthContext): Future[E] = {
     for {

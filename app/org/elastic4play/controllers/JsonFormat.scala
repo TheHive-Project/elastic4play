@@ -32,31 +32,31 @@ object JsonFormat {
     } yield FileInputValue(name, filepath, contentType)
   }
 
-  val attachmentInputValueReads = Reads[AttachmentInputValue] { json =>
+  val attachmentInputValueReads = Reads[AttachmentInputValue] { json ⇒
     for {
-      name <- (json \ "name").validate[String]
-      hashes <- (json \ "hashes").validate[Seq[String]]
-      size <- (json \ "size").validate[Long]
-      contentType <- (json \ "contentType").validate[String]
-      id <- (json \ "id").validate[String]
+      name ← (json \ "name").validate[String]
+      hashes ← (json \ "hashes").validate[Seq[String]]
+      size ← (json \ "size").validate[Long]
+      contentType ← (json \ "contentType").validate[String]
+      id ← (json \ "id").validate[String]
     } yield AttachmentInputValue(name, hashes.map(Hash.apply), size, contentType, id)
   }
 
-  val inputValueWrites = Writes[InputValue]((value: InputValue) => value match {
-    case v: StringInputValue     => Json.obj("type" -> "StringInputValue", "value" -> v.jsonValue)
-    case v: JsonInputValue       => Json.obj("type" -> "JsonInputValue", "value" -> v.jsonValue)
-    case v: FileInputValue       => Json.obj("type" -> "FileInputValue", "value" -> v.jsonValue)
-    case v: AttachmentInputValue => Json.obj("type" -> "AttachmentInputValue", "value" -> v.jsonValue)
-    case NullInputValue          => Json.obj("type" -> "NullInputValue")
+  val inputValueWrites = Writes[InputValue]((value: InputValue) ⇒ value match {
+    case v: StringInputValue     ⇒ Json.obj("type" → "StringInputValue", "value" → v.jsonValue)
+    case v: JsonInputValue       ⇒ Json.obj("type" → "JsonInputValue", "value" → v.jsonValue)
+    case v: FileInputValue       ⇒ Json.obj("type" → "FileInputValue", "value" → v.jsonValue)
+    case v: AttachmentInputValue ⇒ Json.obj("type" → "AttachmentInputValue", "value" → v.jsonValue)
+    case NullInputValue          ⇒ Json.obj("type" → "NullInputValue")
   })
 
   val inputValueReads = Reads { json ⇒
     (json \ "type").validate[String].flatMap {
-      case "StringInputValue"     => (json \ "value").validate(stringInputValueReads)
-      case "JsonInputValue"       => (json \ "value").validate(jsonInputValueReads)
-      case "FileInputValue"       => (json \ "value").validate(fileInputValueReads)
-      case "AttachmentInputValue" => (json \ "value").validate(attachmentInputValueReads)
-      case "NullInputValue"       => new JsSuccess(NullInputValue)
+      case "StringInputValue"     ⇒ (json \ "value").validate(stringInputValueReads)
+      case "JsonInputValue"       ⇒ (json \ "value").validate(jsonInputValueReads)
+      case "FileInputValue"       ⇒ (json \ "value").validate(fileInputValueReads)
+      case "AttachmentInputValue" ⇒ (json \ "value").validate(attachmentInputValueReads)
+      case "NullInputValue"       ⇒ new JsSuccess(NullInputValue)
     }
   }
 

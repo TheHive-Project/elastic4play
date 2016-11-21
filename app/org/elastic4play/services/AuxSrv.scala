@@ -17,12 +17,11 @@ import org.elastic4play.models.JsonFormat.baseModelEntityWrites
 
 @Singleton
 class AuxSrv @Inject() (
-  db: DBConfiguration,
+    db: DBConfiguration,
     findSrv: FindSrv,
     modelSrv: ModelSrv,
     implicit val ec: ExecutionContext,
-    implicit val mat: Materializer
-) {
+    implicit val mat: Materializer) {
   import QueryDSL._
   val log = Logger(getClass)
 

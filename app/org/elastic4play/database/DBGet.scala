@@ -14,9 +14,8 @@ import org.elastic4play.models.Attribute
 
 @Singleton
 class DBGet @Inject() (
-  db: DBConfiguration,
-    implicit val ec: ExecutionContext
-) {
+    db: DBConfiguration,
+    implicit val ec: ExecutionContext) {
 
   /**
    * Retrieve entities from ElasticSearch

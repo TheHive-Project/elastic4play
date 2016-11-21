@@ -26,8 +26,7 @@ object JsonFormat {
       "hashes" → attachment.hashes,
       "size" → attachment.size,
       "contentType" → attachment.contentType,
-      "id" → attachment.id
-    ))
+      "id" → attachment.id))
 
   val attachmentReads: Reads[Attachment] = Reads((json: JsValue) ⇒
     for {
@@ -137,9 +136,9 @@ object JsonFormat {
         case JsObjOne(("_string", JsString(s)))        ⇒ JsSuccess(string(s))
         case JsObjOne(("_in", JsFieldIn(f, v)))        ⇒ JsSuccess(f in (v: _*))
         case JsObjOne(("_type", JsString(v)))          ⇒ JsSuccess(ofType(v))
-        case JsObjOne((n, JsVal(v)))                   ⇒
+        case JsObjOne((n, JsVal(v))) ⇒
           if (n.startsWith("_")) log.warn(s"""Potentially invalid search query : {"$n": "$v"}"""); JsSuccess(n ~= v)
-        case other                                     ⇒ JsError(s"Invalid query: unexpected $other")
+        case other ⇒ JsError(s"Invalid query: unexpected $other")
       }
     }
   }
@@ -172,8 +171,7 @@ object JsonFormat {
   implicit val authContextWrites = Writes[AuthContext]((authContext: AuthContext) ⇒ Json.obj(
     "id" → authContext.userId,
     "name" → authContext.userName,
-    "roles" → authContext.roles
-  ))
+    "roles" → authContext.roles))
 
   implicit val auditableActionFormat = enumFormat(AuditableAction)
 

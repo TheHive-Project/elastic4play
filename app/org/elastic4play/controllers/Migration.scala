@@ -15,9 +15,8 @@ import org.elastic4play.services.MigrationSrv
  */
 @Singleton
 class MigrationCtrl @Inject() (
-  migrationSrv: MigrationSrv,
-    implicit val ec: ExecutionContext
-) extends Controller {
+    migrationSrv: MigrationSrv,
+    implicit val ec: ExecutionContext) extends Controller {
 
   @Timed("controllers.MigrationCtrl.migrate")
   def migrate = Action.async {

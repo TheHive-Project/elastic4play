@@ -12,9 +12,8 @@ import com.sksamuel.elastic4s.IndexAndTypes.apply
 
 @Singleton
 class DBRemove @Inject() (
-  db: DBConfiguration,
-    implicit val ec: ExecutionContext
-) {
+    db: DBConfiguration,
+    implicit val ec: ExecutionContext) {
 
   def apply(model: BaseModelDef, entity: BaseEntity): Future[Boolean] = {
     db.execute {
