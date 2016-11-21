@@ -14,6 +14,8 @@ import play.api.libs.streams.Accumulator
 import play.api.mvc.{ BodyParser, MultipartFormData, RequestHeader }
 
 import org.elastic4play.BadRequestError
+import org.elastic4play.services.Attachment
+import org.elastic4play.utils.Hash
 
 import JsonFormat.{ fieldsReader, pathFormat }
 
@@ -46,6 +48,22 @@ case class JsonInputValue(data: JsValue) extends InputValue {
  */
 case class FileInputValue(name: String, filepath: Path, contentType: String) extends InputValue {
   def jsonValue: JsObject = Json.obj("name" → name, "filepath" → filepath, "contentType" → contentType)
+}
+
+/**
+ * Define an attachment that is already in datastore. This type can't be from HTTP request.
+ */
+case class AttachmentInputValue(name: String, hashes: Seq[Hash], size: Long, contentType: String, id: String) extends InputValue {
+  def jsonValue: JsObject = Json.obj(
+    "name" -> name,
+    "hashes" -> hashes.map(_.toString),
+    "size" -> size,
+    "contentType" -> contentType,
+    "id" -> id)
+  def toAttachment = Attachment(name, hashes, size, contentType, id)
+}
+object AttachmentInputValue {
+  def apply(attachment: Attachment) = new AttachmentInputValue(attachment.name, attachment.hashes, attachment.size, attachment.contentType, attachment.id)
 }
 
 /**

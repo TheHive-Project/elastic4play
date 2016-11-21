@@ -3,12 +3,13 @@ package org.elastic4play.controllers
 import java.io.File
 import java.nio.file.{ Path, Paths }
 
-import play.api.libs.json.{ Format, JsError, JsObject, JsString, JsSuccess }
+import play.api.libs.json.{ Format, JsError, JsObject, JsString, JsSuccess, JsValue }
 import play.api.libs.json.{ Reads, Writes }
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.Json
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
-import play.api.libs.json.JsValue
+
+import org.elastic4play.utils.Hash
 
 object JsonFormat {
 
@@ -31,23 +32,36 @@ object JsonFormat {
     } yield FileInputValue(name, filepath, contentType)
   }
 
-  val inputValueWrites = Writes[InputValue]((value: InputValue) ⇒ value match {
-    case v: StringInputValue ⇒ Json.obj("type" → "StringInputValue", "value" → v.jsonValue)
-    case v: JsonInputValue   ⇒ Json.obj("type" → "JsonInputValue", "value" → v.jsonValue)
-    case v: FileInputValue   ⇒ Json.obj("type" → "FileInputValue", "value" → v.jsonValue)
-    case NullInputValue      ⇒ Json.obj("type" → "NullInputValue")
+  val attachmentInputValueReads = Reads[AttachmentInputValue] { json =>
+    for {
+      name <- (json \ "name").validate[String]
+      hashes <- (json \ "hashes").validate[Seq[String]]
+      size <- (json \ "size").validate[Long]
+      contentType <- (json \ "contentType").validate[String]
+      id <- (json \ "id").validate[String]
+    } yield AttachmentInputValue(name, hashes.map(Hash.apply), size, contentType, id)
+  }
+
+  val inputValueWrites = Writes[InputValue]((value: InputValue) => value match {
+    case v: StringInputValue     => Json.obj("type" -> "StringInputValue", "value" -> v.jsonValue)
+    case v: JsonInputValue       => Json.obj("type" -> "JsonInputValue", "value" -> v.jsonValue)
+    case v: FileInputValue       => Json.obj("type" -> "FileInputValue", "value" -> v.jsonValue)
+    case v: AttachmentInputValue => Json.obj("type" -> "AttachmentInputValue", "value" -> v.jsonValue)
+    case NullInputValue          => Json.obj("type" -> "NullInputValue")
   })
 
   val inputValueReads = Reads { json ⇒
     (json \ "type").validate[String].flatMap {
-      case "StringInputValue" ⇒ (json \ "value").validate(stringInputValueReads)
-      case "JsonInputValue"   ⇒ (json \ "value").validate(jsonInputValueReads)
-      case "FileInputValue"   ⇒ (json \ "value").validate(fileInputValueReads)
-      case "NullInputValue"   ⇒ new JsSuccess(NullInputValue)
+      case "StringInputValue"     => (json \ "value").validate(stringInputValueReads)
+      case "JsonInputValue"       => (json \ "value").validate(jsonInputValueReads)
+      case "FileInputValue"       => (json \ "value").validate(fileInputValueReads)
+      case "AttachmentInputValue" => (json \ "value").validate(attachmentInputValueReads)
+      case "NullInputValue"       => new JsSuccess(NullInputValue)
     }
   }
 
   implicit val fileInputValueFormat = Format[FileInputValue](fileInputValueReads, fileInputValueWrites)
+
   implicit val inputValueFormat = Format[InputValue](inputValueReads, inputValueWrites)
 
   implicit val fieldsReader = Reads {
