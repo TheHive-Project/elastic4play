@@ -244,7 +244,7 @@ class FieldsBodyParser extends BodyParser[Fields] {
         val contentLength = request.headers.get("Content-Length").fold(0)(_.toInt)
         if (contentLength != 0)
           Logger.warn(s"Unrecognized content-type : ${contentType.getOrElse("not set")} on $request (length=$contentLength)")
-        Accumulator.done(Right(Fields.empty))
+        Accumulator.done(Right(Fields(queryFields)))
     }
   }
 }
