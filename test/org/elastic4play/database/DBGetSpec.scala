@@ -39,17 +39,17 @@ class DBGetSpec extends PlaySpecification with Mockito {
 
       db.execute(searchDefinition.capture) returns Future.successful(response)
       dbget(modelName, entityId, None).await must_== Json.obj(
-        "_type" -> modelName,
-        "_routing" -> entityId,
-        "_parent" -> JsNull,
-        "_id" -> entityId)
+        "_type" → modelName,
+        "_routing" → entityId,
+        "_parent" → JsNull,
+        "_id" → entityId)
 
       Json.parse(searchDefinition.value._builder.toString) must_== Json.obj(
-        "query" -> Json.obj(
-          "ids" -> Json.obj(
-            "type" -> "user",
-            "values" -> Seq("me"))),
-        "fields" -> Seq("_source", "_routing", "_parent"))
+        "query" → Json.obj(
+          "ids" → Json.obj(
+            "type" → "user",
+            "values" → Seq("me"))),
+        "fields" → Seq("_source", "_routing", "_parent"))
     }
   }
 }

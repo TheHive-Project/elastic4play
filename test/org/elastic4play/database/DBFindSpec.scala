@@ -22,7 +22,7 @@ import org.elasticsearch.search.SearchHitField
 
 import com.sksamuel.elastic4s.{ SearchDefinition, RichSearchResponse, RichSearchHit, SearchScrollDefinition, ClearScrollDefinition, RichSearchHitField }
 
-import common.{ Fabricator => F }
+import common.{ Fabricator ⇒ F }
 import org.elastic4play.utils._
 
 @RunWith(classOf[JUnitRunner])
@@ -158,11 +158,11 @@ class DBFindSpec extends PlaySpecification with Mockito {
       val parent = F.string("parent")
       val parentField = mock[SearchHitField]
       parentField.getValue[String] returns parent
-      val fields = Map("_routing" -> RichSearchHitField(routingField), "_parent" -> RichSearchHitField(parentField))
+      val fields = Map("_routing" → RichSearchHitField(routingField), "_parent" → RichSearchHitField(parentField))
       hit.fields returns fields
       val id = F.string("id")
       hit.id returns id
-      val doc = Json.obj("magic-number" -> 42, "text" -> "blah", "really-good" -> true)
+      val doc = Json.obj("magic-number" → 42, "text" → "blah", "really-good" → true)
       hit.sourceAsString returns doc.toString
       val tpe = "some-object"
       hit.`type` returns tpe
@@ -170,10 +170,10 @@ class DBFindSpec extends PlaySpecification with Mockito {
       val db = mock[DBConfiguration]
       val dbfind = new DBFind(pageSize, keepAlive, db, trampoline, mat)
       dbfind.hit2json(hit) must_== (doc +
-        ("_id" -> JsString(id)) +
-        ("_parent" -> JsString(parent)) +
-        ("_routing" -> JsString(routing)) +
-        ("_type" -> JsString(tpe)))
+        ("_id" → JsString(id)) +
+        ("_parent" → JsString(parent)) +
+        ("_routing" → JsString(routing)) +
+        ("_type" → JsString(tpe)))
     }
   }
 }

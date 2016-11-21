@@ -11,7 +11,7 @@ import play.api.test.PlaySpecification
 
 import org.elastic4play.NotFoundError
 import org.elastic4play.database.DBRemove
-import org.elastic4play.models.{ AttributeFormat => F, EntityDef, ModelDef }
+import org.elastic4play.models.{ AttributeFormat ⇒ F, EntityDef, ModelDef }
 import org.elastic4play.utils.RichFuture
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
@@ -40,22 +40,22 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
   val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, trampoline)
   val model = new TestModel
   val entity = new TestEntity(model, Json.obj(
-        "_id" -> "42",
-        "_routing" -> "42",
-        "textAttribute" -> "valid text",
-        "stringAttribute" -> "valid string",
-        "dateAttribute" -> "20160128T175800+0100",
-        "booleanAttribute" -> true,
-        "uuidAttribute" -> "ee0caf69-560b-4453-9bae-72982225e661",
-        "hashAttribute" -> "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
-        "metricAttribute" -> Json.obj("metric1" -> 1, "metric2" -> 2),
-        "user" -> "testUser",
-        "createdAt" -> "20160620T162845+0200",
-        "createdBy" -> "testUser"))
+    "_id" → "42",
+    "_routing" → "42",
+    "textAttribute" → "valid text",
+    "stringAttribute" → "valid string",
+    "dateAttribute" → "20160128T175800+0100",
+    "booleanAttribute" → true,
+    "uuidAttribute" → "ee0caf69-560b-4453-9bae-72982225e661",
+    "hashAttribute" → "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "metricAttribute" → Json.obj("metric1" → 1, "metric2" → 2),
+    "user" → "testUser",
+    "createdAt" → "20160620T162845+0200",
+    "createdBy" → "testUser"))
 
   "DeleteSrv.realDelete" should {
     "remove entity if exists" in {
-      val id = "42" 
+      val id = "42"
       getSrv[TestModel, TestEntity](model, id) returns Future.successful(entity)
       dbRemove(model, entity) returns Future.successful(true)
       deleteSrv.realDelete[TestModel, TestEntity](model, id).await must_== (())
@@ -63,14 +63,14 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
     }
 
     "returns error if entity can't be retrieve" in {
-      val id = "42" 
+      val id = "42"
       val error = NotFoundError(s"${model.name} $id not found")
       getSrv[TestModel, TestEntity](model, id) returns Future.failed(error)
       deleteSrv.realDelete[TestModel, TestEntity](model, id).await must throwA[NotFoundError]
     }
-    
+
     "returns error if entity is not found" in {
-      val id = "42" 
+      val id = "42"
       getSrv[TestModel, TestEntity](model, id) returns Future.successful(entity)
       dbRemove(model, entity) returns Future.successful(false)
       deleteSrv.realDelete[TestModel, TestEntity](model, id).await must throwA[NotFoundError]
