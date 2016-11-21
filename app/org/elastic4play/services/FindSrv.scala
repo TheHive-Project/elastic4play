@@ -53,8 +53,7 @@ trait FieldSelectable { self: Agg ⇒
       case Array("computed", c) ⇒
         val script = model.computedMetrics.getOrElse(
           c,
-          throw BadRequestError(s"Field $field is unknown in ${model.name}")
-        )
+          throw BadRequestError(s"Field $field is unknown in ${model.name}"))
         Seq(aggFunction.script(script).asInstanceOf[AbstractAggregationDefinition])
       case array ⇒
         val attribute = model.attributes.find(_.name == array(0)).getOrElse {
@@ -246,10 +245,9 @@ object QueryDSL {
 
 @Singleton
 class FindSrv @Inject() (
-  dbfind: DBFind,
+    dbfind: DBFind,
     modelSrv: ModelSrv,
-    implicit val ec: ExecutionContext
-) {
+    implicit val ec: ExecutionContext) {
 
   def switchTo(db: DBConfiguration) = new FindSrv(dbfind.switchTo(db), modelSrv, ec)
 

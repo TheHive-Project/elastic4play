@@ -59,7 +59,7 @@ object DatabaseState {
 
 @Singleton
 class MigrationSrv @Inject() (
-  migration: MigrationOperations,
+    migration: MigrationOperations,
     db: DBConfiguration,
     dbcreate: DBCreate,
     dbfind: DBFind,
@@ -68,8 +68,7 @@ class MigrationSrv @Inject() (
     modelSrv: ModelSrv,
     eventSrv: EventSrv,
     implicit val ec: ExecutionContext,
-    implicit val materializer: Materializer
-) {
+    implicit val materializer: Materializer) {
 
   val log = Logger(getClass)
 
@@ -126,8 +125,7 @@ class MigrationSrv @Inject() (
     "rootId" → "none",
     "tableName" → modelName,
     "current" → current,
-    "total" → total
-  )
+    "total" → total)
 
   def migrateEntities(modelName: String, entities: Source[JsObject, _], total: Long): Future[Unit] = {
     val count = Source.fromIterator(() ⇒ Iterator.from(1))
@@ -167,8 +165,7 @@ class MigrationSrv @Inject() (
                 .distinct
                 .map(t ⇒ migrateTable(mig, t).recover {
                   case t ⇒ log.error(s"Migration of table $t failed :", t)
-                })
-            )
+                }))
               .flatMap(_ ⇒ migration.endMigration(version))
         }
       migrationProcess.onComplete {

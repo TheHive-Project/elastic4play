@@ -14,12 +14,11 @@ import scala.concurrent.Future
 
 @Singleton
 class DBListCtrl @Inject() (
-  dblists: DBLists,
+    dblists: DBLists,
     authenticated: Authenticated,
     renderer: Renderer,
     fieldsBodyParser: FieldsBodyParser,
-    implicit val ec: ExecutionContext
-) extends Controller {
+    implicit val ec: ExecutionContext) extends Controller {
 
   @Timed("controllers.DBListCtrl.list")
   def list = authenticated(Role.read).async { implicit request ⇒

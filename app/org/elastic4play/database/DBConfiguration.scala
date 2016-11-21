@@ -34,22 +34,20 @@ import org.elastic4play.Timed
  */
 @Singleton
 class DBConfiguration(
-  searchHost: Seq[String],
+    searchHost: Seq[String],
     searchCluster: String,
     baseIndexName: String,
     lifecycle: ApplicationLifecycle,
     val version: Int,
     implicit val ec: ExecutionContext,
-    implicit val actorSystem: ActorSystem
-) {
+    implicit val actorSystem: ActorSystem) {
 
   @Inject() def this(
     configuration: Configuration,
     lifecycle: ApplicationLifecycle,
     @Named("databaseVersion") version: Int,
     ec: ExecutionContext,
-    actorSystem: ActorSystem
-  ) = {
+    actorSystem: ActorSystem) = {
     this(
       configuration.getStringSeq("search.host").get,
       configuration.getString("search.cluster").get,
@@ -57,8 +55,7 @@ class DBConfiguration(
       lifecycle,
       version,
       ec,
-      actorSystem
-    )
+      actorSystem)
   }
 
   lazy val log = Logger(getClass)
@@ -68,8 +65,7 @@ class DBConfiguration(
    */
   private val client: ElasticClient = ElasticClient.transport(
     Settings.settingsBuilder().put("cluster.name", searchCluster).build(),
-    ElasticsearchClientUri(searchHost.mkString(","))
-  )
+    ElasticsearchClientUri(searchHost.mkString(",")))
   // when application close, close also ElasticSearch connection
   lifecycle.addStopHook { () ⇒ Future { client.close() } }
 

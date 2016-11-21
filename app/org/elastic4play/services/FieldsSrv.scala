@@ -29,7 +29,6 @@ class FieldsSrv {
       }
       .transform(
         attrs ⇒ Good(JsObject(attrs.toSeq)),
-        errors ⇒ Bad(AttributeCheckingError(model.name, errors.toSeq))
-      )
+        errors ⇒ Bad(AttributeCheckingError(model.name, errors.toSeq)))
   }
 }

@@ -17,26 +17,23 @@ import org.elastic4play.services.{ AuthCapability, AuthContext, AuthSrv, AuthSrv
 
 @Singleton
 class ADAuthSrvFactory @Inject() (
-  configuration: Configuration,
+    configuration: Configuration,
     userSrv: UserSrv,
-    ec: ExecutionContext
-) extends AuthSrvFactory { factory ⇒
+    ec: ExecutionContext) extends AuthSrvFactory { factory ⇒
   val name = "ad"
   def getAuthSrv: AuthSrv = new ADAuthSrv(
     configuration.getString("auth.ad.domainFQDN").getOrElse(sys.error("Configuration error (auth.ad.domainFQDN is missing)")),
     configuration.getString("auth.ad.domainName").getOrElse(sys.error("Configuration error (auth.ad.domainName is missing)")),
     configuration.getBoolean("auth.ad.useSSL").getOrElse(false),
     userSrv,
-    ec
-  )
+    ec)
 
   private class ADAuthSrv(
-    DomainFQDN: String,
+      DomainFQDN: String,
       domainName: String,
       useSSL: Boolean,
       userSrv: UserSrv,
-      implicit val ec: ExecutionContext
-  ) extends AuthSrv {
+      implicit val ec: ExecutionContext) extends AuthSrv {
 
     lazy val log = Logger(getClass)
     val name = factory.name
@@ -89,8 +86,7 @@ class ADAuthSrvFactory @Inject() (
         getUserDN(ctx, username).map { userDN ⇒
           val mods = Array(
             new ModificationItem(DirContext.REMOVE_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeOldPassword)),
-            new ModificationItem(DirContext.ADD_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeNewPassword))
-          )
+            new ModificationItem(DirContext.ADD_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeNewPassword)))
           ctx.modifyAttributes(userDN, mods)
         }
       }

@@ -24,8 +24,7 @@ object JsonFormat {
       case e: UnknownAttributeError        ⇒ unknownAttributeErrorWrites.writes(e)
       case e: UpdateReadOnlyAttributeError ⇒ updateReadOnlyAttributeErrorWrites.writes(e)
       case e: MissingAttributeError        ⇒ missingAttributeErrorWrites.writes(e)
-    })
-  )))
+    }))))
 
   implicit def tryWrites[A](implicit aWrites: Writes[A]) = Writes[Try[A]] {
     case Success(a) ⇒ aWrites.writes(a)

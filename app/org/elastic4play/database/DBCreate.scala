@@ -29,9 +29,8 @@ import org.elastic4play.models.BaseEntity
  */
 @Singleton
 class DBCreate @Inject() (
-  db: DBConfiguration,
-    implicit val ec: ExecutionContext
-) {
+    db: DBConfiguration,
+    implicit val ec: ExecutionContext) {
   val log = Logger(getClass)
 
   /**
@@ -100,8 +99,7 @@ class DBCreate @Inject() (
       indexResponse ⇒ params.result(indexResponse.getId), {
         case t: RemoteTransportException ⇒ CreateError(None, t.getCause.getMessage, params.attributes)
         case t                           ⇒ CreateError(None, t.getMessage, params.attributes)
-      }
-    )
+      })
   }
 
   /**

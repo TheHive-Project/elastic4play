@@ -24,13 +24,12 @@ import org.scalactic.One
 
 @Singleton
 class UpdateSrv @Inject() (
-  fieldsSrv: FieldsSrv,
+    fieldsSrv: FieldsSrv,
     dbModify: DBModify,
     getSrv: GetSrv,
     attachmentSrv: AttachmentSrv,
     eventSrv: EventSrv,
-    implicit val ec: ExecutionContext
-) {
+    implicit val ec: ExecutionContext) {
 
   /**
    * Check if entity attributes are valid. Format is not checked as it has been already checked.
@@ -62,8 +61,7 @@ class UpdateSrv @Inject() (
     attrs ++
       Json.obj(
         "updatedBy" → authContext.userId,
-        "updatedAt" → Json.toJson(new Date)
-      )
+        "updatedAt" → Json.toJson(new Date))
 
   private[services] def removeMetaFields(attrs: JsObject): JsObject = attrs - "updatedBy" - "updatedAt"
 

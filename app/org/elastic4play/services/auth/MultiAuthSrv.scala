@@ -16,8 +16,7 @@ object MultiAuthSrv {
   def getAuthProviders(
     authTypes: Seq[String],
     authModules: immutable.Set[AuthSrv],
-    authFactoryModules: immutable.Set[AuthSrvFactory]
-  ) = {
+    authFactoryModules: immutable.Set[AuthSrvFactory]) = {
 
     authTypes.flatMap { authType ⇒
       authFactoryModules
@@ -42,9 +41,8 @@ object MultiAuthSrv {
 
 @Singleton
 class MultiAuthSrv(
-  val authProviders: Seq[AuthSrv],
-    implicit val ec: ExecutionContext
-) extends AuthSrv {
+    val authProviders: Seq[AuthSrv],
+    implicit val ec: ExecutionContext) extends AuthSrv {
 
   lazy val log = Logger(getClass)
 
@@ -52,16 +50,13 @@ class MultiAuthSrv(
     configuration: Configuration,
     authModules: immutable.Set[AuthSrv],
     authFactoryModules: immutable.Set[AuthSrvFactory],
-    ec: ExecutionContext
-  ) =
+    ec: ExecutionContext) =
     this(
       MultiAuthSrv.getAuthProviders(
-      configuration.getStringSeq("auth.type").getOrElse(Seq("local")),
-      authModules,
-      authFactoryModules
-    ),
-      ec
-    )
+        configuration.getStringSeq("auth.type").getOrElse(Seq("local")),
+        authModules,
+        authFactoryModules),
+      ec)
 
   val name = "multi"
   def capabilities = authProviders.flatMap(_.capabilities).toSet

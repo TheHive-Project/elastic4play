@@ -18,9 +18,8 @@ import com.sksamuel.elastic4s.IndexAndTypes.apply
 
 @Singleton
 class DBModify @Inject() (
-  db: DBConfiguration,
-    implicit val ec: ExecutionContext
-) {
+    db: DBConfiguration,
+    implicit val ec: ExecutionContext) {
   val log = Logger(getClass)
 
   /**

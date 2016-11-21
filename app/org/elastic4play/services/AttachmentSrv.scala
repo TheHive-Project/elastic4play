@@ -44,15 +44,14 @@ class AttachmentChunk(model: AttachmentModel, attributes: JsObject) extends Enti
 
 @Singleton
 class AttachmentSrv(
-  mainHash: String,
+    mainHash: String,
     extraHashes: Seq[String],
     chunkSize: Int,
     dbCreate: DBCreate,
     getSrv: GetSrv,
     attachmentModel: AttachmentModel,
     implicit val ec: ExecutionContext,
-    implicit val mat: Materializer
-) {
+    implicit val mat: Materializer) {
 
   @Inject() def this(configuration: Configuration, dbCreate: DBCreate,
     getSrv: GetSrv,
@@ -67,8 +66,7 @@ class AttachmentSrv(
       getSrv,
       attachmentModel,
       ec,
-      mat
-    )
+      mat)
 
   val mainHasher = Hasher(mainHash)
   val extraHashers = Hasher(mainHash +: extraHashes: _*)
@@ -92,8 +90,7 @@ class AttachmentSrv(
             case _ ⇒ (a \ name).asOpt[JsValue] match {
               case Some(v) if v != JsNull && v != JsArray(Nil) ⇒
                 Future.failed(AttributeCheckingError(model.name, Seq(
-                  InvalidFormatAttributeError(name, "attachment", (a \ name).asOpt[FileInputValue].getOrElse(JsonInputValue((a \ name).as[JsValue])))
-                )))
+                  InvalidFormatAttributeError(name, "attachment", (a \ name).asOpt[FileInputValue].getOrElse(JsonInputValue((a \ name).as[JsValue]))))))
               case _ ⇒
                 if (isRequired)
                   Future.failed(AttributeCheckingError(model.name, Seq(MissingAttributeError(name))))

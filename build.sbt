@@ -68,6 +68,7 @@ ScalariformKeys.preferences := ScalariformKeys.preferences.value
   .setPreference(PlaceScaladocAsterisksBeneathSecondAsterisk, false)
   .setPreference(PreserveSpaceBeforeArguments, false)
 //  .setPreference(PreserveDanglingCloseParenthesis, false)
+  .setPreference(DanglingCloseParenthesis, Prevent)
   .setPreference(RewriteArrowSymbols, true)
   .setPreference(SpaceBeforeColon, false)
 //  .setPreference(SpaceBeforeContextColon, false)
