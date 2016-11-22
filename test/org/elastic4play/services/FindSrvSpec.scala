@@ -22,11 +22,11 @@ class FindSrvSpec extends PlaySpecification with Mockito {
     "generate correct elasticsearch query" in {
       import QueryDSL._
       val catAgg = new GroupByCategory(Map(
-        "debug" -> ("level" ~= "DEBUG"),
-        "info" -> ("level" ~= "INFO"),
-        "warn" -> ("level" ~= "WARN")), Seq(selectCount))
+        "debug" → ("level" ~= "DEBUG"),
+        "info" → ("level" ~= "INFO"),
+        "warn" → ("level" ~= "WARN")), Seq(selectCount))
 
-      val query = search in indexName -> documentType query matchAllQuery aggregations catAgg(mock[BaseModelDef])
+      val query = search in indexName → documentType query matchAllQuery aggregations catAgg(mock[BaseModelDef])
 
       Json.parse(query._builder.toString) must_== Json.parse("""
         {

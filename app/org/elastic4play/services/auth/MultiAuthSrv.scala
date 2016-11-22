@@ -2,14 +2,16 @@ package org.elastic4play.services.auth
 
 import javax.inject.{ Inject, Singleton }
 
+import scala.annotation.implicitNotFound
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Try }
 
+import org.elastic4play.AuthenticationError
+import org.elastic4play.services.{ AuthContext, AuthSrv, AuthSrvFactory }
+
 import play.api.{ Configuration, Logger }
 import play.api.mvc.RequestHeader
-
-import org.elastic4play.services.{ AuthContext, AuthSrv, AuthSrvFactory }
 
 object MultiAuthSrv {
   lazy val log = Logger(classOf[MultiAuthSrv])
@@ -69,6 +71,7 @@ class MultiAuthSrv(
 
   def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] =
     forAllAuthProvider(_.authenticate(username, password))
+      .recoverWith { case _ ⇒ Future.failed(AuthenticationError("Authentication failure")) }
 
   def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
     forAllAuthProvider(_.changePassword(username, oldPassword, newPassword))

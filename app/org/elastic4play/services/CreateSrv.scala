@@ -45,7 +45,9 @@ class CreateSrv @Inject() (
       .map(_.collect {
         case (name, Some(value)) ⇒ name → value
       })
-      .fold(attrs ⇒ Future.successful(JsObject(attrs.toSeq)), errors ⇒ Future.failed(AttributeCheckingError(model.name, errors)))
+      .fold(
+        attrs ⇒ Future.successful(JsObject(attrs.toSeq)),
+        errors ⇒ Future.failed(AttributeCheckingError(model.name, errors)))
   }
   private[services] def processAttributes(model: BaseModelDef, parent: Option[BaseEntity], attributes: JsObject)(implicit authContext: AuthContext): Future[JsObject] = {
     for {

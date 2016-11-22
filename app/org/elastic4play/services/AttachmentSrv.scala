@@ -19,8 +19,8 @@ import play.api.libs.json.Json
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 
 import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, MissingAttributeError }
-import org.elastic4play.controllers.FileInputValue
-import org.elastic4play.controllers.JsonFormat.fileInputValueFormat
+import org.elastic4play.controllers.{ AttachmentInputValue, FileInputValue }
+import org.elastic4play.controllers.JsonFormat.{ attachmentInputValueReads, fileInputValueFormat }
 import org.elastic4play.controllers.JsonInputValue
 import org.elastic4play.database.DBCreate
 import org.elastic4play.models.{ AttributeDef, AttributeFormat ⇒ F, BaseModelDef, EntityDef, ModelDef }
@@ -80,24 +80,28 @@ class AttachmentSrv(
       case (attributes, (name, isRequired)) ⇒
         attributes.flatMap { a ⇒
           // try to convert in FileInputValue Scala Object
-          (a \ name).asOpt[FileInputValue] match {
-            case Some(attach) ⇒
+          val inputValue = (a \ name).asOpt[FileInputValue] orElse (a \ name).asOpt[AttachmentInputValue](attachmentInputValueReads)
+          inputValue
+            .map {
               // save attachment and replace FileInputValue json representation to JsObject containing attachment attributes
-              save(attach).map { attachment ⇒
+              case fiv: FileInputValue ⇒ save(fiv).map { attachment ⇒
                 a - name + (name → Json.toJson(attachment))
               }
-            // if conversion to FileInputValue fails, it means that attribute is missing of format is invalid
-            case _ ⇒ (a \ name).asOpt[JsValue] match {
-              case Some(v) if v != JsNull && v != JsArray(Nil) ⇒
-                Future.failed(AttributeCheckingError(model.name, Seq(
-                  InvalidFormatAttributeError(name, "attachment", (a \ name).asOpt[FileInputValue].getOrElse(JsonInputValue((a \ name).as[JsValue]))))))
-              case _ ⇒
-                if (isRequired)
-                  Future.failed(AttributeCheckingError(model.name, Seq(MissingAttributeError(name))))
-                else
-                  Future.successful(a)
+              case aiv: AttachmentInputValue ⇒ Future.successful(a - name + (name → Json.toJson(aiv.toAttachment)))
             }
-          }
+            // if conversion to FileInputValue fails, it means that attribute is missing or format is invalid
+            .getOrElse {
+              (a \ name).asOpt[JsValue] match {
+                case Some(v) if v != JsNull && v != JsArray(Nil) ⇒
+                  Future.failed(AttributeCheckingError(model.name, Seq(
+                    InvalidFormatAttributeError(name, "attachment", (a \ name).asOpt[FileInputValue].getOrElse(JsonInputValue((a \ name).as[JsValue]))))))
+                case _ ⇒
+                  if (isRequired)
+                    Future.failed(AttributeCheckingError(model.name, Seq(MissingAttributeError(name))))
+                  else
+                    Future.successful(a)
+              }
+            }
         }
     }
   }
