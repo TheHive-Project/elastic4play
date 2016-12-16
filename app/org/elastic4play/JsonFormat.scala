@@ -18,7 +18,7 @@ object JsonFormat {
 
   implicit val attributeCheckingExceptionWrites = Writes[AttributeCheckingError]((ace: AttributeCheckingError) ⇒ JsObject(Seq(
     "tableName" → JsString(ace.tableName),
-    "message" → JsString(ace.toString),
+    "type" → JsString("AttributeCheckingError"),
     "errors" → JsArray(ace.errors.map {
       case e: InvalidFormatAttributeError  ⇒ invalidFormatAttributeErrorWrites.writes(e)
       case e: UnknownAttributeError        ⇒ unknownAttributeErrorWrites.writes(e)

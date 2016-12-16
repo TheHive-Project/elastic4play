@@ -22,6 +22,8 @@ import com.sksamuel.elastic4s.streams.RequestBuilder
 
 import org.elastic4play.{ CreateError, Timed }
 import org.elastic4play.models.BaseEntity
+import org.elasticsearch.index.engine.DocumentAlreadyExistsException
+import org.elastic4play.ConflictError
 
 /**
  * Service lass responsible for entity creation
@@ -71,6 +73,7 @@ class DBCreate @Inject() (
    * @return for each requested entity creation, a try of its attributes
    * attributes contain _id and _routing (and _parent if entity is a child)
    */
+  @deprecated("Bulk creation is deprecated. Use single creation in a loop", "1.1.2")
   private[database] def create(params: Seq[CreateParams]): Future[Seq[Try[JsObject]]] = {
     if (params.isEmpty)
       return Future.successful(Nil)
@@ -87,6 +90,12 @@ class DBCreate @Inject() (
       }
   }
 
+  private[database] def convertError(params: CreateParams, error: Throwable): Throwable = error match {
+    case rte: RemoteTransportException        ⇒ convertError(params, rte.getCause)
+    case daee: DocumentAlreadyExistsException ⇒ ConflictError(daee.getMessage, params.attributes)
+    case other                                ⇒ CreateError(None, other.getMessage, params.attributes)
+  }
+
   /**
    * Create an entity using CreateParams
    *
@@ -96,10 +105,8 @@ class DBCreate @Inject() (
    */
   private[database] def create(params: CreateParams): Future[JsObject] = {
     db.execute(params.indexDef refresh true).transform(
-      indexResponse ⇒ params.result(indexResponse.getId), {
-        case t: RemoteTransportException ⇒ CreateError(None, t.getCause.getMessage, params.attributes)
-        case t                           ⇒ CreateError(None, t.getMessage, params.attributes)
-      })
+      indexResponse ⇒ params.result(indexResponse.getId),
+      convertError(params, _))
   }
 
   /**
