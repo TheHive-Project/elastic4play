@@ -28,11 +28,11 @@ class ErrorHandler extends HttpErrorHandler {
     Results.Status(statusCode)(s"A client error occurred on ${request.method} ${request.uri} : $message")
   }
 
-  private def getRootCauseError(ex: Throwable): Option[(Int, JsValue)] = {
+  def toErrorResult(ex: Throwable): Option[(Int, JsValue)] = {
     ex match {
       case AuthenticationError(message)             ⇒ Some(Status.UNAUTHORIZED → Json.obj("type" → "AuthenticationError", "error" → message))
       case AuthorizationError(message)              ⇒ Some(Status.FORBIDDEN → Json.obj("type" → "AuthorizationError", "error" → message))
-      case UpdateError(status, message, attributes) ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "UpdateError", "error" → message, "obj" → attributes))
+      case UpdateError(status, message, attributes) ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "UpdateError", "error" → message, "object" → attributes))
       case InternalError(message)                   ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "InternalError", "error" → message))
       case nfe: NumberFormatException               ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "NumberFormatException", "error" → ("Invalid format " + nfe.getMessage)))
       case NotFoundError(message)                   ⇒ Some(Status.NOT_FOUND → Json.obj("type" → "NotFoundError", "message" → message))
@@ -41,11 +41,11 @@ class ErrorHandler extends HttpErrorHandler {
       case ace: AttributeCheckingError              ⇒ Some(Status.BAD_REQUEST → Json.toJson(ace))
       case iae: IllegalArgumentException            ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "IllegalArgument", "error" → iae.getMessage))
       case nnae: NoNodeAvailableException           ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "NoNodeAvailable", "error" → "ElasticSearch cluster is unreachable"))
-      case CreateError(status, message, attributes) ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "CreateError", "error" → message, "obj" → attributes))
-      case ConflictError(message, attributes)       ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "ConflictError", "error" → message, "obj" → attributes))
+      case CreateError(status, message, attributes) ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "CreateError", "error" → message, "object" → attributes))
+      case ConflictError(message, attributes)       ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "ConflictError", "error" → message, "object" → attributes))
       case GetError(message)                        ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "GetError", "error" → message))
       case MultiError(message, exceptions) ⇒
-        val suberrors = exceptions.map(e ⇒ getRootCauseError(e)).collect {
+        val suberrors = exceptions.map(e ⇒ toErrorResult(e)).collect {
           case Some((s, j)) ⇒ j
         }
         Some(Status.MULTI_STATUS → Json.obj("type" → "MultiError", "error" → message, "suberrors" → suberrors))
@@ -54,14 +54,14 @@ class ErrorHandler extends HttpErrorHandler {
           case infe: IndexNotFoundException ⇒ Some(520 → JsNull)
           case t: Throwable                 ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → t.getClass.getName, "error" → s"Database error : ${t.getMessage}"))
         }
-      case t: Throwable ⇒ Option(t.getCause).flatMap(getRootCauseError)
+      case t: Throwable ⇒ Option(t.getCause).flatMap(toErrorResult)
     }
   }
 
   def toResult[C](status: Int, c: C)(implicit writeable: Writeable[C]) = Result(header = ResponseHeader(status), body = writeable.toEntity(c))
 
   def onServerError(request: RequestHeader, exception: Throwable) = {
-    val (status, body) = getRootCauseError(exception).getOrElse(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → exception.getClass.getName, "error" → exception.getMessage))
+    val (status, body) = toErrorResult(exception).getOrElse(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → exception.getClass.getName, "error" → exception.getMessage))
     Logger.info(s"${request.method} ${request.uri} returned ${status}", exception)
     Future.successful(toResult(status, body))
   }
