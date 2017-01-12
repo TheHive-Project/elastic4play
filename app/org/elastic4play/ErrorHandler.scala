@@ -30,20 +30,20 @@ class ErrorHandler extends HttpErrorHandler {
 
   def toErrorResult(ex: Throwable): Option[(Int, JsValue)] = {
     ex match {
-      case AuthenticationError(message)             ⇒ Some(Status.UNAUTHORIZED → Json.obj("type" → "AuthenticationError", "error" → message))
-      case AuthorizationError(message)              ⇒ Some(Status.FORBIDDEN → Json.obj("type" → "AuthorizationError", "error" → message))
-      case UpdateError(status, message, attributes) ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "UpdateError", "error" → message, "object" → attributes))
-      case InternalError(message)                   ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "InternalError", "error" → message))
-      case nfe: NumberFormatException               ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "NumberFormatException", "error" → ("Invalid format " + nfe.getMessage)))
+      case AuthenticationError(message)             ⇒ Some(Status.UNAUTHORIZED → Json.obj("type" → "AuthenticationError", "message" → message))
+      case AuthorizationError(message)              ⇒ Some(Status.FORBIDDEN → Json.obj("type" → "AuthorizationError", "message" → message))
+      case UpdateError(status, message, attributes) ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "UpdateError", "message" → message, "object" → attributes))
+      case InternalError(message)                   ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "InternalError", "message" → message))
+      case nfe: NumberFormatException               ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "NumberFormatException", "message" → ("Invalid format " + nfe.getMessage)))
       case NotFoundError(message)                   ⇒ Some(Status.NOT_FOUND → Json.obj("type" → "NotFoundError", "message" → message))
-      case BadRequestError(message)                 ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "BadRequest", "error" → message))
-      case SearchError(message, cause)              ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "SearchError", "error" → s"$message (${cause.getMessage})"))
+      case BadRequestError(message)                 ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "BadRequest", "message" → message))
+      case SearchError(message, cause)              ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "SearchError", "message" → s"$message (${cause.getMessage})"))
       case ace: AttributeCheckingError              ⇒ Some(Status.BAD_REQUEST → Json.toJson(ace))
-      case iae: IllegalArgumentException            ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "IllegalArgument", "error" → iae.getMessage))
-      case nnae: NoNodeAvailableException           ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "NoNodeAvailable", "error" → "ElasticSearch cluster is unreachable"))
-      case CreateError(status, message, attributes) ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "CreateError", "error" → message, "object" → attributes))
-      case ConflictError(message, attributes)       ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "ConflictError", "error" → message, "object" → attributes))
-      case GetError(message)                        ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "GetError", "error" → message))
+      case iae: IllegalArgumentException            ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "IllegalArgument", "message" → iae.getMessage))
+      case nnae: NoNodeAvailableException           ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "NoNodeAvailable", "message" → "ElasticSearch cluster is unreachable"))
+      case CreateError(status, message, attributes) ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "CreateError", "message" → message, "object" → attributes))
+      case ConflictError(message, attributes)       ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "ConflictError", "message" → message, "object" → attributes))
+      case GetError(message)                        ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "GetError", "message" → message))
       case MultiError(message, exceptions) ⇒
         val suberrors = exceptions.map(e ⇒ toErrorResult(e)).collect {
           case Some((s, j)) ⇒ j
