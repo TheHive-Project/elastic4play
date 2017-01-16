@@ -87,6 +87,7 @@ object DateAttributeFormat extends AttributeFormat[Date]("date") {
   }
   override def checkJson(subNames: Seq[String], value: JsValue) = value match {
     case JsString(v) if subNames.isEmpty ⇒ try { parse(v); Good(value) } catch { case _: Throwable ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value)))) }
+    case JsNumber(_) if subNames.isEmpty ⇒ Good(value)
     case _                               ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
   }
   override def fromInputValue(subNames: Seq[String], value: InputValue): Date Or Every[AttributeError] = {
@@ -96,13 +97,14 @@ object DateAttributeFormat extends AttributeFormat[Date]("date") {
       value match {
         case StringInputValue(Seq(v))    ⇒ try { Good(parse(v)) } catch { case _: Throwable ⇒ Bad(One(InvalidFormatAttributeError("", name, value))) }
         case JsonInputValue(JsString(v)) ⇒ try { Good(parse(v)) } catch { case _: Throwable ⇒ Bad(One(InvalidFormatAttributeError("", name, value))) }
-        case JsonInputValue(JsNumber(v)) ⇒ try { Good(parse(v.toString)) } catch { case _: Throwable ⇒ Bad(One(InvalidFormatAttributeError("", name, value))) }
+        case JsonInputValue(JsNumber(v)) ⇒ try { Good(new Date(v.toLong)) } catch { case _: Throwable ⇒ Bad(One(InvalidFormatAttributeError("", name, value))) }
         case _                           ⇒ Bad(One(InvalidFormatAttributeError("", name, value)))
       }
     }
   }
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match { // FIXME
     case Seq(s: String) ⇒ Some(JsString(s))
+    case Seq(n: Number) ⇒ Some(JsNumber(n.longValue))
     case _              ⇒ None
   }
   override val swaggerType = Json.obj("type" → "dateTime")

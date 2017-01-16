@@ -78,6 +78,13 @@ object NullInputValue extends InputValue {
  */
 class Fields(private val fields: Map[String, InputValue]) {
   /**
+   * Get InputValue
+   */
+  def get(name: String): Option[InputValue] = {
+    fields.get(name)
+  }
+
+  /**
    * Get data value as String. Returns None if field doesn't exist or format is not a string
    */
   def getString(name: String): Option[String] = {

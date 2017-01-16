@@ -6,10 +6,14 @@ import scala.util.{ Failure, Success, Try }
 import play.api.libs.json.{ Format, JsArray, JsObject, JsString, Json, Reads, Writes }
 
 import org.elastic4play.controllers.JsonFormat.inputValueFormat
+import java.util.Date
+import play.api.libs.json.JsNumber
 
 object JsonFormat {
   val datePattern = "yyyyMMdd'T'HHmmssZ"
-  implicit val dateFormat = Format(Reads.dateReads(datePattern), Writes.dateWrites(datePattern))
+  val dateReads = Reads.dateReads(datePattern).orElse(Reads.DefaultDateReads).orElse(Reads.LongReads.map(new Date(_)))
+  val dateWrites = Writes[Date](d ⇒ JsNumber(d.getTime))
+  implicit val dateFormat = Format(dateReads, dateWrites)
 
   val invalidFormatAttributeErrorWrites = Json.writes[InvalidFormatAttributeError]
   val unknownAttributeErrorWrites = Json.writes[UnknownAttributeError]
@@ -18,7 +22,7 @@ object JsonFormat {
 
   implicit val attributeCheckingExceptionWrites = Writes[AttributeCheckingError]((ace: AttributeCheckingError) ⇒ JsObject(Seq(
     "tableName" → JsString(ace.tableName),
-    "message" → JsString(ace.toString),
+    "type" → JsString("AttributeCheckingError"),
     "errors" → JsArray(ace.errors.map {
       case e: InvalidFormatAttributeError  ⇒ invalidFormatAttributeErrorWrites.writes(e)
       case e: UnknownAttributeError        ⇒ unknownAttributeErrorWrites.writes(e)
