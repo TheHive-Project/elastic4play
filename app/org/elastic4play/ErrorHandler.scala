@@ -61,7 +61,7 @@ class ErrorHandler extends HttpErrorHandler {
   def toResult[C](status: Int, c: C)(implicit writeable: Writeable[C]) = Result(header = ResponseHeader(status), body = writeable.toEntity(c))
 
   def onServerError(request: RequestHeader, exception: Throwable) = {
-    val (status, body) = toErrorResult(exception).getOrElse(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → exception.getClass.getName, "error" → exception.getMessage))
+    val (status, body) = toErrorResult(exception).getOrElse(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → exception.getClass.getName, "message" → exception.getMessage))
     Logger.info(s"${request.method} ${request.uri} returned ${status}", exception)
     Future.successful(toResult(status, body))
   }
