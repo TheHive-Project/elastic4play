@@ -50,15 +50,15 @@ class AuxSrv @Inject() (
             log.warn(s"Child entity (${childModel.name} ${entity.id}) has no parent !")
             JsObject(Nil)
           })
-      case _ ⇒ Future.successful(Json.toJson(entity).as[JsObject])
+      case _ if removeUnaudited ⇒ Future.successful(removeUnauditedAttributes(entity))
+      case _                    ⇒ Future.successful(Json.toJson(entity).as[JsObject])
     }
     if (withStats) {
       for {
         e ← entityWithParent
         s ← entity.model.getStats(entity)
       } yield e + ("stats" → s)
-    }
-    else entityWithParent
+    } else entityWithParent
   }
 
   def apply[A](entities: Source[BaseEntity, A], nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Source[JsObject, A] = {
