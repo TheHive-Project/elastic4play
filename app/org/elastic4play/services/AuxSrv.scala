@@ -8,7 +8,7 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.{ Sink, Source }
 
 import play.api.Logger
-import play.api.libs.json.{ JsObject, Json }
+import play.api.libs.json.{ JsObject, Json, JsString }
 
 import org.elastic4play.InternalError
 import org.elastic4play.database.DBConfiguration
@@ -29,7 +29,9 @@ class AuxSrv @Inject() (
     JsObject(
       entity.attributes.fields
         .map { case (name, value) ⇒ (name, value, entity.model.attributes.find(_.name == name)) }
-        .collect { case (name, value, Some(desc)) if !desc.options.contains(AttributeOption.unaudited) ⇒ name → value })
+        .collect { case (name, value, Some(desc)) if !desc.options.contains(AttributeOption.unaudited) ⇒ name → value }) +
+      ("id" → JsString(entity.id)) +
+      ("type" → JsString(entity.model.name))
   }
   def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = {
     val entityWithParent = entity.model match {
@@ -58,7 +60,8 @@ class AuxSrv @Inject() (
         e ← entityWithParent
         s ← entity.model.getStats(entity)
       } yield e + ("stats" → s)
-    } else entityWithParent
+    }
+    else entityWithParent
   }
 
   def apply[A](entities: Source[BaseEntity, A], nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Source[JsObject, A] = {
