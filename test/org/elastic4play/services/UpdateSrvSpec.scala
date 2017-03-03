@@ -9,11 +9,11 @@ import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
 import org.specs2.runner.JUnitRunner
 
-import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, UnknownAttributeError, UpdateReadOnlyAttributeError }
 import org.elastic4play.controllers.JsonInputValue
 import org.elastic4play.database.DBModify
 import org.elastic4play.models.{ EntityDef, ModelDef, AttributeFormat ⇒ F }
 import org.elastic4play.utils.RichFuture
+import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, UnknownAttributeError, UpdateReadOnlyAttributeError }
 
 @RunWith(classOf[JUnitRunner])
 class UpdateSrvSpec extends PlaySpecification with Mockito {

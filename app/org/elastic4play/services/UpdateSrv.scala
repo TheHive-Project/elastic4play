@@ -40,7 +40,7 @@ class UpdateSrv @Inject() (
           (name, names, value, model.modelAttributes.get(names.head))
       }
       .validatedBy {
-        case (name, names, value, None)       ⇒ Bad(One(UnknownAttributeError(name, value)))
+        case (name, _, value, None)           ⇒ Bad(One(UnknownAttributeError(name, value)))
         case (name, names, value, Some(attr)) ⇒ attr.validateForUpdate(names.tail, value).map(name → _)
       }
       .fold(attrs ⇒ Future.successful(JsObject(attrs)), errors ⇒ Future.failed(AttributeCheckingError(model.name, errors)))

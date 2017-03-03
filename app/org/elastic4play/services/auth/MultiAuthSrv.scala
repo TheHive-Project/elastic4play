@@ -14,7 +14,7 @@ import org.elastic4play.services.AuthCapability.Type
 import org.elastic4play.services.{ AuthContext, AuthSrv, AuthSrvFactory }
 
 object MultiAuthSrv {
-  lazy val log = Logger(classOf[MultiAuthSrv])
+  private[MultiAuthSrv] lazy val logger = Logger(classOf[MultiAuthSrv])
   def getAuthProviders(
     authTypes: Seq[String],
     authModules: immutable.Set[AuthSrv],
@@ -27,14 +27,14 @@ object MultiAuthSrv {
           Try(authFactory.getAuthSrv)
             .recoverWith {
               case error ⇒
-                log.error(s"Initialization of authentication module $authType has failed", error)
+                logger.error(s"Initialization of authentication module $authType has failed", error)
                 Failure(error)
             }
             .toOption
         }
         .orElse(authModules.find(_.name == authType))
         .orElse {
-          log.error(s"Authentication module $authType not found")
+          logger.error(s"Authentication module $authType not found")
           None
         }
     }
@@ -46,7 +46,7 @@ class MultiAuthSrv(
     val authProviders: Seq[AuthSrv],
     implicit val ec: ExecutionContext) extends AuthSrv {
 
-  lazy val log = Logger(getClass)
+  private[MultiAuthSrv] lazy val logger = Logger(getClass)
 
   @Inject() def this(
     configuration: Configuration,

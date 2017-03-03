@@ -14,7 +14,6 @@ import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{ Sink, Source }
 import com.sksamuel.elastic4s.ElasticDsl.search
-import com.sksamuel.elastic4s.IndexesAndTypes.apply
 
 import org.elastic4play.InternalError
 import org.elastic4play.database._
@@ -75,7 +74,7 @@ class MigrationSrv @Inject() (
   case class OriginState(db: DBConfiguration) extends DatabaseState {
     private val currentdbfind = dbfind.switchTo(db)
     override def version: Int = db.version
-    override def source(tableName: String): Source[JsObject, NotUsed] = currentdbfind.apply(Some("all"), Nil)(indexName ⇒ search.in(indexName → tableName).query(QueryDSL.any.query))._1
+    override def source(tableName: String): Source[JsObject, NotUsed] = currentdbfind.apply(Some("all"), Nil)(indexName ⇒ search(indexName → tableName).matchAllQuery)._1
     override def count(tableName: String): Future[Long] = new DBIndex(db, 0, 0, ec).getSize(tableName)
     override def getEntity(tableName: String, entityId: String): Future[JsObject] = dbget(tableName, entityId)
   }

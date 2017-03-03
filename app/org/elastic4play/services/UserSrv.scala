@@ -20,7 +20,7 @@ trait AuthContext {
   def requestId: String
   def roles: Seq[Role.Type]
   private val baseAudit = new AtomicBoolean(true)
-  def getBaseAudit(): Boolean = baseAudit.get && baseAudit.getAndSet(false)
+  def getBaseAudit: Boolean = baseAudit.get && baseAudit.getAndSet(false)
 }
 
 trait UserSrv {

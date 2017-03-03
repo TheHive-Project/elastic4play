@@ -28,7 +28,7 @@ class DBListCtrl @Inject() (
 
   @Timed("controllers.DBListCtrl.listItems")
   def listItems(listName: String): Action[AnyContent] = authenticated(Role.read) { implicit request ⇒
-    val (src, total) = dblists(listName).getItems[JsValue]
+    val (src, _) = dblists(listName).getItems[JsValue]
     val items = src.map { case (id, value) ⇒ s""""$id":$value""" }
       .intersperse("{", ",", "}")
     Ok.chunked(items).as("application/json")
@@ -51,7 +51,7 @@ class DBListCtrl @Inject() (
   }
 
   @Timed("controllers.DBListCtrl.udpateItem")
-  def updateItem(itemId: String) = authenticated(Role.admin).async(fieldsBodyParser) { implicit request ⇒
+  def updateItem(itemId: String): Action[Fields] = authenticated(Role.admin).async(fieldsBodyParser) { implicit request ⇒
     request.body.getValue("value")
       .map { value ⇒
         for {

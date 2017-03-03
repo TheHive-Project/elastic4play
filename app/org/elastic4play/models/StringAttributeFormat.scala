@@ -2,9 +2,8 @@ package org.elastic4play.models
 
 import play.api.libs.json.{ JsString, JsValue }
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.FieldType.StringType
-import com.sksamuel.elastic4s.mappings.StringFieldDefinition
+import com.sksamuel.elastic4s.ElasticDsl.keywordField
+import com.sksamuel.elastic4s.mappings.KeywordFieldDefinition
 import org.scalactic._
 
 import org.elastic4play.controllers.{ InputValue, JsonInputValue }
@@ -21,5 +20,5 @@ object StringAttributeFormat extends AttributeFormat[String]("string") {
     case other                                       ⇒ other
   }
 
-  override def elasticType(attributeName: String): StringFieldDefinition = field(attributeName, StringType) index "not_analyzed"
+  override def elasticType(attributeName: String): KeywordFieldDefinition = keywordField(attributeName)
 }

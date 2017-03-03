@@ -3,23 +3,21 @@ package org.elastic4play.database
 import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success, Try }
 
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.{ bulk, script, update }
-import com.sksamuel.elastic4s.UpdateDefinition
-import org.elasticsearch.action.update.UpdateResponse
+import com.sksamuel.elastic4s.ElasticDsl.{ script, update }
+import com.sksamuel.elastic4s.script.ScriptDefinition
+import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 
-import org.elastic4play.UpdateError
 import org.elastic4play.models.BaseEntity
 
 @Singleton
 class DBModify @Inject() (
     db: DBConfiguration,
     implicit val ec: ExecutionContext) {
-  val log = Logger(getClass)
+  private[DBModify] lazy val logger = Logger(getClass)
 
   /**
    * Convert JSON value to java native value
@@ -27,7 +25,7 @@ class DBModify @Inject() (
   private[database] def jsonToAny(json: JsValue): Any = {
     import scala.collection.JavaConverters._
     json match {
-      case v: JsObject  ⇒ mapAsJavaMap(v.fields.toMap.mapValues(jsonToAny))
+      case v: JsObject  ⇒ v.fields.toMap.mapValues(jsonToAny).asJava
       case v: JsArray   ⇒ v.value.map(jsonToAny).toArray
       case v: JsNumber  ⇒ v.value.toLong
       case v: JsString  ⇒ v.value
@@ -43,39 +41,27 @@ class DBModify @Inject() (
    * @param entity entity to update
    * @param updateAttributes contains attributes to update. JSON object contains key (attribute name) and value.
    *   Sub attribute can be updated using dot notation ("attr.subattribute").
-   * @return update parameters needed for execution
+   * @return ElasticSearch update script
    */
-  private[database] def buildScript(entity: BaseEntity, updateAttributes: JsObject): UpdateParams = {
+  private[database] def buildScript(entity: BaseEntity, updateAttributes: JsObject): ScriptDefinition = {
     import scala.collection.JavaConverters._
 
     val attrs = updateAttributes.fields.zipWithIndex
-    val updateScript = attrs
-      .map {
-        case ((name, JsArray(Seq())), _) ⇒
-          val names = name.split("\\.")
-          names.init.map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s""".remove("${names.last}")""")
-        case ((name, JsNull), _) ⇒
-          name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=null")
-        case ((name, _), index) ⇒
-          name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=param$index")
-      }
-      .mkString(";")
+    val updateScript = attrs.map {
+      case ((name, JsArray(Seq())), _) ⇒
+        val names = name.split("\\.")
+        names.init.map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s""".remove("${names.last}")""")
+      case ((name, JsNull), _) ⇒
+        name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=null")
+      case ((name, _), index) ⇒
+        name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=params.param$index")
+    } mkString ";"
 
     val parameters = jsonToAny(JsObject(attrs.collect {
       case ((_, value), index) if value != JsArray(Nil) && value != JsNull ⇒ s"param$index" → value
-    })).asInstanceOf[java.util.Map[String, Any]]
+    })).asInstanceOf[java.util.Map[String, Any]].asScala.toMap
 
-    UpdateParams(entity, updateScript, parameters.asScala.toMap, updateAttributes)
-  }
-
-  private[database] case class UpdateParams(entity: BaseEntity, updateScript: String, params: Map[String, Any], attributes: JsObject) {
-    def updateDef: UpdateDefinition = update id entity.id in s"${db.indexName}/${entity.model.name}" routing entity.routing script { script(updateScript).params(params) } fields "_source" retryOnConflict 5
-    def result(attrs: JsObject): BaseEntity =
-      entity.model(attrs +
-        ("_type" → JsString(entity.model.name)) +
-        ("_id" → JsString(entity.id)) +
-        ("_routing" → JsString(entity.routing)) +
-        ("_parent" → entity.parentId.fold[JsValue](JsNull)(JsString)))
+    script(updateScript).params(parameters)
   }
 
   /**
@@ -86,30 +72,22 @@ class DBModify @Inject() (
    * @return new version of the entity
    */
   def apply(entity: BaseEntity, updateAttributes: JsObject): Future[BaseEntity] = {
-    executeScript(buildScript(entity, updateAttributes))
-  }
-
-  private[database] def executeScript(params: UpdateParams): Future[BaseEntity] = {
-    db.execute(params.updateDef refresh true)
-      .map { updateResponse ⇒
-        params.result(Json.parse(updateResponse.getGetResult.sourceAsString).as[JsObject])
+    db
+      .execute {
+        update(entity.id)
+          .in(db.indexName → entity.model.name)
+          .routing(entity.routing)
+          .script(buildScript(entity, updateAttributes))
+          .fetchSource(true)
+          .retryOnConflict(5)
+          .refresh(RefreshPolicy.WAIT_UNTIL)
       }
-  }
-
-  private[database] def executeScript(params: Seq[UpdateParams]): Future[Seq[Try[BaseEntity]]] = {
-    if (params.isEmpty)
-      return Future.successful(Nil)
-    db.execute(bulk(params.map(_.updateDef)) refresh true)
-      .map { bulkResponse ⇒
-        bulkResponse.items.zip(params).map {
-          case (bulkItemResponse, p) if bulkItemResponse.isFailure ⇒
-            val failure = bulkItemResponse.failure
-            log.warn(s"create failure : ${failure.getIndex} ${failure.getId} ${failure.getType} ${failure.getMessage} ${failure.getStatus}")
-            Failure(UpdateError(Option(failure.getStatus.name), failure.getMessage, p.attributes))
-          case (bulkItemResponse, p) ⇒
-            val updateResponse = bulkItemResponse.original.getResponse[UpdateResponse]
-            Success(p.result(Json.parse(updateResponse.getGetResult.sourceAsString).as[JsObject]))
-        }
+      .map { updateResponse ⇒
+        entity.model(Json.parse(updateResponse.get.sourceAsString).as[JsObject] +
+          ("_type" → JsString(entity.model.name)) +
+          ("_id" → JsString(entity.id)) +
+          ("_routing" → JsString(entity.routing)) +
+          ("_parent" → entity.parentId.fold[JsValue](JsNull)(JsString)))
       }
   }
 }

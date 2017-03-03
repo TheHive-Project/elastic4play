@@ -33,22 +33,21 @@ class DBModifySpec extends PlaySpecification with Mockito {
         "n" → JsNull,
         "sub.attr.remove" → JsArray(),
         "remove" → JsArray())
-      val updateParams = dbmodify.buildScript(mock[BaseEntity], attributes)
+      val script = dbmodify.buildScript(mock[BaseEntity], attributes)
 
-      updateParams.attributes must_== attributes
-      updateParams.params - "param0" - "param1" must_== Map("param2" → 42, "param3" → "blah", "param4" → false, "param5" → "subValue")
-      mapAsScalaMap(updateParams.params("param0").asInstanceOf[JMap[_, _]]) must_== Map("subAttr1" → 1)
-      updateParams.params("param1").asInstanceOf[Array[Any]].toSeq must contain(exactly[Any]("a", "b", "c"))
-      updateParams.updateScript must_== """
-        ctx._source["obj"]=param0;
-        ctx._source["arr"]=param1;
-        ctx._source["num"]=param2;
-        ctx._source["str"]=param3;
-        ctx._source["bool"]=param4;
-        ctx._source["sub"]["attr"]["str"]=param5;
+      script.script must_=== """
+        ctx._source["obj"]=params.param0;
+        ctx._source["arr"]=params.param1;
+        ctx._source["num"]=params.param2;
+        ctx._source["str"]=params.param3;
+        ctx._source["bool"]=params.param4;
+        ctx._source["sub"]["attr"]["str"]=params.param5;
         ctx._source["n"]=null;
         ctx._source["sub"]["attr"].remove("remove");
         ctx._source.remove("remove")""".filterNot(c ⇒ "\n ".contains(c))
+      script.params - "param0" - "param1" must_=== Map("param2" → 42, "param3" → "blah", "param4" → false, "param5" → "subValue")
+      mapAsScalaMap(script.params("param0").asInstanceOf[JMap[_, _]]) must_== Map("subAttr1" → 1)
+      script.params("param1").asInstanceOf[Array[Any]].toSeq must contain(exactly[Any]("a", "b", "c"))
     }
   }
 }

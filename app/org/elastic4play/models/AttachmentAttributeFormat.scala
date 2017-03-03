@@ -3,8 +3,7 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json.{ JsValue, Json }
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.FieldType.{ LongType, NestedType, StringType }
+import com.sksamuel.elastic4s.ElasticDsl.{ keywordField, longField, nestedField, textField }
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
 import org.scalactic._
 
@@ -52,10 +51,10 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
     result
   }
 
-  override def elasticType(attributeName: String): NestedFieldDefinition = field(attributeName, NestedType) as (
-    field("name", StringType) index "not_analyzed",
-    field("hashes", StringType) index "not_analyzed",
-    field("size", LongType),
-    field("contentType", StringType),
-    field("id", StringType))
+  override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName).fields(
+    keywordField("name"),
+    keywordField("hashes"),
+    longField("size"),
+    textField("contentType"),
+    textField("id"))
 }

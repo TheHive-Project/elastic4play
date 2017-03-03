@@ -5,12 +5,14 @@ import javax.inject.{ Inject, Singleton }
 import scala.concurrent.{ ExecutionContext, Future }
 
 import com.sksamuel.elastic4s.ElasticDsl.update
+import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 
-import org.elastic4play.models.{ Attribute, ModelAttributes, AttributeFormat ⇒ F, AttributeOption ⇒ O }
+import org.elastic4play.models.{ ModelAttributes, AttributeFormat ⇒ F, AttributeOption ⇒ O }
 
 class SequenceModel extends ModelAttributes("sequence") {
-  val counter: Attribute[Long] = attribute("sequence", F.numberFmt, "Value of the sequence", O.model)
+  val counter = attribute("sequence", F.numberFmt, "Value of the sequence", O.model)
 }
+
 @Singleton
 class DBSequence @Inject() (
     db: DBConfiguration,
@@ -18,11 +20,16 @@ class DBSequence @Inject() (
 
   def apply(seqId: String): Future[Int] = {
     db.execute {
-      val b = update id seqId in s"${db.indexName}/sequence" upsert ("counter" → 1) script "ctx._source.counter += 1" retryOnConflict 5
-      b._builder.setFields("counter")
-      b
+      update(seqId)
+        .in(db.indexName → "sequence")
+        .upsert("counter" → 1)
+        .script("ctx._source.counter += 1")
+        .retryOnConflict(5)
+        //.fetchSource(Seq("counter"), Nil) // doesn't work any longer
+        .fetchSource(true)
+        .refresh(RefreshPolicy.WAIT_UNTIL)
     } map { updateResponse ⇒
-      updateResponse.getGetResult.field("counter").getValue.asInstanceOf[java.lang.Number].intValue()
+      updateResponse.get.sourceAsMap().get("counter").asInstanceOf[Int]
     }
   }
 }

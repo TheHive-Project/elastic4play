@@ -2,7 +2,7 @@ package org.elastic4play.models
 
 import play.api.libs.json.{ JsArray, JsValue }
 
-import com.sksamuel.elastic4s.mappings.TypedFieldDefinition
+import com.sksamuel.elastic4s.mappings.FieldDefinition
 import org.scalactic.Accumulation._
 import org.scalactic._
 
@@ -38,5 +38,5 @@ case class MultiAttributeFormat[T](attributeFormat: AttributeFormat[T]) extends 
     case _                           ⇒ formatError(value)
   }
 
-  override def elasticType(attributeName: String): TypedFieldDefinition = attributeFormat.elasticType(attributeName)
+  override def elasticType(attributeName: String): FieldDefinition = attributeFormat.elasticType(attributeName)
 }

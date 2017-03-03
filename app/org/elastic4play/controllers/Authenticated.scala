@@ -7,7 +7,7 @@ import scala.concurrent.duration.{ DurationLong, FiniteDuration }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
-import play.api.Configuration
+import play.api.{ Configuration, Logger }
 import play.api.http.HeaderNames
 import play.api.mvc._
 
@@ -52,12 +52,13 @@ class Authenticated(
     this(
       configuration.getMillis("session.inactivity").millis,
       configuration.getMillis("session.warning").millis,
-      configuration.get[String]("session.username"),
+      configuration.getOptional[String]("session.username").getOrElse("username"),
       userSrv,
       authSrv,
       defaultParser,
       ec)
 
+  private[Authenticated] lazy val logger = Logger(getClass)
   private def now = (new Date).getTime
 
   /**
@@ -72,10 +73,10 @@ class Authenticated(
    */
   def getFromSession(request: RequestHeader): Future[AuthContext] = {
     val userId = for {
-      userId ← request.session.get(sessionUsername)
-      if expirationStatus(request) != ExpirationError
+      userId ← request.session.get(sessionUsername).toRight(AuthenticationError("User session not found"))
+      _ = if (expirationStatus(request) != ExpirationError) Right(()) else Left(AuthenticationError("User session has expired"))
     } yield userId
-    userId.fold(Future.failed[AuthContext](AuthenticationError("Not authenticated")))(id ⇒ userSrv.getFromId(request, id))
+    userId.fold(authError ⇒ Future.failed[AuthContext](authError), id ⇒ userSrv.getFromId(request, id))
   }
 
   def expirationStatus(request: RequestHeader): ExpirationStatus = {
@@ -96,28 +97,40 @@ class Authenticated(
    * Retrieve authentication information from API key
    */
   def getFromApiKey(request: RequestHeader): Future[AuthContext] =
-    request
-      .headers
-      .get(HeaderNames.AUTHORIZATION)
-      .collect {
-        case auth if auth.startsWith("Basic ") ⇒
-          val authWithoutBasic = auth.substring(6)
-          val decodedAuth = new String(java.util.Base64.getDecoder.decode(authWithoutBasic), "UTF-8")
-          decodedAuth.split(":")
-      }
-      .collect {
+    for {
+      auth ← request
+        .headers
+        .get(HeaderNames.AUTHORIZATION)
+        .fold(Future.failed[String](AuthenticationError("Authentication header not found")))(Future.successful)
+      _ ← if (!auth.startsWith("Basic ")) Future.failed(AuthenticationError("Only basic authentication is supported")) else Future.successful(())
+      authWithoutBasic = auth.substring(6)
+      decodedAuth = new String(java.util.Base64.getDecoder.decode(authWithoutBasic), "UTF-8")
+      authContext ← decodedAuth.split(":") match {
         case Array(username, password) ⇒ authSrv.authenticate(username, password)(request)
+        case _                         ⇒ Future.failed(AuthenticationError("Can't decode authentication header"))
       }
-      .getOrElse(Future.failed[AuthContext](new Exception("TODO")))
+    } yield authContext
 
   /**
    * Get user in session -orElse- get user from key parameter
    */
   def getContext(request: RequestHeader): Future[AuthContext] =
-    getFromSession(request)
-      .fallbackTo(getFromApiKey(request))
-      .fallbackTo(userSrv.getInitialUser(request))
-      .recoverWith { case _ ⇒ Future.failed(AuthenticationError("Not authenticated")) }
+    getFromSession(request).recoverWith {
+      case getFromSessionError ⇒
+        getFromApiKey(request).recoverWith {
+          case getFromApiKeyError ⇒
+            userSrv.getInitialUser(request).recoverWith {
+              case getInitialUserError ⇒
+                logger.error(
+                  s"""Authentication error:
+                   |  From session: ${getFromSessionError.getClass.getSimpleName} ${getFromSessionError.getMessage}
+                   |  From api key: ${getFromApiKeyError.getClass.getSimpleName} ${getFromApiKeyError.getMessage}
+                   |  Initial user: ${getInitialUserError.getClass.getSimpleName} ${getInitialUserError.getMessage}
+                 """.stripMargin)
+                Future.failed(AuthenticationError("Not authenticated"))
+            }
+        }
+    }
 
   /**
    * Create an action for authenticated controller
@@ -126,6 +139,7 @@ class Authenticated(
    */
   def apply(requiredRole: Role.Type) = new ActionBuilder[AuthenticatedRequest, AnyContent] {
     val executionContext: ExecutionContext = ec
+
     def parser: BodyParser[AnyContent] = defaultParser
 
     def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) ⇒ Future[Result]): Future[Result] = {

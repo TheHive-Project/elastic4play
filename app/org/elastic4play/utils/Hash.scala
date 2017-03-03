@@ -58,7 +58,7 @@ class MultiHash(algorithms: String)(implicit mat: Materializer, ec: ExecutionCon
 }
 
 case class Hash(data: Array[Byte]) {
-  override def toString(): String = data.map(b ⇒ "%02x".format(b)).mkString
+  override def toString: String = data.map(b ⇒ "%02x".format(b)).mkString
 }
 object Hash {
   def apply(s: String): Hash = Hash {

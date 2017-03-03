@@ -15,10 +15,12 @@ scalaVersion := "2.12.3"
 
 libraryDependencies ++= Seq(
   cacheApi,
-  "com.sksamuel.elastic4s" %% "elastic4s-core" % "2.4.1",
-  "com.sksamuel.elastic4s" %% "elastic4s-streams" % "2.4.1",
+  "com.sksamuel.elastic4s" %% "elastic4s-core" % "5.4.11",
+  "com.sksamuel.elastic4s" %% "elastic4s-streams" % "5.4.11",
+  "com.sksamuel.elastic4s" %% "elastic4s-tcp" % "5.4.11",
   "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.4" % Test,
-  specs2 % Test
+  "org.scalactic" %% "scalactic" % "3.0.1",
+    specs2 % Test
 )
 
 PlayKeys.externalizeResources := false
@@ -40,6 +42,9 @@ scalacOptions in ThisBuild ++= Seq(
   "-Ywarn-inaccessible",
   "-Ywarn-dead-code"
 )
+
+import com.typesafe.sbt.SbtScalariform.ScalariformKeys
+import scalariform.formatter.preferences._
 
 SbtScalariform.defaultScalariformSettings
 

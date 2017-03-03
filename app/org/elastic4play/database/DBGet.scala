@@ -26,7 +26,9 @@ class DBGet @Inject() (
     db
       .execute {
         // Search by id is not possible on child entity without routing information => id query
-        search in db.indexName query { idsQuery(id).types(modelName) } fields ("_source", "_routing", "_parent")
+        search(db.indexName)
+          .query(idsQuery(id).types(modelName))
+          .size(1)
       }
       .map { searchResponse ⇒
         searchResponse

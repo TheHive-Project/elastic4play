@@ -12,7 +12,7 @@ import play.api.test.PlaySpecification
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import akka.stream.testkit.scaladsl.TestSink
-import com.sksamuel.elastic4s._
+import com.sksamuel.elastic4s.searches._
 import common.{ Fabricator ⇒ F }
 import org.elasticsearch.search.SearchHitField
 import org.junit.runner.RunWith

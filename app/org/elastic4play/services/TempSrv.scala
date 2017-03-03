@@ -20,7 +20,7 @@ class TempSrv @Inject() (
     lifecycle: ApplicationLifecycle,
     implicit val ec: ExecutionContext) {
 
-  lazy val log = Logger(getClass)
+  private[TempSrv] lazy val logger = Logger(getClass)
 
   private[TempSrv] val tempDir = Files.createTempDirectory(Paths.get(System.getProperty("java.io.tmpdir")), "").resolve("play-request")
   lifecycle.addStopHook { () ⇒ Future { delete(tempDir) } }
@@ -41,7 +41,7 @@ class TempSrv @Inject() (
     ()
   }
   catch {
-    case t: Throwable ⇒ log.warn(s"Fail to remove temporary files ($directory) : $t")
+    case t: Throwable ⇒ logger.warn(s"Fail to remove temporary files ($directory) : $t")
   }
 
   def newTemporaryFile(prefix: String, suffix: String)(implicit authContext: AuthContext): Path = {

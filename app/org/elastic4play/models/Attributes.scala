@@ -3,8 +3,7 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json.{ Format, JsArray, JsNull, JsValue }
 
-import com.sksamuel.elastic4s.mappings.TypedFieldDefinition
-import com.sksamuel.elastic4s.mappings.attributes.AttributeIndex
+import com.sksamuel.elastic4s.mappings.{ BasicFieldDefinition, FieldDefinition }
 import org.scalactic._
 
 import org.elastic4play.controllers.InputValue
@@ -24,7 +23,7 @@ abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Forma
 
   def fromInputValue(subNames: Seq[String], value: InputValue): T Or Every[AttributeError]
 
-  def elasticType(attributeName: String): TypedFieldDefinition
+  def elasticType(attributeName: String): FieldDefinition
 
   protected def formatError(value: InputValue) = Bad(One(InvalidFormatAttributeError("", name, value)))
 }
@@ -81,9 +80,9 @@ case class Attribute[T](
   }
   lazy val isUser: Boolean = options.contains(AttributeOption.user)
 
-  def elasticMapping: TypedFieldDefinition = format.elasticType(name) match {
-    case a: AttributeIndex if isSensitive ⇒ a.index("no")
-    case a                                ⇒ a
+  def elasticMapping: FieldDefinition = format.elasticType(name) match {
+    case a: BasicFieldDefinition if isSensitive ⇒ a.index("no")
+    case a                                      ⇒ a
   }
 
   def validateForCreation(value: Option[JsValue]): Option[JsValue] Or Every[AttributeError] = {

@@ -9,7 +9,7 @@ object Fabricator {
   def int = Random.nextInt
   def boolean = Random.nextBoolean()
   def long = Random.nextLong
-  def jsValue = (int % 4) match {
+  def jsValue = int % 4 match {
     case 0 ⇒ JsNumber(long)
     case 1 ⇒ JsBoolean(boolean)
     case _ ⇒ JsString(string())

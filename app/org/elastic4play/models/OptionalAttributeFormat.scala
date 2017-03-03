@@ -2,7 +2,7 @@ package org.elastic4play.models
 
 import play.api.libs.json.{ JsNull, JsValue }
 
-import com.sksamuel.elastic4s.mappings.TypedFieldDefinition
+import com.sksamuel.elastic4s.mappings.FieldDefinition
 import org.scalactic._
 
 import org.elastic4play.AttributeError
@@ -25,5 +25,5 @@ case class OptionalAttributeFormat[T](attributeFormat: AttributeFormat[T]) exten
     case x              ⇒ attributeFormat.fromInputValue(subNames, x).map(v ⇒ Some(v))
   }
 
-  override def elasticType(attributeName: String): TypedFieldDefinition = attributeFormat.elasticType(attributeName)
+  override def elasticType(attributeName: String): FieldDefinition = attributeFormat.elasticType(attributeName)
 }

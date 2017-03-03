@@ -3,8 +3,7 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.FieldType.NestedType
+import com.sksamuel.elastic4s.ElasticDsl.nestedField
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
 import org.scalactic.Accumulation._
 import org.scalactic._
@@ -81,5 +80,5 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
     result
   }
 
-  override def elasticType(attributeName: String): NestedFieldDefinition = field(attributeName, NestedType) as (subAttributes.map(_.elasticMapping): _*)
+  override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName).fields(subAttributes.map(_.elasticMapping))
 }

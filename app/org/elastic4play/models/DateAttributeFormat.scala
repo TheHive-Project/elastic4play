@@ -6,9 +6,8 @@ import scala.util.Try
 
 import play.api.libs.json.{ JsNumber, JsString, JsValue }
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.DateFieldDefinition
-import com.sksamuel.elastic4s.mappings.FieldType.DateType
+import com.sksamuel.elastic4s.ElasticDsl.dateField
+import com.sksamuel.elastic4s.mappings.BasicFieldDefinition
 import org.scalactic._
 
 import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
@@ -17,7 +16,7 @@ import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
 object DateAttributeFormat extends AttributeFormat[Date]("date") {
   def parse(d: String): Option[Date] = {
     Try {
-      val datePattern = "yyyyMMdd'T'HHmmssZ" // FIXME
+      val datePattern = "yyyyMMdd'T'HHmmssZ"
       val df = new java.text.SimpleDateFormat(datePattern)
       df.setLenient(false)
       df.parse(d)
@@ -45,5 +44,5 @@ object DateAttributeFormat extends AttributeFormat[Date]("date") {
     }
   }
 
-  override def elasticType(attributeName: String): DateFieldDefinition = field(attributeName, DateType) format "epoch_millis||basic_date_time_no_millis"
+  override def elasticType(attributeName: String): BasicFieldDefinition = dateField(attributeName).format("epoch_millis||basic_date_time_no_millis")
 }

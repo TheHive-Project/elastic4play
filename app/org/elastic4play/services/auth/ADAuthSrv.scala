@@ -34,7 +34,7 @@ class ADAuthSrvFactory @Inject() (
       userSrv: UserSrv,
       implicit val ec: ExecutionContext) extends AuthSrv {
 
-    lazy val log = Logger(getClass)
+    private[ADAuthSrv] lazy val logger = Logger(getClass)
     val name: String = factory.name
     val capabilities: Set[AuthCapability.Value] = Set(AuthCapability.changePassword)
 
@@ -60,7 +60,7 @@ class ADAuthSrvFactory @Inject() (
         controls.setCountLimit(1)
         val domainDN = DomainFQDN.split("\\.").mkString("dc=", ",dc=", "")
         val searchResult = ctx.search(domainDN, "(sAMAccountName={0})", Array[Object](username), controls)
-        if (searchResult.hasMore()) searchResult.next().getNameInNamespace
+        if (searchResult.hasMore) searchResult.next().getNameInNamespace
         else throw AuthenticationError("User not found in Active Directory")
       }
     }
@@ -73,7 +73,7 @@ class ADAuthSrvFactory @Inject() (
       } yield authContext)
         .recoverWith {
           case t ⇒
-            log.error("AD authentication failure", t)
+            logger.error("AD authentication failure", t)
             Future.failed(AuthenticationError("Authentication failure"))
         }
     }
@@ -94,7 +94,7 @@ class ADAuthSrvFactory @Inject() (
         .fromTry(changeTry)
         .recoverWith {
           case t ⇒
-            log.error("LDAP change password failure", t)
+            logger.error("LDAP change password failure", t)
             Future.failed(AuthorizationError("Change password failure"))
         }
     }

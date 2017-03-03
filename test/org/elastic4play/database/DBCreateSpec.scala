@@ -6,9 +6,9 @@ import scala.concurrent.Future
 import play.api.libs.json.{ JsObject, JsString, Json }
 import play.api.test.PlaySpecification
 
-import com.sksamuel.elastic4s.{ IndexDefinition, IndexResult }
+import com.sksamuel.elastic4s.index.RichIndexResponse
+import com.sksamuel.elastic4s.indexes.IndexDefinition
 import common.{ Fabricator ⇒ F }
-import org.elasticsearch.action.index.IndexRequest
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
 import org.specs2.runner.JUnitRunner
@@ -26,24 +26,24 @@ class DBCreateSpec extends PlaySpecification with Mockito {
     val db: DBConfiguration = mock[DBConfiguration]
     val dbcreate = new DBCreate(db, ec)
 
-    def apply(modelName: String, attributes: JsObject): (JsObject, IndexRequest) = {
-      val indexResult = mock[IndexResult]
-      indexResult.getId returns (attributes \ "_id").asOpt[String].getOrElse(defaultEntityId)
-      db.execute(any[IndexDefinition]) returns Future.successful(indexResult)
+    def apply(modelName: String, attributes: JsObject): (JsObject, IndexDefinition) = {
+      val indexResponse = mock[RichIndexResponse]
+      indexResponse.id returns (attributes \ "_id").asOpt[String].getOrElse(defaultEntityId)
+      db.execute(any[IndexDefinition]) returns Future.successful(indexResponse)
       val attrs = dbcreate(modelName, attributes).await
       val captor = capture[IndexDefinition]
       there was one(db).execute(captor.capture)
-      (attrs, captor.value.build)
+      (attrs, captor.value)
     }
 
-    def apply(parent: BaseEntity, attributes: JsObject): (JsObject, IndexRequest) = {
-      val indexResult = mock[IndexResult]
-      indexResult.getId returns (attributes \ "_id").asOpt[String].getOrElse(defaultEntityId)
-      db.execute(any[IndexDefinition]) returns Future.successful(indexResult)
+    def apply(parent: BaseEntity, attributes: JsObject): (JsObject, IndexDefinition) = {
+      val indexResponse = mock[RichIndexResponse]
+      indexResponse.id returns (attributes \ "_id").asOpt[String].getOrElse(defaultEntityId)
+      db.execute(any[IndexDefinition]) returns Future.successful(indexResponse)
       val attrs = dbcreate(modelName, Some(parent), attributes).await
       val captor = capture[IndexDefinition]
       there was one(db).execute(captor.capture)
-      (attrs, captor.value.build)
+      (attrs, captor.value)
     }
   }
 
@@ -55,9 +55,9 @@ class DBCreateSpec extends PlaySpecification with Mockito {
       (returnAttrs \ "_id").asOpt[String] must beSome(defaultEntityId)
       (returnAttrs \ "_routing").asOpt[String] must beSome(defaultEntityId)
       (returnAttrs \ "_parent").asOpt[String] must beNone
-      indexDef.id() must beNull
-      indexDef.parent() must beNull
-      indexDef.routing() must beNull
+      indexDef.id must beNone
+      indexDef.parent must beNone
+      indexDef.routing must beNone
     }
 
     "create document with id, parent and routing" in {
@@ -74,9 +74,9 @@ class DBCreateSpec extends PlaySpecification with Mockito {
       (returnAttrs \ "_id").asOpt[String] must beSome(entityId)
       (returnAttrs \ "_routing").asOpt[String] must beSome(routing)
       (returnAttrs \ "_parent").asOpt[String] must beSome(parentId)
-      indexDef.id() must_== entityId
-      indexDef.parent() must_== parentId
-      indexDef.routing() must_== routing
+      indexDef.id must beSome(entityId)
+      indexDef.parent must beSome(parentId)
+      indexDef.routing must beSome(routing)
     }
 
     "create document with id and parent entity" in {
@@ -94,9 +94,9 @@ class DBCreateSpec extends PlaySpecification with Mockito {
       (returnAttrs \ "_id").asOpt[String] must beSome(entityId)
       (returnAttrs \ "_routing").asOpt[String] must beSome(routing)
       (returnAttrs \ "_parent").asOpt[String] must beSome(parentId)
-      indexDef.id() must_== entityId
-      indexDef.parent() must_== parentId
-      indexDef.routing() must_== routing
+      indexDef.id must beSome(entityId)
+      indexDef.parent must beSome(parentId)
+      indexDef.routing must beSome(routing)
     }
   }
 }

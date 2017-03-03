@@ -2,9 +2,8 @@ package org.elastic4play.models
 
 import play.api.libs.json.JsValue
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.BinaryFieldDefinition
-import com.sksamuel.elastic4s.mappings.FieldType.BinaryType
+import com.sksamuel.elastic4s.ElasticDsl.binaryField
+import com.sksamuel.elastic4s.mappings.BasicFieldDefinition
 import org.scalactic._
 
 import org.elastic4play.controllers.{ InputValue, JsonInputValue }
@@ -16,5 +15,5 @@ object BinaryAttributeFormat extends AttributeFormat[Array[Byte]]("binary")(bina
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): Array[Byte] Or Every[AttributeError] = formatError(value)
 
-  override def elasticType(attributeName: String): BinaryFieldDefinition = field(attributeName, BinaryType)
+  override def elasticType(attributeName: String): BasicFieldDefinition = binaryField(attributeName)
 }

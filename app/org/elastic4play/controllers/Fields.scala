@@ -14,6 +14,8 @@ import play.api.libs.json._
 import play.api.libs.streams.Accumulator
 import play.api.mvc._
 
+import akka.util.ByteString
+
 import org.elastic4play.BadRequestError
 import org.elastic4play.controllers.JsonFormat.{ fieldsReader, pathFormat }
 import org.elastic4play.services.Attachment
@@ -220,7 +222,8 @@ class FieldsBodyParser @Inject() (
     playBodyParsers: PlayBodyParsers,
     implicit val ec: ExecutionContext) extends BodyParser[Fields] {
 
-  def apply(request: RequestHeader) = {
+  private[FieldsBodyParser] lazy val logger = Logger(getClass)
+  def apply(request: RequestHeader): Accumulator[ByteString, Either[Result, Fields]] = {
     def queryFields = request.queryString.mapValues(v ⇒ StringInputValue(v))
 
     request.contentType.map(_.toLowerCase(Locale.ENGLISH)) match {
@@ -252,7 +255,7 @@ class FieldsBodyParser @Inject() (
       case contentType ⇒
         val contentLength = request.headers.get("Content-Length").fold(0)(_.toInt)
         if (contentLength != 0)
-          Logger.warn(s"Unrecognized content-type : ${contentType.getOrElse("not set")} on $request (length=$contentLength)")
+          logger.warn(s"Unrecognized content-type : ${contentType.getOrElse("not set")} on $request (length=$contentLength)")
         Accumulator.done(Right(Fields(queryFields)))
     }
   }

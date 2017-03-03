@@ -4,7 +4,9 @@ import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import com.sksamuel.elastic4s.ElasticDsl.delete
+import com.sksamuel.elastic4s.ElasticDsl.{ RichString, delete }
+import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
+import org.elasticsearch.rest.RestStatus
 
 import org.elastic4play.models.{ BaseEntity, BaseModelDef }
 
@@ -15,10 +17,13 @@ class DBRemove @Inject() (
 
   def apply(model: BaseModelDef, entity: BaseEntity): Future[Boolean] = {
     db.execute {
-      delete id entity.id from db.indexName → model.name routing entity.routing refresh true
+      delete(entity.id)
+        .from(db.indexName / model.name)
+        .routing(entity.routing)
+        .refresh(RefreshPolicy.WAIT_UNTIL)
     }
       .map { deleteResponse ⇒
-        deleteResponse.isFound()
+        deleteResponse.status != RestStatus.NOT_FOUND
       }
   }
 }

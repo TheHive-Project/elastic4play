@@ -34,7 +34,7 @@ case class AuditOperation(
 
 @Singleton
 class EventSrv extends ActorEventBus with SubchannelClassification {
-  lazy val log = Logger(getClass)
+  private[EventSrv] lazy val logger = Logger(getClass)
   override type Classifier = Class[_ <: EventMessage]
   override type Event = EventMessage
 

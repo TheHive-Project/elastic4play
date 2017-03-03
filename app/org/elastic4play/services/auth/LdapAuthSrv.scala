@@ -40,7 +40,7 @@ class LdapAuthSrvFactory @Inject() (
       userSrv: UserSrv,
       implicit val ec: ExecutionContext) extends AuthSrv {
 
-    lazy val log = Logger(getClass)
+    private[LdapAuthSrv] lazy val logger = Logger(getClass)
     val name = "ldap"
     val capabilities = Set(AuthCapability.changePassword)
 
@@ -79,7 +79,7 @@ class LdapAuthSrvFactory @Inject() (
         controls.setSearchScope(SearchControls.SUBTREE_SCOPE)
         controls.setCountLimit(1)
         val searchResult = ctx.search(baseDN, filter, Array[Object](username), controls)
-        if (searchResult.hasMore()) searchResult.next().getNameInNamespace
+        if (searchResult.hasMore) searchResult.next().getNameInNamespace
         else throw AuthenticationError("User not found in LDAP server")
       }
     }
@@ -99,7 +99,7 @@ class LdapAuthSrvFactory @Inject() (
         .get
         .recoverWith {
           case t ⇒
-            log.error("LDAP authentication failure", t)
+            logger.error("LDAP authentication failure", t)
             Future.failed(AuthenticationError("Authentication failure"))
         }
     }
@@ -119,7 +119,7 @@ class LdapAuthSrvFactory @Inject() (
         .fromTry(changeTry)
         .recoverWith {
           case t ⇒
-            log.error("LDAP change password failure", t)
+            logger.error("LDAP change password failure", t)
             Future.failed(AuthorizationError("Change password failure"))
         }
     }
