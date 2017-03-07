@@ -35,11 +35,13 @@ class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEn
 
 class DBListItemEntity(model: DBListModel, attributes: JsObject) extends EntityDef[DBListModel, DBListItemEntity](model, attributes) with DBListItem {
   def mapTo[T](implicit reads: Reads[T]) = Json.parse((attributes \ "value").as[String]).as[T]
+  def dblist = (attributes \ "dblist").as[String]
   override def toJson = super.toJson - "value" + ("value" → mapTo[JsValue])
 }
 
 trait DBListItem {
   def id: String
+  def dblist: String
   def mapTo[A](implicit reads: Reads[A]): A
 }
 
@@ -52,6 +54,7 @@ trait DBList {
 
 @Singleton
 class DBLists @Inject() (
+    getSrv: GetSrv,
     findSrv: FindSrv,
     deleteSrv: Provider[DeleteSrv],
     dbCreate: DBCreate,
@@ -67,7 +70,13 @@ class DBLists @Inject() (
     findSrv(dblistModel, any, groupByField("dblist", selectCount)).map(_.keys)
   }
 
-  def deleteItem(itemId: String)(implicit authContext: AuthContext) = deleteSrv.get.realDelete[DBListModel, DBListItemEntity](dblistModel, itemId)
+  def deleteItem(itemId: String)(implicit authContext: AuthContext): Future[Unit] = {
+    for {
+      item ← getSrv[DBListModel, DBListItemEntity](dblistModel, itemId)
+      _ ← deleteSrv.get.realDelete[DBListModel, DBListItemEntity](dblistModel, item)
+      _ = cache.remove(dblistModel.name + "_" + item.dblist)
+    } yield ()
+  }
 
   def apply(name: String): DBList = new DBList {
     def cachedItems = cache.getOrElse(dblistModel.name + "_" + name, 10.seconds) {
@@ -90,7 +99,10 @@ class DBLists @Inject() (
       val value = Json.toJson(item)
       val id = Hasher("MD5").fromString(value.toString).head.toString
       dbCreate(dblistModel.name, None, Json.obj("_id" → id, "dblist" → name, "value" → JsString(value.toString)))
-        .map(dblistModel(_))
+        .map { newItem ⇒
+          cache.remove(dblistModel.name + "_" + name)
+          dblistModel(newItem)
+        }
     }
   }
 

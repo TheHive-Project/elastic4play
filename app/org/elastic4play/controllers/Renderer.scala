@@ -17,7 +17,7 @@ import play.api.mvc.{ Request, Result, Results }
 import org.elastic4play.ErrorHandler
 
 class Renderer @Inject() (
-  errorHandler: ErrorHandler,
+    errorHandler: ErrorHandler,
     implicit val ec: ExecutionContext,
     implicit val mat: Materializer) {
 

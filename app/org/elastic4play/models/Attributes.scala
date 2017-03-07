@@ -188,7 +188,7 @@ case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit tag: C
 }
 
 case class ListEnumeration(enumerationName: String)(dblists: DBLists) extends AttributeFormat[String](s"enumeration") {
-  lazy val items = dblists("list_" + enumerationName).cachedItems.map(_.mapTo[String]).toSet //getItems[String].map(_.map(_._2).toSet)
+  def items = dblists("list_" + enumerationName).cachedItems.map(_.mapTo[String]).toSet //getItems[String].map(_.map(_._2).toSet)
   override def checkJson(subNames: Seq[String], value: JsValue) = value match {
     case JsString(v) if subNames.isEmpty && items.contains(v) ⇒ Good(value)
     case _                                                    ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))

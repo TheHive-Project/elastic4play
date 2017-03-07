@@ -27,11 +27,13 @@ class DeleteSrv @Inject() (
   }
 
   def realDelete[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, id: String)(implicit authContext: AuthContext): Future[Unit] = {
-    for {
-      entity ← getSrv[M, E](model, id)
-      isFound ← dbremove(model, entity)
-    } yield if (isFound)
-      eventSrv.publish(AuditOperation(entity, AuditableAction.Delete, JsObject(Nil), authContext))
-    else throw NotFoundError(s"${model.name} $id not found")
+    getSrv[M, E](model, id).flatMap(entity ⇒ realDelete(model, entity))
+  }
+
+  def realDelete[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, entity: E)(implicit authContext: AuthContext): Future[Unit] = {
+    dbremove(model, entity).map { isFound ⇒
+      if (isFound) eventSrv.publish(AuditOperation(entity, AuditableAction.Delete, JsObject(Nil), authContext))
+      else throw NotFoundError(s"${model.name} ${entity.id} not found")
+    }
   }
 }
