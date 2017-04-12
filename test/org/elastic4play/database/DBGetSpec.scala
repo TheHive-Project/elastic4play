@@ -47,7 +47,7 @@ class DBGetSpec extends PlaySpecification with Mockito {
       Json.parse(searchDefinition.value._builder.toString) must_== Json.obj(
         "query" → Json.obj(
           "ids" → Json.obj(
-            "type" → "user",
+            "_type" → "user",
             "values" → Seq("me"))),
         "fields" → Seq("_source", "_routing", "_parent"))
     }

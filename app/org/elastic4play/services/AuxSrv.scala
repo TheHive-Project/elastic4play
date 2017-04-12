@@ -31,7 +31,7 @@ class AuxSrv @Inject() (
         .map { case (name, value) ⇒ (name, value, entity.model.attributes.find(_.name == name)) }
         .collect { case (name, value, Some(desc)) if !desc.options.contains(AttributeOption.unaudited) ⇒ name → value }) +
       ("id" → JsString(entity.id)) +
-      ("type" → JsString(entity.model.name))
+      ("_type" → JsString(entity.model.name))
   }
   def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = {
     val entityWithParent = entity.model match {

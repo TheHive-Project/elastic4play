@@ -112,7 +112,7 @@ class BaseEntity(val model: BaseModelDef, val attributes: JsObject) {
 
   def toJson = removeProtectedAttributes(attributes) +
     ("id" → JsString(id)) +
-    ("type" → JsString(model.name))
+    ("_type" → JsString(model.name))
 
   /* compute auxiliary data */
   override def toString = Json.prettyPrint(toJson)
