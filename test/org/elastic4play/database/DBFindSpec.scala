@@ -106,7 +106,7 @@ class DBFindSpec extends PlaySpecification with Mockito {
       secondPageResult.hits returns hits.drop(5)
       db.execute(any[SearchScrollDefinition]) returns Future.successful(secondPageResult)
 
-      val (src, total) = dbfind.searchWithScroll(searchDef, 8)
+      val (src, total) = dbfind.searchWithScroll(searchDef, 8, 10)
       src
         .runWith(TestSink.probe[RichSearchHit])
         .request(2)
@@ -135,7 +135,7 @@ class DBFindSpec extends PlaySpecification with Mockito {
       results.totalHits returns 42
       results.hits returns hits
 
-      val (src, total) = dbfind.searchWithoutScroll(searchDef, limit)
+      val (src, total) = dbfind.searchWithoutScroll(searchDef, limit, 10)
       src
         .runWith(TestSink.probe[RichSearchHit])
         .request(2)
