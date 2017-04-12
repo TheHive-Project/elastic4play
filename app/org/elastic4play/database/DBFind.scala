@@ -15,6 +15,7 @@ import org.elastic4play.{ InternalError, SearchError }
 import play.api.libs.json.{ JsNull, JsObject, JsString, Json }
 import play.api.{ Configuration, Logger }
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration.{ DurationLong, FiniteDuration }
 import scala.concurrent.{ ExecutionContext, Future }
@@ -124,10 +125,11 @@ class DBFind(
 
   /**
    * Search entities in ElasticSearch
-   * @param range first and last entities to retrieve, for example "23-42" (default value is "0-10")
+   *
+   * @param range  first and last entities to retrieve, for example "23-42" (default value is "0-10")
    * @param sortBy define order of the entities by specifying field names used in sort. Fields can be prefixed by
-   * "-" for descendant or "+" for ascendant sort (ascendant by default).
-   * @param query a function that build a SearchDefinition using the index name
+   *               "-" for descendant or "+" for ascendant sort (ascendant by default).
+   * @param query  a function that build a SearchDefinition using the index name
    * @return Source (akka stream) of JsObject. The source is materialized as future of long that contains the total number of entities.
    */
   def apply(range: Option[String], sortBy: Seq[String])(query: (String) ⇒ SearchDefinition): (Source[JsObject, NotUsed], Future[Long]) = {
@@ -164,10 +166,12 @@ class DBFind(
  * This object defines messages specific to SearchPublisher
  */
 object SearchPublisher {
+
   /**
    * Message used to start the search
    */
   object Start
+
 }
 
 /**
@@ -179,31 +183,36 @@ class SearchPublisher(
     keepAliveStr: String,
     offset: Int,
     max: Int) extends ActorPublisher[RichSearchHit] with Stash {
+
   import SearchPublisher._
   import akka.stream.actor.ActorPublisherMessage._
   import context.dispatcher
+
   private val queue: mutable.Queue[RichSearchHit] = mutable.Queue.empty
   private var processed: Long = 0
   private var scrollId: Option[String] = None
   lazy val log = Logger(getClass)
 
+  override def postStop(): Unit = {
+    scrollId.foreach { s ⇒ db.execute(clear scroll s) }
+  }
+
   /**
    * initial state of the actor
    * It can only receive "Start" message. All other messages are stashed
    */
-  def receive: Receive = {
+  override def receive: Receive = {
     case Start ⇒
       val _sender = sender
       db.execute(searchDefinition.scroll(keepAliveStr)).onComplete {
         case Success(result) ⇒
-          scrollId = result.scrollIdOpt
+          //scrollId = result.scrollIdOpt
           _sender ! Success(result.totalHits)
           self ! result
 
-        case f @ Failure(t) ⇒
+        case f: Failure[_] ⇒
           _sender ! f
-          onError(t)
-          self ! PoisonPill
+          self ! f
       }
       context become fetching(offset)
       unstashAll()
@@ -217,21 +226,22 @@ class SearchPublisher(
    * If the queue is not enough change
    */
   def ready(remainingOffset: Int): Receive = {
+    case Request(n) if n <= queue.size ⇒
+      send(n)
+      ()
     case Request(n) if n > queue.size ⇒
       require(scrollId.isDefined)
-      db.execute(searchScroll(scrollId.get).keepAlive(keepAliveStr)).onComplete {
-        case Success(result) ⇒
-          self ! result
-        case Failure(t) ⇒
-          onComplete()
-          onError(t)
-          self ! PoisonPill
-      }
+      if (send(queue.size.toLong))
+        db.execute(searchScroll(scrollId.get).keepAlive(keepAliveStr)).onComplete {
+          case Success(result) ⇒ self ! result
+          case f: Failure[_]   ⇒ self ! f
+        }
       context become fetching(remainingOffset)
       self ! Request(n - queue.size)
-      send(queue.size.toLong)
-    case Request(n) ⇒
-      send(n)
+
+    case Failure(t) ⇒
+      if (isActive) onError(t)
+      self ! PoisonPill
   }
 
   /**
@@ -243,13 +253,12 @@ class SearchPublisher(
       require(queue.isEmpty) // must be empty or why did we not send it before switching to this mode?
       stash()
     case resp: RichSearchResponse if resp.isTimedOut ⇒
-      onComplete()
-      onError(SearchError("Request terminated early or timed out", null))
-      context.stop(self)
+      self ! Failure(SearchError("Request terminated early or timed out", null))
     case resp: RichSearchResponse if resp.isEmpty ⇒
-      onComplete()
-      context.stop(self)
+      if (isActive) onComplete()
+      self ! PoisonPill
     case resp: RichSearchResponse ⇒
+      scrollId = resp.scrollIdOpt
       val l = resp.hits.length
       if (l > remainingOffset) {
         queue.enqueue(resp.hits.drop(remainingOffset): _*)
@@ -259,21 +268,28 @@ class SearchPublisher(
         context become ready(remainingOffset - l)
       }
       unstashAll()
+    case Failure(t) ⇒
+      if (isActive) onError(t)
+      self ! PoisonPill
+
   }
 
-  private def send(k: Long): Unit = {
-    require(queue.size >= k)
-    for (_ ← 0l until k) {
+  @tailrec
+  private def send(k: Long): Boolean = {
+    if (k > 0) {
+      require(queue.nonEmpty)
       if (max == 0 || processed < max) {
         onNext(queue.dequeue())
         processed = processed + 1
-        if (processed == max && max > 0) {
-          onComplete()
-          scrollId.foreach { s ⇒ db.execute(clear scroll s) }
-          context.stop(self)
-        }
+        send(k - 1)
+      }
+      else {
+        if (isActive) onComplete()
+        self ! PoisonPill
+        false
       }
     }
+    else
+      (max == 0 || processed < max)
   }
-
 }
