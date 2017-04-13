@@ -191,7 +191,7 @@ class SearchPublisher(
   private val queue: mutable.Queue[RichSearchHit] = mutable.Queue.empty
   private var processed: Long = 0
   private var scrollId: Option[String] = None
-  lazy val log = Logger(getClass)
+  private[SearchPublisher] lazy val logger = Logger(getClass)
 
   override def postStop(): Unit = {
     scrollId.foreach { s ⇒ db.execute(clear scroll s) }
@@ -203,18 +203,21 @@ class SearchPublisher(
    */
   override def receive: Receive = {
     case Start ⇒
+      logger.trace(s"$self: Start search")
       val _sender = sender
       db.execute(searchDefinition.scroll(keepAliveStr)).onComplete {
         case Success(result) ⇒
-          //scrollId = result.scrollIdOpt
+          logger.trace(s"$self: Send success")
           _sender ! Success(result.totalHits)
           self ! result
 
         case f: Failure[_] ⇒
+          logger.trace(s"$self: Send failure")
           _sender ! f
           self ! f
       }
       context become fetching(offset)
+      logger.trace(s"$self: become fetching($offset)")
       unstashAll()
     case _ ⇒
       stash()
@@ -227,21 +230,39 @@ class SearchPublisher(
    */
   def ready(remainingOffset: Int): Receive = {
     case Request(n) if n <= queue.size ⇒
-      send(n)
-      ()
+      logger.trace(s"$self/ready($remainingOffset): request $n element(s), queue size is enough")
+      if (!send(n)) {
+        logger.trace(s"$self/ready($remainingOffset): search is over (stream acive is $isActive)")
+        if (isActive) onComplete()
+        self ! PoisonPill
+      }
     case Request(n) if n > queue.size ⇒
+      logger.trace(s"$self/ready($remainingOffset): request $n element(s), queue size is not enough")
       require(scrollId.isDefined)
-      if (send(queue.size.toLong))
+      val l = queue.size
+      if (send(l.toLong)) {
+        logger.trace(s"$self/ready($remainingOffset): search next page, become fetching($remainingOffset) then request ${n - l}")
         db.execute(searchScroll(scrollId.get).keepAlive(keepAliveStr)).onComplete {
           case Success(result) ⇒ self ! result
           case f: Failure[_]   ⇒ self ! f
         }
-      context become fetching(remainingOffset)
-      self ! Request(n - queue.size)
+
+        context become fetching(remainingOffset)
+        self ! Request(n - l)
+      }
+      else {
+        logger.trace(s"$self/ready($remainingOffset): search is over (stream acive is $isActive)")
+        if (isActive) onComplete()
+        self ! PoisonPill
+
+      }
 
     case Failure(t) ⇒
+      logger.trace(s"$self/ready($remainingOffset): receive failure")
       if (isActive) onError(t)
       self ! PoisonPill
+    case other ⇒
+      logger.trace(s"$self/ready($remainingOffset): unexpected message: $other")
   }
 
   /**
@@ -250,28 +271,36 @@ class SearchPublisher(
    */
   def fetching(remainingOffset: Int): Receive = {
     case Request(_) ⇒
+      logger.trace(s"$self/fetching($remainingOffset): queue contains ${queue.size} element(s), should be 0")
       require(queue.isEmpty) // must be empty or why did we not send it before switching to this mode?
       stash()
     case resp: RichSearchResponse if resp.isTimedOut ⇒
+      logger.trace(s"$self/fetching($remainingOffset): search fails with timeout")
       self ! Failure(SearchError("Request terminated early or timed out", null))
     case resp: RichSearchResponse if resp.isEmpty ⇒
+      logger.trace(s"$self/fetching($remainingOffset): search is over (stream active is $isActive)")
       if (isActive) onComplete()
       self ! PoisonPill
     case resp: RichSearchResponse ⇒
       scrollId = resp.scrollIdOpt
       val l = resp.hits.length
+      logger.trace(s"$self/fetching($remainingOffset): receive $l result(s), queue size is ${queue.size} scrollId=$scrollId")
       if (l > remainingOffset) {
         queue.enqueue(resp.hits.drop(remainingOffset): _*)
+        logger.trace(s"$self/fetching($remainingOffset): enqueue results expect $l, queue size is ${queue.size}, become ready(0)")
         context become ready(0)
       }
       else {
+        logger.trace(s"$self/fetching($remainingOffset): become ready(${remainingOffset - l})")
         context become ready(remainingOffset - l)
       }
       unstashAll()
     case Failure(t) ⇒
+      logger.trace(s"$self/fetching($remainingOffset): receive failure")
       if (isActive) onError(t)
       self ! PoisonPill
-
+    case other ⇒
+      logger.trace(s"$self/fetching($remainingOffset): unexpected message: $other")
   }
 
   @tailrec
@@ -283,13 +312,9 @@ class SearchPublisher(
         processed = processed + 1
         send(k - 1)
       }
-      else {
-        if (isActive) onComplete()
-        self ! PoisonPill
+      else
         false
-      }
     }
-    else
-      (max == 0 || processed < max)
+    else (max == 0 || processed < max)
   }
 }
