@@ -46,6 +46,9 @@ class TempSrv @Inject() (
   }
 
   def newTemporaryFile(prefix: String, suffix: String)(implicit authContext: AuthContext) = {
+    val td = tempDir.resolve(authContext.requestId)
+    if (!Files.exists(td))
+      Files.createDirectories(td)
     Files.createTempFile(tempDir.resolve(authContext.requestId), prefix, suffix)
   }
 
