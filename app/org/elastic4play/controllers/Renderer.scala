@@ -50,7 +50,9 @@ class Renderer @Inject() (
   def toOutput[C](status: Int, src: Source[C, _], total: Future[Long])(implicit writes: Writes[C], request: Request[_]): Future[Result] = {
     val stringSource = src.map(_.toString).intersperse("[", ",", "]")
     total.map { t ⇒
-      new Results.Status(status).chunked(stringSource)
+      new Results.Status(status)
+        .chunked(stringSource)
+        .as("application/json")
         .withHeaders("X-Total" → t.toString)
     }
   }
