@@ -44,8 +44,8 @@ class DBIndex(
       com.sksamuel.elastic4s.ElasticDsl.create
         .index(db.indexName)
         .mappings(modelsMapping: _*)
-        .shards(4)
-        .replicas(3)
+        .shards(nbShards)
+        .replicas(nbReplicas)
     }
       .map { _ ⇒ () }
   }
