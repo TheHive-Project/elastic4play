@@ -48,6 +48,7 @@ class MigrationSrv @Inject() (
     dbfind: DBFind,
     dbget: DBGet,
     dblists: DBLists,
+    dbindex: DBIndex,
     modelSrv: ModelSrv,
     eventSrv: EventSrv,
     implicit val ec: ExecutionContext,
@@ -73,7 +74,7 @@ class MigrationSrv @Inject() (
     private val currentdbfind = dbfind.switchTo(db)
     override def version: Int = db.version
     override def source(tableName: String): Source[JsObject, NotUsed] = currentdbfind.apply(Some("all"), Nil)(indexName ⇒ search.in(indexName → tableName).query(QueryDSL.any.query))._1
-    override def count(tableName: String): Future[Long] = new DBIndex(db, ec).getSize(tableName)
+    override def count(tableName: String): Future[Long] = new DBIndex(db, 0, 0, ec).getSize(tableName)
     override def getEntity(tableName: String, entityId: String): Future[JsObject] = dbget(tableName, entityId)
   }
 
@@ -86,7 +87,7 @@ class MigrationSrv @Inject() (
   }
 
   def migrationPath(db: DBConfiguration): Future[(Int, DatabaseState)] = {
-    new DBIndex(db, ec).getIndexStatus.flatMap {
+    new DBIndex(db, 0, 0, ec).getIndexStatus.flatMap {
       case true ⇒
         logger.info(s"Initiate database migration from version ${db.version}")
         Future.successful(db.version → OriginState(db))
@@ -134,7 +135,6 @@ class MigrationSrv @Inject() (
 
   private var migrationProcess = Future.successful(())
   def migrate: Future[Unit] = {
-    val dbindex = new DBIndex(db, ec)
     if (!dbindex.indexStatus && migrationProcess.isCompleted) {
       val models = modelSrv.list
       migrationProcess = migrationPath(db)
