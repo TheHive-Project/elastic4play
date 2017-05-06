@@ -21,7 +21,7 @@ class DBIndex @Inject() (
    * @param models list of all ModelAttributes to used in order to build index mapping
    * @return a future which is completed when index creation is finished
    */
-  def createIndex(models: Iterable[ModelAttributes]) = {
+  def createIndex(models: Iterable[ModelAttributes]): Future[Unit] = {
     val modelsMapping = models
       .map {
         case model: ModelDef[_, _]            ⇒ mapping(model.name) fields model.attributes.filterNot(_.name == "_id").map(_.elasticMapping) dateDetection false numericDetection false

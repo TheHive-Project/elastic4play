@@ -18,7 +18,7 @@ package object utils {
     def withTimeout(after: FiniteDuration, default: T)(implicit system: ActorSystem, ec: ExecutionContext): Future[T] = {
       val prom = Promise[T]()
       val timeout = system.scheduler.scheduleOnce(after) { prom.success(default); () }
-      future onComplete { case result ⇒ timeout.cancel() }
+      future onComplete { _ ⇒ timeout.cancel() }
       Future.firstCompletedOf(List(future, prom.future))
     }
 
@@ -47,7 +47,7 @@ package object utils {
       case (key, value) ⇒ key → f(value)
     })
 
-    def map(f: (String, JsValue) ⇒ (String, JsValue)) =
+    def map(f: (String, JsValue) ⇒ (String, JsValue)): JsObject =
       obj.fields
         .map(kv ⇒ JsObject(Seq(f.tupled(kv))))
         .reduceOption(_ deepMerge _)
@@ -65,7 +65,7 @@ package object utils {
   }
 
   implicit class RichTryIterable[A, Repr](xs: TraversableLike[Try[A], Repr]) {
-    def partitionTry[ThatA, ThatB](implicit cbfa: CanBuildFrom[Repr, A, ThatA], cbfb: CanBuildFrom[Repr, Throwable, ThatB]) = {
+    def partitionTry[ThatA, ThatB](implicit cbfa: CanBuildFrom[Repr, A, ThatA], cbfb: CanBuildFrom[Repr, Throwable, ThatB]): (ThatA, ThatB) = {
       val aBuilder = cbfa()
       val bBuilder = cbfb()
       xs.foreach {
@@ -77,7 +77,7 @@ package object utils {
 
   }
   implicit class RichOrIterable[A, B, Repr](xs: TraversableLike[A Or B, Repr]) {
-    def partitionOr[ThatA, ThatB](implicit cbfa: CanBuildFrom[Repr, A, ThatA], cbfb: CanBuildFrom[Repr, B, ThatB]) = {
+    def partitionOr[ThatA, ThatB](implicit cbfa: CanBuildFrom[Repr, A, ThatA], cbfb: CanBuildFrom[Repr, B, ThatB]): (ThatA, ThatB) = {
       val aBuilder = cbfa()
       val bBuilder = cbfb()
       xs.foreach {
@@ -89,7 +89,7 @@ package object utils {
   }
 
   implicit class RichTuble[A, B](t: (A, B)) {
-    def map1[C](f: A ⇒ C) = (f(t._1), t._2)
-    def map2[C](f: B ⇒ C) = (t._1, f(t._2))
+    def map1[C](f: A ⇒ C): (C, B) = (f(t._1), t._2)
+    def map2[C](f: B ⇒ C): (A, C) = (t._1, f(t._2))
   }
 }

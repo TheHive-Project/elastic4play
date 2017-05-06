@@ -27,12 +27,12 @@ class TempSrv @Inject() (
   lifecycle.addStopHook { () ⇒ Future { delete(tempDir) } }
 
   private[TempSrv] object deleteVisitor extends SimpleFileVisitor[Path] {
-    override def visitFile(file: Path, attrs: BasicFileAttributes) = {
+    override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
       Files.delete(file)
       FileVisitResult.CONTINUE
     }
 
-    override def postVisitDirectory(dir: Path, e: IOException) = {
+    override def postVisitDirectory(dir: Path, e: IOException): FileVisitResult = {
       Files.delete(dir)
       FileVisitResult.CONTINUE
     }
@@ -45,7 +45,7 @@ class TempSrv @Inject() (
     case t: Throwable ⇒ log.warn(s"Fail to remove temporary files ($directory) : $t")
   }
 
-  def newTemporaryFile(prefix: String, suffix: String)(implicit authContext: AuthContext) = {
+  def newTemporaryFile(prefix: String, suffix: String)(implicit authContext: AuthContext): Path = {
     val td = tempDir.resolve(authContext.requestId)
     if (!Files.exists(td))
       Files.createDirectories(td)

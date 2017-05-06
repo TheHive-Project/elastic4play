@@ -184,7 +184,7 @@ class SearchPublisher(
     offset: Int,
     max: Int) extends ActorPublisher[RichSearchHit] with Stash {
 
-  import SearchPublisher._
+  import org.elastic4play.database.SearchPublisher._
   import akka.stream.actor.ActorPublisherMessage._
   import context.dispatcher
 
@@ -315,6 +315,6 @@ class SearchPublisher(
       else
         false
     }
-    else (max == 0 || processed < max)
+    else max == 0 || processed < max
   }
 }

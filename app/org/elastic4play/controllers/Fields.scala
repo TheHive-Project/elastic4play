@@ -3,21 +3,18 @@ package org.elastic4play.controllers
 import java.nio.file.Path
 import java.util.Locale
 
-import scala.Right
-import scala.collection.GenTraversableOnce
+import scala.collection.{ GenTraversableOnce, immutable }
 import scala.util.Try
-
 import play.api.Logger
 import play.api.libs.json.{ JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsValue, Json }
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.streams.Accumulator
-import play.api.mvc.{ BodyParser, MultipartFormData, RequestHeader }
-
+import play.api.mvc.{ BodyParser, MultipartFormData, RequestHeader, Result }
 import org.elastic4play.BadRequestError
 import org.elastic4play.services.Attachment
 import org.elastic4play.utils.Hash
-
-import JsonFormat.{ fieldsReader, pathFormat }
+import org.elastic4play.controllers.JsonFormat.{ fieldsReader, pathFormat }
+import akka.util.ByteString
 
 /**
  * Define a data value from HTTP request. It can be simple string, json, file or null (maybe xml in future)
@@ -56,7 +53,7 @@ case class FileInputValue(name: String, filepath: Path, contentType: String) ext
 case class AttachmentInputValue(name: String, hashes: Seq[Hash], size: Long, contentType: String, id: String) extends InputValue {
   def jsonValue: JsObject = Json.obj(
     "name" → name,
-    "hashes" → hashes.map(_.toString),
+    "hashes" → hashes.map(_.toString()),
     "size" → size,
     "contentType" → contentType,
     "id" → id)
@@ -149,7 +146,7 @@ class Fields(private val fields: Map[String, InputValue]) {
   /**
    * Extract all fields, name and value
    */
-  def map[A](f: ((String, InputValue)) ⇒ A) = fields.map(f)
+  def map[A](f: ((String, InputValue)) ⇒ A): immutable.Iterable[A] = fields.map(f)
 
   /**
    * Extract all field values
@@ -184,18 +181,18 @@ class Fields(private val fields: Map[String, InputValue]) {
   /**
    * Returns true if the specified field name is present
    */
-  def contains(name: String) = fields.contains(name)
+  def contains(name: String): Boolean = fields.contains(name)
 
-  def isEmpty = fields.isEmpty
+  def isEmpty: Boolean = fields.isEmpty
 
-  def addIfAbsent(name: String, value: String) = getString(name) match {
+  def addIfAbsent(name: String, value: String): Fields = getString(name) match {
     case Some(_) ⇒ this
     case None    ⇒ set(name, value)
   }
 
   def ++(other: GenTraversableOnce[(String, InputValue)]) = new Fields(fields ++ other)
 
-  override def toString = fields.toString()
+  override def toString: String = fields.toString()
 }
 
 object Fields {
@@ -209,8 +206,8 @@ object Fields {
     new Fields(fields.toMap)
   }
 
-  def apply(fields: Map[String, InputValue]) = {
-    if (fields.keysIterator.find(_.startsWith("_")).isDefined)
+  def apply(fields: Map[String, InputValue]): Fields = {
+    if (fields.keysIterator.exists(_.startsWith("_")))
       throw BadRequestError("Field starting with '_' is forbidden")
     new Fields(fields)
   }
@@ -220,7 +217,7 @@ class FieldsBodyParser extends BodyParser[Fields] {
   import play.api.libs.iteratee.Execution.Implicits.trampoline
   import play.api.mvc.BodyParsers.parse._
 
-  def apply(request: RequestHeader) = {
+  def apply(request: RequestHeader): Accumulator[ByteString, Either[Result, Fields]] = {
     def queryFields = request.queryString.mapValues(v ⇒ StringInputValue(v))
 
     request.contentType.map(_.toLowerCase(Locale.ENGLISH)) match {
@@ -233,7 +230,7 @@ class FieldsBodyParser extends BodyParser[Fields] {
         .apply(request)
 
       case Some("multipart/form-data") ⇒ multipartFormData.map {
-        case MultipartFormData(dataParts, files, badParts) ⇒
+        case MultipartFormData(dataParts, files, _) ⇒
           val dataFields = dataParts
             .getOrElse("_json", Nil)
             .headOption

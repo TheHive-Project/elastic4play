@@ -5,16 +5,14 @@ import javax.inject.{ Inject, Singleton }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.language.postfixOps
 import scala.util.{ Failure, Success, Try }
-
 import play.api.Logger
 import play.api.libs.json.{ JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsValue, Json }
-
 import org.elastic4play.{ Timed, UpdateError }
 import org.elastic4play.models.BaseEntity
 import org.elasticsearch.action.update.UpdateResponse
-
 import com.sksamuel.elastic4s.ElasticDsl.{ bulk, script, update }
 import com.sksamuel.elastic4s.IndexAndTypes.apply
+import com.sksamuel.elastic4s.UpdateDefinition
 
 @Singleton
 class DBModify @Inject() (
@@ -50,15 +48,17 @@ class DBModify @Inject() (
     import scala.collection.JavaConversions._
 
     val attrs = updateAttributes.fields.zipWithIndex
-    val updateScript = attrs.map {
-      case ((name, JsArray(Nil)), index) ⇒
-        val names = name.split("\\.")
-        names.init.map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s""".remove("${names.last}")""")
-      case ((name, JsNull), index) ⇒
-        name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=null")
-      case ((name, _), index) ⇒
-        name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=param$index")
-    } mkString (";")
+    val updateScript = attrs
+      .map {
+        case ((name, JsArray(Nil)), index) ⇒
+          val names = name.split("\\.")
+          names.init.map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s""".remove("${names.last}")""")
+        case ((name, JsNull), index) ⇒
+          name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=null")
+        case ((name, _), index) ⇒
+          name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=param$index")
+      }
+      .mkString(";")
 
     val parameters = jsonToAny(JsObject(attrs.collect {
       case ((name, value), index) if value != JsArray(Nil) && value != JsNull ⇒ s"param$index" → value
@@ -68,8 +68,8 @@ class DBModify @Inject() (
   }
 
   private[database] case class UpdateParams(entity: BaseEntity, updateScript: String, params: Map[String, Any], attributes: JsObject) {
-    def updateDef = update id entity.id in s"${db.indexName}/${entity.model.name}" routing entity.routing script { script(updateScript).params(params) } fields "_source" retryOnConflict 5
-    def result(attrs: JsObject) =
+    def updateDef: UpdateDefinition = update id entity.id in s"${db.indexName}/${entity.model.name}" routing entity.routing script { script(updateScript).params(params) } fields "_source" retryOnConflict 5
+    def result(attrs: JsObject): BaseEntity =
       entity.model(attrs +
         ("_type" → JsString(entity.model.name)) +
         ("_id" → JsString(entity.id)) +

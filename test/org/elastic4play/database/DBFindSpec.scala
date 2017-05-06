@@ -39,7 +39,7 @@ class DBFindSpec extends PlaySpecification with Mockito {
   //  case class DBFindStub() {
 
   val pageSize = 5
-  val keepAlive = 1.minute
+  val keepAlive: FiniteDuration = 1.minute
 
   "DBFind" should {
     "if range is not provided, use offset:0 and limit:10" in {

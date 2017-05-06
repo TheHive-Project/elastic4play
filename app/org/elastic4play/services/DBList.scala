@@ -5,11 +5,9 @@ import javax.inject.{ Inject, Provider, Singleton }
 import scala.annotation.implicitNotFound
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.DurationInt
-
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{ Sink, Source }
-
 import play.api.Configuration
 import play.api.cache.CacheApi
 import play.api.libs.json.{ JsObject, JsString, JsValue }
@@ -17,26 +15,26 @@ import play.api.libs.json.{ Reads, Writes }
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.Json
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
-
 import org.elastic4play.database.DBCreate
-import org.elastic4play.models.{ AttributeFormat ⇒ F, EntityDef, ModelDef }
-
+import org.elastic4play.models.{ Attribute, EntityDef, ModelDef, AttributeFormat ⇒ F }
 import org.elastic4play.utils.{ Hasher, RichFuture }
+
+import scala.collection.immutable
 
 @Singleton
 class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName) { model ⇒
   @Inject def this(configuration: Configuration) = this(configuration.getString("dblist.name").get)
 
-  val value = attribute("value", F.stringFmt, "Content of the dblist item")
-  val dblist = attribute("dblist", F.stringFmt, "Name of the dblist")
+  val value: Attribute[String] = attribute("value", F.stringFmt, "Content of the dblist item")
+  val dblist: Attribute[String] = attribute("dblist", F.stringFmt, "Name of the dblist")
   override def apply(attributes: JsObject) = new DBListItemEntity(this, attributes)
 
 }
 
 class DBListItemEntity(model: DBListModel, attributes: JsObject) extends EntityDef[DBListModel, DBListItemEntity](model, attributes) with DBListItem {
-  def mapTo[T](implicit reads: Reads[T]) = Json.parse((attributes \ "value").as[String]).as[T]
-  def dblist = (attributes \ "dblist").as[String]
-  override def toJson = super.toJson - "value" + ("value" → mapTo[JsValue])
+  def mapTo[T](implicit reads: Reads[T]): T = Json.parse((attributes \ "value").as[String]).as[T]
+  def dblist: String = (attributes \ "dblist").as[String]
+  override def toJson: JsObject = super.toJson - "value" + ("value" → mapTo[JsValue])
 }
 
 trait DBListItem {
@@ -66,7 +64,7 @@ class DBLists @Inject() (
    * Returns list of all dblist name
    */
   def listAll: Future[collection.Set[String]] = {
-    import QueryDSL._
+    import org.elastic4play.services.QueryDSL._
     findSrv(dblistModel, any, groupByField("dblist", selectCount)).map(_.keys)
   }
 
@@ -79,7 +77,7 @@ class DBLists @Inject() (
   }
 
   def apply(name: String): DBList = new DBList {
-    def cachedItems = cache.getOrElse(dblistModel.name + "_" + name, 10.seconds) {
+    def cachedItems: immutable.Seq[DBListItem] = cache.getOrElse(dblistModel.name + "_" + name, 10.seconds) {
       val (src, total) = getItems()
       src.runWith(Sink.seq).await
     }

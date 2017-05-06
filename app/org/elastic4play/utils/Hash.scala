@@ -34,7 +34,7 @@ case class Hasher(algorithms: String*) {
 }
 
 class MultiHash(algorithms: String)(implicit mat: Materializer, ec: ExecutionContext) {
-  val md = MessageDigest.getInstance(algorithms)
+  private val md = MessageDigest.getInstance(algorithms)
   def addValue(value: JsValue): Unit = {
     md.update(0.asInstanceOf[Byte])
     md.update(value.toString.getBytes)

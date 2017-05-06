@@ -1,4 +1,4 @@
-package org.elastic4play.database;
+package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 

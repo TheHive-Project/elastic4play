@@ -22,7 +22,7 @@ class AuxSrv @Inject() (
     modelSrv: ModelSrv,
     implicit val ec: ExecutionContext,
     implicit val mat: Materializer) {
-  import QueryDSL._
+  import org.elastic4play.services.QueryDSL._
   val log = Logger(getClass)
 
   def removeUnauditedAttributes(entity: BaseEntity): JsObject = {
@@ -36,13 +36,15 @@ class AuxSrv @Inject() (
   def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = {
     val entityWithParent = entity.model match {
       case childModel: ChildModelDef[_, _, _, _] if nparent > 0 ⇒
-        val (src, total) = findSrv(childModel.parentModel, ("_id" ~= entity.parentId.getOrElse(throw InternalError(s"Child entity $entity has no parent ID"))), Some("0-1"), Nil)
+        val (src, total) = findSrv(childModel.parentModel, "_id" ~= entity.parentId.getOrElse(throw InternalError(s"Child entity $entity has no parent ID")), Some("0-1"), Nil)
         src
           .mapAsync(1) { parent ⇒
             apply(parent, nparent - 1, withStats, removeUnaudited).map { parent ⇒
-              val entityObj = removeUnaudited match {
-                case true  ⇒ removeUnauditedAttributes(entity)
-                case false ⇒ Json.toJson(entity).as[JsObject]
+              val entityObj = if (removeUnaudited) {
+                removeUnauditedAttributes(entity)
+              }
+              else {
+                Json.toJson(entity).as[JsObject]
               }
               entityObj + (childModel.parentModel.name → parent)
             }
@@ -73,7 +75,7 @@ class AuxSrv @Inject() (
       return Future.successful(JsObject(Nil))
     modelSrv(modelName)
       .map { model ⇒
-        val (src, total) = findSrv(model, ("_id" ~= entityId), Some("0-1"), Nil)
+        val (src, total) = findSrv(model, "_id" ~= entityId, Some("0-1"), Nil)
         src.mapAsync(1) { entity ⇒ apply(entity, nparent, withStats, removeUnaudited) }
           .runWith(Sink.headOption)
           .map(_.getOrElse {

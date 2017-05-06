@@ -4,12 +4,11 @@ import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.ExecutionContext
 import scala.reflect.runtime.universe
-
 import play.api.libs.json.JsValue
-import play.api.mvc.Controller
-
+import play.api.mvc.{ Action, AnyContent, Controller }
 import org.elastic4play.Timed
 import org.elastic4play.services.{ DBLists, Role }
+
 import scala.concurrent.Future
 
 @Singleton
@@ -21,14 +20,14 @@ class DBListCtrl @Inject() (
     implicit val ec: ExecutionContext) extends Controller {
 
   @Timed("controllers.DBListCtrl.list")
-  def list = authenticated(Role.read).async { implicit request ⇒
+  def list: Action[AnyContent] = authenticated(Role.read).async { implicit request ⇒
     dblists.listAll.map { listNames ⇒
       renderer.toOutput(OK, listNames)
     }
   }
 
   @Timed("controllers.DBListCtrl.listItems")
-  def listItems(listName: String) = authenticated(Role.read) { implicit request ⇒
+  def listItems(listName: String): Action[AnyContent] = authenticated(Role.read) { implicit request ⇒
     val (src, total) = dblists(listName).getItems[JsValue]
     val items = src.map { case (id, value) ⇒ s""""$id":$value""" }
       .intersperse("{", ",", "}")
@@ -36,7 +35,7 @@ class DBListCtrl @Inject() (
   }
 
   @Timed("controllers.DBListCtrl.addItem")
-  def addItem(listName: String) = authenticated(Role.admin).async(fieldsBodyParser) { implicit request ⇒
+  def addItem(listName: String): Action[Fields] = authenticated(Role.admin).async(fieldsBodyParser) { implicit request ⇒
     request.body.getValue("value").fold(Future.successful(NoContent)) { value ⇒
       dblists(listName).addItem(value).map { item ⇒
         renderer.toOutput(OK, item.id)
@@ -45,7 +44,7 @@ class DBListCtrl @Inject() (
   }
 
   @Timed("controllers.DBListCtrl.deleteItem")
-  def deleteItem(itemId: String) = authenticated(Role.admin).async { implicit request ⇒
+  def deleteItem(itemId: String): Action[AnyContent] = authenticated(Role.admin).async { implicit request ⇒
     dblists.deleteItem(itemId).map { _ ⇒
       NoContent
     }

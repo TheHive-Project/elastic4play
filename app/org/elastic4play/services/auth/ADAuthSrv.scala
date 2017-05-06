@@ -1,19 +1,17 @@
 package org.elastic4play.services.auth
 
+import java.util
 import java.util.Hashtable
-
 import javax.inject.{ Inject, Singleton }
 import javax.naming.Context
-import javax.naming.directory.{ BasicAttribute, DirContext, InitialDirContext, ModificationItem, SearchControls }
+import javax.naming.directory._
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
-
 import play.api.{ Configuration, Logger }
 import play.api.mvc.RequestHeader
-
 import org.elastic4play.{ AuthenticationError, AuthorizationError }
-import org.elastic4play.services.{ AuthCapability, AuthContext, AuthSrv, AuthSrvFactory, UserSrv }
+import org.elastic4play.services._
 
 @Singleton
 class ADAuthSrvFactory @Inject() (
@@ -36,12 +34,12 @@ class ADAuthSrvFactory @Inject() (
       implicit val ec: ExecutionContext) extends AuthSrv {
 
     lazy val log = Logger(getClass)
-    val name = factory.name
-    val capabilities = Set(AuthCapability.changePassword)
+    val name: String = factory.name
+    val capabilities: Set[AuthCapability.Value] = Set(AuthCapability.changePassword)
 
     private[auth] def connect[A](username: String, password: String)(f: InitialDirContext ⇒ A): Try[A] = {
       val protocol = if (useSSL) "ldaps://" else "ldap://"
-      val env = new Hashtable[Any, Any]
+      val env = new util.Hashtable[Any, Any]
       env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
       env.put(Context.PROVIDER_URL, protocol + DomainFQDN)
       env.put(Context.SECURITY_AUTHENTICATION, "simple")

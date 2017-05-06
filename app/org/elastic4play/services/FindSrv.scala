@@ -7,13 +7,10 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.language.reflectiveCalls
 import scala.math.BigDecimal.{ double2bigDecimal, int2bigDecimal, long2bigDecimal }
 import scala.util.Try
-
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-
 import play.api.libs.json.{ JsArray, JsNumber, JsObject }
 import play.api.libs.json.JsValue.jsValueToJsLookup
-
 import org.elastic4play.BadRequestError
 import org.elastic4play.database.{ DBConfiguration, DBFind, DBUtils }
 import org.elastic4play.models.{ AbstractModelDef, BaseEntity, BaseModelDef }
@@ -30,13 +27,10 @@ import org.elasticsearch.search.aggregations.metrics.min.Min
 import org.elasticsearch.search.aggregations.metrics.sum.Sum
 import org.elasticsearch.search.aggregations.metrics.tophits.TopHits
 import org.joda.time.DateTime
-
-import com.sksamuel.elastic4s.{ QueryDefinition, RichSearchHit }
-import com.sksamuel.elastic4s.AbstractAggregationDefinition
-import com.sksamuel.elastic4s.ElasticDsl.{ aggregation, bool, existsQuery, hasChildQuery, hasParentQuery, idsQuery, matchAllQuery, must, nestedQuery, not ⇒ _not, query, rangeQuery, search, should, termQuery, termsQuery }
+import com.sksamuel.elastic4s._
+import com.sksamuel.elastic4s.ElasticDsl.{ aggregation, bool, existsQuery, hasChildQuery, hasParentQuery, idsQuery, matchAllQuery, must, nestedQuery, query, rangeQuery, search, should, termQuery, termsQuery, not ⇒ _not }
 import com.sksamuel.elastic4s.IndexesAndTypes.apply
 import com.sksamuel.elastic4s.ScriptDefinition.string2Script
-import com.sksamuel.elastic4s.{ SearchType, ValuesSourceMetricsAggregationDefinition }
 
 case class QueryDef(query: QueryDefinition)
 
@@ -48,7 +42,7 @@ trait Agg {
 trait FieldSelectable { self: Agg ⇒
   val aggFunction: ValuesSourceMetricsAggregationDefinition[_, _]
   val field: String
-  def apply(model: BaseModelDef) = {
+  def apply(model: BaseModelDef): Seq[AbstractAggregationDefinition] = {
     field.split("\\.", 3) match {
       case Array("computed", c) ⇒
         val script = model.computedMetrics.getOrElse(
@@ -120,7 +114,7 @@ class SelectTop(size: Int, sortBy: Seq[String]) extends Agg {
   def processResult(model: BaseModelDef, aggregations: Aggregations): JsObject = {
     val top = aggregations.get[TopHits](name)
     // "top" -> JsArray(top.getHits.getHits.map(h => FindSrv.hit2json(RichSearchHit(h))))
-    JsObject(Seq("top" → JsArray(top.getHits.getHits.map(h ⇒ DBUtils.hit2json(None, new RichSearchHit(h)))))) // FIXME migration for ElasticSearch 2.x
+    JsObject(Seq("top" → JsArray(top.getHits.getHits.map(h ⇒ DBUtils.hit2json(None, RichSearchHit(h)))))) // FIXME migration for ElasticSearch 2.x
   }
 }
 
@@ -151,14 +145,14 @@ class GroupByTime(fields: Seq[String], interval: String, subAggs: Seq[Agg]) exte
   def processResult(model: BaseModelDef, aggregations: Aggregations): JsObject = {
     val aggs = fields.map { f ⇒
       val buckets = aggregations.get[Histogram](s"datehistogram_$f").getBuckets
-      f → (buckets.map { bucket ⇒
+      f → buckets.map { bucket ⇒
         val results = subAggs
           .map(_.processResult(model, bucket.getAggregations))
           .reduceOption(_ ++ _)
           .getOrElse(JsObject(Nil))
         // date -> obj(key{avg, min} -> value)
-        (bucket.getKey.asInstanceOf[DateTime].toIso → results)
-      }.toMap)
+        bucket.getKey.asInstanceOf[DateTime].toIso → results
+      }.toMap
     }.toMap
     val keys = aggs.values.flatMap(_.keys).toSet
     JsObject {
@@ -193,7 +187,7 @@ class GroupByField(field: String, size: Option[Int], sortBy: Seq[String], subAgg
           .map(_.processResult(model, bucket.getAggregations))
           .reduceOption(_ ++ _)
           .getOrElse(JsObject(Nil))
-        (bucket.getKeyAsString → results)
+        bucket.getKeyAsString → results
       }.toMap
     }
   }
@@ -213,19 +207,19 @@ object QueryDSL {
   private def nestedField(field: String, q: (String) ⇒ QueryDefinition) = {
     val names = field.split("\\.")
     names.init.foldRight(q(field)) {
-      case (subName, queryDef) ⇒ nestedQuery(subName) query (queryDef)
+      case (subName, queryDef) ⇒ nestedQuery(subName).query(queryDef)
     }
   }
 
   implicit class SearchField(field: String) {
     def ~=(value: Any) = QueryDef(nestedField(field, termQuery(_, value)))
     def ~!=(value: Any) = not(QueryDef(nestedField(field, termQuery(_, value))))
-    def ~<(value: Any) = QueryDef(nestedField(field, rangeQuery(_) to (value) includeUpper (false)))
-    def ~>(value: Any) = QueryDef(nestedField(field, rangeQuery(_) from (value) includeLower (false)))
-    def ~<=(value: Any) = QueryDef(nestedField(field, rangeQuery(_) to (value) includeUpper (true)))
-    def ~>=(value: Any) = QueryDef(nestedField(field, rangeQuery(_) from (value) includeLower (true)))
-    def ~<>(value: (Any, Any)) = QueryDef(nestedField(field, rangeQuery(_) from (value._1) to (value._2) includeUpper (false) includeLower (false)))
-    def ~=<>=(value: (Any, Any)) = QueryDef(nestedField(field, rangeQuery(_) from (value._1) to (value._2) includeUpper (true) includeLower (true)))
+    def ~<(value: Any) = QueryDef(nestedField(field, rangeQuery(_).to(value).includeUpper(false)))
+    def ~>(value: Any) = QueryDef(nestedField(field, rangeQuery(_).from(value).includeLower(false)))
+    def ~<=(value: Any) = QueryDef(nestedField(field, rangeQuery(_).to(value).includeUpper(true)))
+    def ~>=(value: Any) = QueryDef(nestedField(field, rangeQuery(_).from(value).includeLower(true)))
+    def ~<>(value: (Any, Any)) = QueryDef(nestedField(field, rangeQuery(_).from(value._1).to(value._2).includeUpper(false).includeLower(false)))
+    def ~=<>=(value: (Any, Any)) = QueryDef(nestedField(field, rangeQuery(_).from(value._1).to(value._2).includeUpper(true).includeLower(true)))
     def in(values: AnyRef*) = QueryDef(nestedField(field, termsQuery(_, values: _*)))
   }
 
@@ -267,21 +261,21 @@ class FindSrv @Inject() (
   }
 
   def apply(model: BaseModelDef, queryDef: QueryDef, range: Option[String], sortBy: Seq[String]): (Source[BaseEntity, NotUsed], Future[Long]) = {
-    val (src, total) = dbfind(range, sortBy)(indexName ⇒ search in indexName → model.name query queryDef.query)
+    val (src, total) = dbfind(range, sortBy)(indexName ⇒ search.in(indexName → model.name).query(queryDef.query))
     val entities = src.map(attrs ⇒ model(attrs))
     (entities, total)
   }
 
   def apply[M <: AbstractModelDef[M, E], E <: BaseEntity](model: M, queryDef: QueryDef, range: Option[String], sortBy: Seq[String]): (Source[E, NotUsed], Future[Long]) = {
-    val (src, total) = dbfind(range, sortBy)(indexName ⇒ search in indexName → model.name query queryDef.query)
-    val entities = src.map(attrs ⇒ model(attrs).asInstanceOf[E])
+    val (src, total) = dbfind(range, sortBy)(indexName ⇒ search.in(indexName → model.name).query(queryDef.query))
+    val entities = src.map(attrs ⇒ model(attrs))
     (entities, total)
   }
 
   def apply(model: BaseModelDef, queryDef: QueryDef, aggs: Agg*): Future[JsObject] = {
-    dbfind(indexName ⇒ search in indexName → model.name query queryDef.query aggregations aggs.flatMap(_.apply(model)) searchType SearchType.QueryAndFetch size 0)
-      .map {
-        case searchResponse ⇒ aggs
+    dbfind(indexName ⇒ search.in(indexName → model.name).query(queryDef.query).aggregations(aggs.flatMap(_.apply(model))).searchType(SearchType.QueryAndFetch).size(0))
+      .map { searchResponse ⇒
+        aggs
           .map(_.processResult(model, searchResponse.aggregations))
           .reduceOption(_ ++ _)
           .getOrElse(JsObject(Nil))
