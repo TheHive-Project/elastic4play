@@ -4,6 +4,7 @@ import java.util.Date
 
 import javax.inject.{ Inject, Singleton }
 
+import scala.language.reflectiveCalls
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.{ DurationLong, FiniteDuration }
 import scala.util.Try
@@ -121,7 +122,7 @@ class Authenticated(
    * otherwise, action returns a not authorized error
    */
   def apply(requiredRole: Role.Type) = new ActionBuilder[({ type R[A] = AuthenticatedRequest[A] })#R] {
-    def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) ⇒ Future[Result]) = {
+    def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) ⇒ Future[Result]): Future[Result] = {
       getContext(request).flatMap { authContext ⇒
         if (authContext.roles.contains(requiredRole))
           block(new AuthenticatedRequest(authContext, request))

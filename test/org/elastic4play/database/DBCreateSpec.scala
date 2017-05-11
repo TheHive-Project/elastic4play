@@ -1,36 +1,33 @@
 package org.elastic4play.database
 
 import scala.concurrent.Future
-
 import org.specs2.runner.JUnitRunner
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
-
-import play.api.libs.json.{ Json, JsObject, JsString }
+import play.api.libs.json.{ JsObject, JsString, Json }
 import play.api.libs.iteratee.Execution.trampoline
 import play.api.test.PlaySpecification
-
 import org.elasticsearch.action.bulk.BulkItemResponse
 import org.elasticsearch.action.index.{ IndexRequest, IndexResponse }
-import com.sksamuel.elastic4s.{ IndexResult, IndexDefinition, BulkResult, BulkItemResult, BulkDefinition }
-
+import com.sksamuel.elastic4s.{ BulkDefinition, BulkItemResult, BulkResult, IndexDefinition, IndexResult }
 import org.elastic4play.models.BaseEntity
-import common.{ Fabricator ⇒ F }
+import common.{ Fabricator => F }
 import org.elastic4play.utils._
+import play.api.libs.iteratee.Execution
 
 @RunWith(classOf[JUnitRunner])
 class DBCreateSpec extends PlaySpecification with Mockito {
-  val modelName = F.string("modelName")
-  val defaultEntityId = F.string("defaultEntityId")
-  val sampleDoc = Json.obj("caseId" → 42, "title" → "Test case", "description" → "Case used for unit test", "tags" → Seq("test", "specs"))
+  val modelName: String = F.string("modelName")
+  val defaultEntityId: String = F.string("defaultEntityId")
+  val sampleDoc: JsObject = Json.obj("caseId" → 42, "title" → "Test case", "description" → "Case used for unit test", "tags" → Seq("test", "specs"))
 
   class DBCreateWrapper {
-    val db = mock[DBConfiguration]
+    val db: DBConfiguration = mock[DBConfiguration]
     val dbcreate = new DBCreate(db, trampoline)
 
-    implicit val ec = trampoline
+    implicit val ec: Execution.trampoline.type = trampoline
 
-    def apply(modelName: String, attributes: JsObject) = {
+    def apply(modelName: String, attributes: JsObject): (JsObject, IndexRequest) = {
       val indexResult = mock[IndexResult]
       indexResult.getId returns (attributes \ "_id").asOpt[String].getOrElse(defaultEntityId)
       db.execute(any[IndexDefinition]) returns Future.successful(indexResult)
@@ -40,7 +37,7 @@ class DBCreateSpec extends PlaySpecification with Mockito {
       (attrs, captor.value.build)
     }
 
-    def apply(parent: BaseEntity, attributes: JsObject) = {
+    def apply(parent: BaseEntity, attributes: JsObject): (JsObject, IndexRequest) = {
       val indexResult = mock[IndexResult]
       indexResult.getId returns (attributes \ "_id").asOpt[String].getOrElse(defaultEntityId)
       db.execute(any[IndexDefinition]) returns Future.successful(indexResult)

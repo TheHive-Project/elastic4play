@@ -1,38 +1,21 @@
 package org.elastic4play.services
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
-import scala.util.Failure
-import scala.util.Success
-
-import org.elastic4play.InternalError
-import org.elastic4play.database.DBConfiguration
-import org.elastic4play.database.DBCreate
-import org.elastic4play.database.DBFind
-import org.elastic4play.database.DBGet
-import org.elastic4play.database.DBIndex
-
-import com.sksamuel.elastic4s.ElasticDsl.search
-import com.sksamuel.elastic4s.IndexesAndTypes.apply
+import javax.inject.{ Inject, Singleton }
 
 import akka.NotUsed
-import akka.actor.ActorRef
-import akka.actor.actorRef2Scala
 import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
-import akka.stream.scaladsl.Source
-import javax.inject.Inject
-import javax.inject.Named
-import javax.inject.Singleton
+import akka.stream.scaladsl.{ Sink, Source }
+import com.sksamuel.elastic4s.ElasticDsl.search
+import com.sksamuel.elastic4s.IndexesAndTypes.apply
+import org.elastic4play.InternalError
+import org.elastic4play.database._
 import play.api.Logger
-import play.api.libs.json.JsDefined
-import play.api.libs.json.JsObject
-import play.api.libs.json.JsString
-import play.api.libs.json.JsUndefined
-import play.api.libs.json.JsValue
 import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json.Json
+import play.api.libs.json._
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
+
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.{ Failure, Success }
 
 case class MigrationEvent(modelName: String, current: Long, total: Long) extends EventMessage
 case object EndOfMigrationEvent extends EventMessage
@@ -65,18 +48,19 @@ class MigrationSrv @Inject() (
     dbfind: DBFind,
     dbget: DBGet,
     dblists: DBLists,
+    dbindex: DBIndex,
     modelSrv: ModelSrv,
     eventSrv: EventSrv,
     implicit val ec: ExecutionContext,
     implicit val materializer: Materializer) {
 
-  val log = Logger(getClass)
+  private[MigrationSrv] lazy val logger = Logger(getClass)
 
   /* Constructed state of the database from the previous version */
   class MigrationTransition(db: DBConfiguration, previousState: DatabaseState, operations: Seq[Operation]) extends DatabaseState {
-    override def version = db.version
-    override def source(tableName: String) = operations.foldLeft(previousState.source _)((f, op) ⇒ op(f))(tableName)
-    override def count(tableName: String) = previousState.count(tableName)
+    override def version: Int = db.version
+    override def source(tableName: String): Source[JsObject, NotUsed] = operations.foldLeft(previousState.source _)((f, op) ⇒ op(f))(tableName)
+    override def count(tableName: String): Future[Long] = previousState.count(tableName)
     override def getEntity(tableName: String, id: String): Future[JsObject] = {
       previousState.getEntity(tableName, id).flatMap { previousValue ⇒
         operations.foldLeft((_: String) ⇒ Source.single(previousValue))((f, op) ⇒ op(f))(tableName)
@@ -87,40 +71,40 @@ class MigrationSrv @Inject() (
 
   /* Last version of database */
   case class OriginState(db: DBConfiguration) extends DatabaseState {
-    val currentdbfind = dbfind.switchTo(db)
-    override def version = db.version
-    override def source(tableName: String): Source[JsObject, NotUsed] = currentdbfind.apply(Some("all"), Nil)(indexName ⇒ search in indexName → tableName query QueryDSL.any.query)._1
-    override def count(tableName: String) = new DBIndex(db, ec).getSize(tableName)
-    override def getEntity(tableName: String, entityId: String) = dbget(tableName, entityId)
+    private val currentdbfind = dbfind.switchTo(db)
+    override def version: Int = db.version
+    override def source(tableName: String): Source[JsObject, NotUsed] = currentdbfind.apply(Some("all"), Nil)(indexName ⇒ search.in(indexName → tableName).query(QueryDSL.any.query))._1
+    override def count(tableName: String): Future[Long] = new DBIndex(db, 0, 0, ec).getSize(tableName)
+    override def getEntity(tableName: String, entityId: String): Future[JsObject] = dbget(tableName, entityId)
   }
 
   /* If there is no database, use empty one */
   object EmptyState extends DatabaseState {
     override def version = 1
     override def source(tableName: String): Source[JsObject, NotUsed] = Source.empty[JsObject]
-    override def count(tableName: String) = Future.successful(0)
+    override def count(tableName: String): Future[Long] = Future.successful(0)
     override def getEntity(tableName: String, id: String): Future[JsObject] = Future.failed(new Exception("TODO"))
   }
 
   def migrationPath(db: DBConfiguration): Future[(Int, DatabaseState)] = {
-    new DBIndex(db, ec).getIndexStatus.flatMap {
+    new DBIndex(db, 0, 0, ec).getIndexStatus.flatMap {
       case true ⇒
-        log.info(s"Initiate database migration from version ${db.version}")
+        logger.info(s"Initiate database migration from version ${db.version}")
         Future.successful(db.version → OriginState(db))
       case false if db.version == 1 ⇒
-        log.info("Create a new empty database")
+        logger.info("Create a new empty database")
         Future.successful(0 → EmptyState)
       case false ⇒
         migrationPath(db.previousVersion).map {
           case (v, s) ⇒
-            log.info(s"Migrate database from version $v, add operations for version ${db.version}")
+            logger.info(s"Migrate database from version $v, add operations for version ${db.version}")
             val operations = migration.operations.applyOrElse(s, (_: DatabaseState) ⇒ throw InternalError(s"No operation for version ${s.version}, migration impossible"))
             v → new MigrationTransition(db, s, operations)
         }
     }
   }
 
-  def migrationEvent(modelName: String, current: Long, total: Long) = Json.obj(
+  def migrationEvent(modelName: String, current: Long, total: Long): JsObject = Json.obj(
     "objectType" → "migration",
     "rootId" → "none",
     "tableName" → modelName,
@@ -135,23 +119,22 @@ class MigrationSrv @Inject() (
         entity
       }
       .runWith(dbcreate.sink(modelName))
-    r.onComplete {
-      case x ⇒ println(s"migrateEntity($modelName) has finished : $x")
+    r.onComplete { x ⇒
+      println(s"migrateEntity($modelName) has finished : $x")
     }
     r
   }
 
-  def migrateTable(mig: DatabaseState, table: String) = {
+  def migrateTable(mig: DatabaseState, table: String): Future[Unit] = {
     mig.count(table)
       .flatMap { total ⇒
-        log.info(s"Migrating $total entities from $table")
+        logger.info(s"Migrating $total entities from $table")
         migrateEntities(table, mig.source(table), total)
       }
   }
 
   private var migrationProcess = Future.successful(())
   def migrate: Future[Unit] = {
-    val dbindex = new DBIndex(db, ec)
     if (!dbindex.indexStatus && migrationProcess.isCompleted) {
       val models = modelSrv.list
       migrationProcess = migrationPath(db)
@@ -161,34 +144,34 @@ class MigrationSrv @Inject() (
         .flatMap {
           case (version, mig) ⇒
             Future.sequence(
-              ("sequence" +: models.map(_.name).toSeq.sorted)
+              ("sequence" +: models.map(_.name).sorted)
                 .distinct
                 .map(t ⇒ migrateTable(mig, t).recover {
-                  case t ⇒ log.error(s"Migration of table $t failed :", t)
+                  case error ⇒ logger.error(s"Migration of table $t failed :", error)
                 }))
               .flatMap(_ ⇒ migration.endMigration(version))
         }
       migrationProcess.onComplete {
         case Success(_) ⇒
-          log.info("End of migration")
+          logger.info("End of migration")
           eventSrv.publish(EndOfMigrationEvent)
         case Failure(t) ⇒
-          log.error("Migration fail", t)
+          logger.error("Migration fail", t)
           Future.failed(t)
       }
     }
     migrationProcess
   }
 
-  def isMigrating = !migrationProcess.isCompleted
+  def isMigrating: Boolean = !migrationProcess.isCompleted
 }
 /* Operation applied to the previous state of the database to get next version */
-trait Operation extends Function1[String ⇒ Source[JsObject, NotUsed], String ⇒ Source[JsObject, NotUsed]]
+trait Operation extends ((String ⇒ Source[JsObject, NotUsed]) ⇒ (String ⇒ Source[JsObject, NotUsed]))
 object Operation {
   lazy val log = Logger(getClass)
 
   def apply(o: (String ⇒ Source[JsObject, NotUsed]) ⇒ String ⇒ Source[JsObject, NotUsed]) = new Operation {
-    def apply(f: (String ⇒ Source[JsObject, NotUsed])) = o(f)
+    def apply(f: (String ⇒ Source[JsObject, NotUsed])): (String) ⇒ Source[JsObject, NotUsed] = o(f)
   }
   def renameEntity(previous: String, next: String): Operation = Operation((f: String ⇒ Source[JsObject, NotUsed]) ⇒ {
     case `next` ⇒ f(previous)
@@ -210,7 +193,7 @@ object Operation {
   def apply(table: String)(transform: JsObject ⇒ JsObject): Operation = mapEntity(_ == table, transform)
 
   def removeEntity(tableFilter: String ⇒ Boolean, filter: JsObject ⇒ Boolean): Operation = Operation((f: String ⇒ Source[JsObject, NotUsed]) ⇒ {
-    case table if tableFilter(table) ⇒ f(table).filter(filter)
+    case table if tableFilter(table) ⇒ f(table).filterNot(filter)
     case other                       ⇒ f(other)
   })
 
@@ -227,12 +210,12 @@ object Operation {
   def renameAttribute(table: String, newName: String, oldNamePath: String*): Operation = renameAttribute(_ == table, newName, oldNamePath)
   def rename(value: JsObject, newName: String, path: Seq[String]): JsObject = {
     if (path.isEmpty) {
-      return value
+      value
     }
     else {
       val head = path.head
       val tail = path.tail
-      (value \ head) match {
+      value \ head match {
         case JsDefined(v) if tail.isEmpty ⇒ value - head + (newName → v)
         case JsDefined(v: JsObject)       ⇒ value - head + (head → rename(v, newName, tail))
         case _                            ⇒ value
@@ -240,7 +223,7 @@ object Operation {
     }
   }
 
-  def mapAttribute(tableFilter: String ⇒ Boolean, attribute: String, transform: JsValue ⇒ JsValue): Operation = mapEntity(tableFilter, x ⇒ (x \ attribute) match {
+  def mapAttribute(tableFilter: String ⇒ Boolean, attribute: String, transform: JsValue ⇒ JsValue): Operation = mapEntity(tableFilter, x ⇒ x \ attribute match {
     case _: JsUndefined ⇒ x
     case JsDefined(a)   ⇒ x + (attribute → transform(a))
   })
@@ -258,7 +241,7 @@ object Operation {
 
   def addAttributeIfAbsent(tableFilter: String ⇒ Boolean, attributes: (String, JsValue)*): Operation = mapEntity(tableFilter, { x ⇒
     attributes.foldLeft(x) { (y, a) ⇒
-      (y \ a._1) match {
+      y \ a._1 match {
         case _: JsUndefined ⇒ x + a
         case _              ⇒ x
       }

@@ -1,17 +1,15 @@
 package org.elastic4play.services.auth
 
+import java.util
 import java.util.Hashtable
-
 import javax.inject.{ Inject, Singleton }
 import javax.naming.Context
 import javax.naming.directory.{ BasicAttribute, DirContext, InitialDirContext, ModificationItem, SearchControls }
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
-
 import play.api.{ Configuration, Logger }
 import play.api.mvc.RequestHeader
-
 import org.elastic4play.{ AuthenticationError, AuthorizationError }
 import org.elastic4play.services.{ AuthCapability, AuthContext, AuthSrv, AuthSrvFactory, UserSrv }
 
@@ -61,7 +59,7 @@ class LdapAuthSrvFactory @Inject() (
 
     private[auth] def connect[A](username: String, password: String)(f: InitialDirContext ⇒ A): Try[A] = {
       val protocol = if (useSSL) "ldaps://" else "ldap://"
-      val env = new Hashtable[Any, Any]
+      val env = new util.Hashtable[Any, Any]
       env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
       env.put(Context.PROVIDER_URL, protocol + serverName)
       env.put(Context.SECURITY_AUTHENTICATION, "simple")

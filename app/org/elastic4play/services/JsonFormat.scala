@@ -1,57 +1,53 @@
 package org.elastic4play.services
 
+import com.typesafe.config.ConfigValueType._
+import com.typesafe.config.{ ConfigList, ConfigObject, ConfigValue }
+import org.elastic4play.models.JsonFormat._
+import org.elastic4play.services.QueryDSL._
+import org.elastic4play.utils.Hash
+import org.elastic4play.utils.JsonFormat.hashFormat
+import play.api.{ Configuration, Logger }
+import play.api.libs.json._
+
 import scala.collection.JavaConversions._
 
-import com.typesafe.config.ConfigValueType._
-import com.typesafe.config.{ ConfigObject, ConfigList, ConfigValue }
-
-import play.api.libs.json._
-import play.api.Configuration
-
-import com.sksamuel.elastic4s.QueryDefinition
-
-import org.elastic4play.models.BaseEntity
-import org.elastic4play.models.JsonFormat._
-import org.elastic4play.utils.JsonFormat.hashFormat
-import org.elastic4play.utils.Hash
-import QueryDSL._
-import play.api.Logger
-
 object JsonFormat {
-  lazy val log = Logger(getClass)
+  private[JsonFormat] lazy val logger = Logger(getClass)
 
-  val attachmentWrites: Writes[Attachment] = Writes((attachment: Attachment) ⇒
+  private val attachmentWrites: OWrites[Attachment] = OWrites[Attachment] { attachment ⇒
     Json.obj(
       "name" → attachment.name,
       "hashes" → attachment.hashes,
       "size" → attachment.size,
       "contentType" → attachment.contentType,
-      "id" → attachment.id))
+      "id" → attachment.id)
+  }
 
-  val attachmentReads: Reads[Attachment] = Reads((json: JsValue) ⇒
+  private val attachmentReads: Reads[Attachment] = Reads { json ⇒
     for {
       name ← (json \ "name").validate[String]
       hashes ← (json \ "hashes").validate[Seq[Hash]]
       size ← (json \ "size").validate[Long]
       contentType ← (json \ "contentType").validate[String]
       id ← (json \ "id").validate[String]
-    } yield Attachment(name, hashes, size, contentType, id))
+    } yield Attachment(name, hashes, size, contentType, id)
+  }
 
-  implicit val attachmentFormat = Format(attachmentReads, attachmentWrites)
+  implicit val attachmentFormat: OFormat[Attachment] = OFormat(attachmentReads, attachmentWrites)
 
-  implicit def roleFormat = enumFormat(Role)
+  implicit val roleFormat: Format[Role.Type] = enumFormat(Role)
 
-  implicit val configValueWrites: Writes[ConfigValue] = Writes((value: ConfigValue) ⇒ value match {
-    case v: ConfigObject             ⇒ configWrites.writes(Configuration(v.toConfig()))
+  implicit def configWrites = OWrites { (cfg: Configuration) ⇒
+    JsObject(cfg.subKeys.map(key ⇒ key → configValueWrites.writes(cfg.underlying.getValue(key))).toSeq)
+  }
+
+  implicit def configValueWrites: Writes[ConfigValue] = Writes[ConfigValue] {
+    case v: ConfigObject             ⇒ configWrites.writes(Configuration(v.toConfig))
     case v: ConfigList               ⇒ JsArray(v.toSeq.map(x ⇒ configValueWrites.writes(x)))
     case v if v.valueType == NUMBER  ⇒ JsNumber(BigDecimal(v.unwrapped.asInstanceOf[java.lang.Number].toString))
     case v if v.valueType == BOOLEAN ⇒ JsBoolean(v.unwrapped.asInstanceOf[Boolean])
     case v if v.valueType == NULL    ⇒ JsNull
     case v if v.valueType == STRING  ⇒ JsString(v.unwrapped.asInstanceOf[String])
-  })
-
-  implicit val configWrites = OWrites { (cfg: Configuration) ⇒
-    JsObject(cfg.subKeys.map(key ⇒ key → configValueWrites.writes(cfg.underlying.getValue(key))).toSeq)
   }
 
   //def jsonGet[A](json: JsValue, name:  String)(implicit reads: Reads[A]) = (json \ name).as[A]
@@ -137,7 +133,7 @@ object JsonFormat {
         case JsObjOne(("_in", JsFieldIn(f, v)))        ⇒ JsSuccess(f in (v: _*))
         case JsObjOne(("_type", JsString(v)))          ⇒ JsSuccess(ofType(v))
         case JsObjOne((n, JsVal(v))) ⇒
-          if (n.startsWith("_")) log.warn(s"""Potentially invalid search query : {"$n": "$v"}"""); JsSuccess(n ~= v)
+          if (n.startsWith("_")) logger.warn(s"""Potentially invalid search query : {"$n": "$v"}"""); JsSuccess(n ~= v)
         case other ⇒ JsError(s"Invalid query: unexpected $other")
       }
     }
@@ -168,12 +164,14 @@ object JsonFormat {
     }
   }
 
-  implicit val authContextWrites = Writes[AuthContext]((authContext: AuthContext) ⇒ Json.obj(
-    "id" → authContext.userId,
-    "name" → authContext.userName,
-    "roles" → authContext.roles))
+  implicit val authContextWrites: OWrites[AuthContext] = OWrites[AuthContext] { authContext ⇒
+    Json.obj(
+      "id" → authContext.userId,
+      "name" → authContext.userName,
+      "roles" → authContext.roles)
+  }
 
-  implicit val auditableActionFormat = enumFormat(AuditableAction)
+  implicit val auditableActionFormat: Format[AuditableAction.Type] = enumFormat(AuditableAction)
 
-  implicit val AuditOperationWrites = Json.writes[AuditOperation]
+  implicit val AuditOperationWrites: OWrites[AuditOperation] = Json.writes[AuditOperation]
 }

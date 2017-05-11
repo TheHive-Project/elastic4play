@@ -6,10 +6,9 @@ import scala.annotation.implicitNotFound
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Try }
-
 import org.elastic4play.AuthenticationError
+import org.elastic4play.services.AuthCapability.Type
 import org.elastic4play.services.{ AuthContext, AuthSrv, AuthSrvFactory }
-
 import play.api.{ Configuration, Logger }
 import play.api.mvc.RequestHeader
 
@@ -18,7 +17,7 @@ object MultiAuthSrv {
   def getAuthProviders(
     authTypes: Seq[String],
     authModules: immutable.Set[AuthSrv],
-    authFactoryModules: immutable.Set[AuthSrvFactory]) = {
+    authFactoryModules: immutable.Set[AuthSrvFactory]): Seq[AuthSrv] = {
 
     authTypes.flatMap { authType ⇒
       authFactoryModules
@@ -61,7 +60,7 @@ class MultiAuthSrv(
       ec)
 
   val name = "multi"
-  def capabilities = authProviders.flatMap(_.capabilities).toSet
+  def capabilities: Set[Type] = authProviders.flatMap(_.capabilities).toSet
 
   private[auth] def forAllAuthProvider[A](body: AuthSrv ⇒ Future[A]) = {
     authProviders.foldLeft(Future.failed[A](new Exception("no authentication provider found"))) {

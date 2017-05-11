@@ -1,21 +1,19 @@
 package org.elastic4play.services
 
-import scala.concurrent.Future
+import java.util.{ Date, UUID }
 
+import scala.concurrent.Future
 import org.specs2.runner.JUnitRunner
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
 import org.mockito.Matchers._
-
 import org.scalactic._
-
 import play.api.test.PlaySpecification
 import play.api.libs.json._
 import play.api.libs.iteratee.Execution.trampoline
-
 import org.elastic4play.controllers.{ Fields, JsonInputValue }
 import org.elastic4play.database.DBCreate
-import org.elastic4play.models.{ ModelDef, EntityDef, Attribute, AttributeFormat ⇒ F }
+import org.elastic4play.models.{ Attribute, EntityDef, ModelDef, AttributeFormat => F }
 import org.elastic4play.utils.RichFuture
 import org.elastic4play.AttributeCheckingError
 import org.elastic4play.InvalidFormatAttributeError
@@ -26,19 +24,19 @@ import org.elastic4play.MissingAttributeError
 class CreateSrvSpec extends PlaySpecification with Mockito {
 
   class TestModel extends ModelDef[TestModel, TestEntity]("testModel") {
-    val textAttribute = attribute("textAttribute", F.textFmt, "textAttribute")
-    val stringAttribute = attribute("stringAttribute", F.stringFmt, "stringAttribute")
-    val dateAttribute = attribute("dateAttribute", F.dateFmt, "dateAttribute")
-    val booleanAttribute = attribute("booleanAttribute", F.booleanFmt, "booleanAttribute")
-    val uuidAttribute = attribute("uuidAttribute", F.uuidFmt, "uuidAttribute")
-    val hashAttribute = attribute("hashAttribute", F.hashFmt, "hashAttribute")
-    val metricAttribute = attribute("metricAttribute", F.metricsFmt, "metricAttribute")
+    val textAttribute: Attribute[String] = attribute("textAttribute", F.textFmt, "textAttribute")
+    val stringAttribute: Attribute[String] = attribute("stringAttribute", F.stringFmt, "stringAttribute")
+    val dateAttribute: Attribute[Date] = attribute("dateAttribute", F.dateFmt, "dateAttribute")
+    val booleanAttribute: Attribute[Boolean] = attribute("booleanAttribute", F.booleanFmt, "booleanAttribute")
+    val uuidAttribute: Attribute[UUID] = attribute("uuidAttribute", F.uuidFmt, "uuidAttribute")
+    val hashAttribute: Attribute[String] = attribute("hashAttribute", F.hashFmt, "hashAttribute")
+    val metricAttribute: Attribute[JsValue] = attribute("metricAttribute", F.metricsFmt, "metricAttribute")
   }
   class TestEntity(model: TestModel, attributes: JsObject) extends EntityDef[TestModel, TestEntity](model, attributes)
-  val fieldsSrv = mock[FieldsSrv]
-  val dbCreate = mock[DBCreate]
-  val eventSrv = mock[EventSrv]
-  val attachmentSrv = mock[AttachmentSrv]
+  val fieldsSrv: FieldsSrv = mock[FieldsSrv]
+  val dbCreate: DBCreate = mock[DBCreate]
+  val eventSrv: EventSrv = mock[EventSrv]
+  val attachmentSrv: AttachmentSrv = mock[AttachmentSrv]
   val createSrv = new CreateSrv(fieldsSrv, dbCreate, eventSrv, attachmentSrv, trampoline)
   val model = new TestModel
 

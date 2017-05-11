@@ -12,7 +12,7 @@ import org.elastic4play.models.Attribute
 import org.elastic4play.utils
 
 object DBUtils {
-  def sortDefinition(sortBy: Seq[String]) = {
+  def sortDefinition(sortBy: Seq[String]): Seq[FieldSortDefinition] = {
     import org.elasticsearch.search.sort.SortOrder._
     val byFieldList: Seq[(String, FieldSortDefinition)] = sortBy
       .map {
@@ -32,7 +32,7 @@ object DBUtils {
     val id = JsString(hit.id)
     Option(hit.sourceAsString).filterNot(_ == "").fold(JsObject(Nil))(s ⇒ Json.parse(s).as[JsObject]) ++
       fields.fold(JsObject(Nil)) { rf ⇒
-        JsObject(rf flatMap { attr ⇒ fieldsValue.get(attr.name).flatMap(f ⇒ attr.format.elasticToJson(f.values.toSeq)).map(attr.name → _) })
+        JsObject(rf flatMap { attr ⇒ fieldsValue.get(attr.name).flatMap(f ⇒ attr.format.elasticToJson(f.values)).map(attr.name → _) })
       } +
       ("_type" → JsString(hit.`type`)) +
       ("_routing" → fieldsValue.get("_routing").map(r ⇒ JsString(r.value[String])).getOrElse(id)) +
@@ -40,6 +40,7 @@ object DBUtils {
       ("_id" → id)
   }
 
+  @scala.annotation.tailrec
   def isIndexMissing(t: Throwable): Boolean = t match {
     case t: RemoteTransportException ⇒ isIndexMissing(t.getCause)
     case _: IndexNotFoundException   ⇒ true

@@ -20,7 +20,7 @@ class FindSrvSpec extends PlaySpecification with Mockito {
 
   "GroupByCategory" should {
     "generate correct elasticsearch query" in {
-      import QueryDSL._
+      import org.elastic4play.services.QueryDSL._
       val catAgg = new GroupByCategory(Map(
         "debug" → ("level" ~= "DEBUG"),
         "info" → ("level" ~= "INFO"),

@@ -8,20 +8,32 @@ import scala.concurrent.blocking
 import com.sksamuel.elastic4s.ElasticDsl.{ RichFuture, index, mapping, search }
 import com.sksamuel.elastic4s.IndexesAndTypes.apply
 
-import org.elastic4play.Timed
+import play.api.Configuration
 import org.elastic4play.models.{ ChildModelDef, ModelAttributes, ModelDef }
 
 @Singleton
-class DBIndex @Inject() (
+class DBIndex(
     db: DBConfiguration,
+    nbShards: Int,
+    nbReplicas: Int,
     implicit val ec: ExecutionContext) {
+
+  @Inject() def this(
+    configuration: Configuration,
+    db: DBConfiguration,
+    ec: ExecutionContext) = this(
+    db,
+    configuration.getInt("search.nbshards").getOrElse(5),
+    configuration.getInt("search.nbreplicas").getOrElse(1),
+    ec)
 
   /**
    * Create a new index. Collect mapping for all attributes of all entities
+   *
    * @param models list of all ModelAttributes to used in order to build index mapping
    * @return a future which is completed when index creation is finished
    */
-  def createIndex(models: Iterable[ModelAttributes]) = {
+  def createIndex(models: Iterable[ModelAttributes]): Future[Unit] = {
     val modelsMapping = models
       .map {
         case model: ModelDef[_, _]            ⇒ mapping(model.name) fields model.attributes.filterNot(_.name == "_id").map(_.elasticMapping) dateDetection false numericDetection false
@@ -29,13 +41,18 @@ class DBIndex @Inject() (
       }
       .toSeq
     db.execute {
-      com.sksamuel.elastic4s.ElasticDsl.create index db.indexName mappings (modelsMapping: _*)
+      com.sksamuel.elastic4s.ElasticDsl.create
+        .index(db.indexName)
+        .mappings(modelsMapping: _*)
+        .shards(nbShards)
+        .replicas(nbReplicas)
     }
       .map { _ ⇒ () }
   }
 
   /**
    * Tests whether the index exists
+   *
    * @return future of true if the index exists
    */
   def getIndexStatus: Future[Boolean] = {
@@ -48,6 +65,7 @@ class DBIndex @Inject() (
 
   /**
    * Tests whether the index exists
+   *
    * @return true if the index exists
    */
   def indexStatus: Boolean = blocking {
@@ -56,6 +74,7 @@ class DBIndex @Inject() (
 
   /**
    * Get the number of document of this type
+   *
    * @param modelName name of the document type from which the count must be done
    * @return document count
    */

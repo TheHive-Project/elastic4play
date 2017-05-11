@@ -20,7 +20,7 @@ case class AttributeCheckingError(
   tableName: String,
   errors: Seq[AttributeError] = Nil)
     extends Exception(errors.mkString("[", "][", "]")) {
-  override def toString = errors.mkString("[", "][", "]")
+  override def toString: String = errors.mkString("[", "][", "]")
 }
 
 sealed trait AttributeError extends Throwable {
@@ -30,17 +30,17 @@ sealed trait AttributeError extends Throwable {
 
 case class InvalidFormatAttributeError(name: String, format: String, value: InputValue) extends AttributeError {
   override def toString = s"Invalid format for $name: $value, expected $format"
-  override def withName(newName: String) = copy(name = newName)
+  override def withName(newName: String): AttributeError = copy(name = newName)
 }
 case class UnknownAttributeError(name: String, value: JsValue) extends AttributeError {
   override def toString = s"Unknown attribute $name: $value"
-  override def withName(newName: String) = copy(name = newName)
+  override def withName(newName: String): AttributeError = copy(name = newName)
 }
 case class UpdateReadOnlyAttributeError(name: String) extends AttributeError {
   override def toString = s"Attribute $name is read-only"
-  override def withName(newName: String) = copy(name = newName)
+  override def withName(newName: String): AttributeError = copy(name = newName)
 }
 case class MissingAttributeError(name: String) extends AttributeError {
   override def toString = s"Attribute $name is missing"
-  override def withName(newName: String) = copy(name = newName)
+  override def withName(newName: String): AttributeError = copy(name = newName)
 }

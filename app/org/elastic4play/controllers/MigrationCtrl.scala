@@ -4,9 +4,7 @@ import javax.inject.{ Inject, Singleton }
 
 import scala.annotation.implicitNotFound
 import scala.concurrent.ExecutionContext
-
-import play.api.mvc.{ Action, Controller }
-
+import play.api.mvc.{ Action, AnyContent, Controller }
 import org.elastic4play.Timed
 import org.elastic4play.services.MigrationSrv
 
@@ -19,7 +17,7 @@ class MigrationCtrl @Inject() (
     implicit val ec: ExecutionContext) extends Controller {
 
   @Timed("controllers.MigrationCtrl.migrate")
-  def migrate = Action.async {
+  def migrate: Action[AnyContent] = Action.async {
     migrationSrv.migrate.map(_ ⇒ NoContent)
   }
 }

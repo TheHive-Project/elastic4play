@@ -1,7 +1,19 @@
 # Change Log
 
-## [1.1.4](https://github.com/CERT-BDF/elastic4play/tree/1.1.4) (2017-04-18)
+## [1.1.5](https://github.com/CERT-BDF/elastic4play/tree/1.1.4) (2017-05-11)
 
+[Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.1.4...1.1.5)
+
+**Implemented enhancements:**
+
+- Make index creation configurable [\#9](https://github.com/CERT-BDF/elastic4play/issues/9)
+
+**Closed issues:**
+
+- Offset is not taken into account if search uses scroll bug [\#12](https://github.com/CERT-BDF/elastic4play/issues/12)
+- Scala code cleanup [\#14](https://github.com/CERT-BDF/elastic4play/issues/14)
+
+## [1.1.4](https://github.com/CERT-BDF/elastic4play/tree/1.1.4) (2017-04-18)
 [Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.1.3...1.1.4)
 
 **Implemented enhancements:**

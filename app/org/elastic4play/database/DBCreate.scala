@@ -90,7 +90,8 @@ class DBCreate @Inject() (
       }
   }
 
-  private[database] def convertError(params: CreateParams, error: Throwable): Throwable = error match {
+  @scala.annotation.tailrec
+  private def convertError(params: CreateParams, error: Throwable): Throwable = error match {
     case rte: RemoteTransportException        ⇒ convertError(params, rte.getCause)
     case daee: DocumentAlreadyExistsException ⇒ ConflictError(daee.getMessage, params.attributes)
     case other                                ⇒ CreateError(None, other.getMessage, params.attributes)

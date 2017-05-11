@@ -112,14 +112,14 @@ class BaseEntity(val model: BaseModelDef, val attributes: JsObject) {
 
   def toJson = removeProtectedAttributes(attributes) +
     ("id" → JsString(id)) +
-    ("type" → JsString(model.name))
+    ("_type" → JsString(model.name))
 
   /* compute auxiliary data */
   override def toString = Json.prettyPrint(toJson)
 }
 
 abstract class EntityDef[M <: BaseModelDef, E <: BaseEntity](model: M, attributes: JsObject) extends BaseEntity(model, attributes) with AttributeDef { self: E ⇒
-  type A[B] = Function0[B]
+  type A[B] = () ⇒ B
 
   def attribute[T](name: String, format: AttributeFormat[T], description: String, defaultValue: Option[() ⇒ T], options: AttributeOption.Type*): A[T] = {
     () ⇒ (attributes \ name).asOpt[T](format.jsFormat).getOrElse(throw InvalidEntityAttributes[M, T](model, name, format, attributes))

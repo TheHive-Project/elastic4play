@@ -1,31 +1,29 @@
 package org.elastic4play.services
 
+import java.io.InputStream
 import java.nio.file.Files
-
 import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.DurationInt
-
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{ FileIO, Sink, Source, StreamConverters }
 import akka.util.ByteString
-
 import play.api.Configuration
 import play.api.libs.json.{ JsArray, JsNull, JsObject, JsValue }
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.Json
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
-
 import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, MissingAttributeError }
 import org.elastic4play.controllers.{ AttachmentInputValue, FileInputValue }
-import org.elastic4play.controllers.JsonFormat.{ attachmentInputValueReads, fileInputValueFormat }
+import org.elastic4play.controllers.JsonFormat.attachmentInputValueReads
 import org.elastic4play.controllers.JsonInputValue
 import org.elastic4play.database.DBCreate
-import org.elastic4play.models.{ AttributeDef, AttributeFormat ⇒ F, BaseModelDef, EntityDef, ModelDef }
+import org.elastic4play.models.{ AttributeDef, BaseModelDef, EntityDef, ModelDef, AttributeFormat ⇒ F }
 import org.elastic4play.services.JsonFormat.attachmentFormat
 import org.elastic4play.utils.{ Hash, Hasher }
+import org.elastic4play.controllers.JsonFormat.fileInputValueFormat
 
 case class Attachment(name: String, hashes: Seq[Hash], size: Long, contentType: String, id: String)
 object Attachment {
@@ -33,7 +31,7 @@ object Attachment {
 }
 
 trait AttachmentAttributes { _: AttributeDef ⇒
-  val data = attribute("binary", F.binaryFmt, "data")
+  val data: A[Array[Byte]] = attribute("binary", F.binaryFmt, "data")
 }
 
 @Singleton
@@ -77,8 +75,8 @@ class AttachmentSrv(
   def apply(model: BaseModelDef)(attributes: JsObject): Future[JsObject] = {
     // find all declared attribute as attachment in submitted data
     model.attachmentAttributes.foldLeft(Future.successful(attributes)) {
-      case (attributes, (name, isRequired)) ⇒
-        attributes.flatMap { a ⇒
+      case (attrs, (name, isRequired)) ⇒
+        attrs.flatMap { a ⇒
           // try to convert in FileInputValue Scala Object
           val inputValue = (a \ name).asOpt[FileInputValue] orElse (a \ name).asOpt[AttachmentInputValue](attachmentInputValueReads)
           inputValue
@@ -108,7 +106,7 @@ class AttachmentSrv(
 
   def save(fiv: FileInputValue): Future[Attachment] = {
     for {
-      hash ← mainHasher.fromPath(fiv.filepath).map(_.head.toString)
+      hash ← mainHasher.fromPath(fiv.filepath).map(_.head.toString())
       hashes ← extraHashers.fromPath(fiv.filepath)
       attachment ← getSrv[AttachmentModel, AttachmentChunk](attachmentModel, hash + "_0", Some(Nil))
         .map { _ ⇒ Attachment(hash, hashes, fiv) }
@@ -118,7 +116,7 @@ class AttachmentSrv(
             .mapAsync(5) {
               case (buffer, index) ⇒
                 val data = java.util.Base64.getEncoder.encodeToString(buffer.toArray)
-                dbCreate(attachmentModel.name, None, Json.obj("binary" → data, "_id" → s"${hash}_${index}"))
+                dbCreate(attachmentModel.name, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
             }
             .runWith(Sink.ignore)
             .map { _ ⇒ Attachment(hash, hashes, fiv) }
@@ -128,12 +126,12 @@ class AttachmentSrv(
 
   def source(id: String): Source[ByteString, NotUsed] =
     Source.unfoldAsync(0) { chunkNumber ⇒
-      getSrv[AttachmentModel, AttachmentChunk](attachmentModel, s"${id}_${chunkNumber}", Some(Seq(attachmentModel.data)))
+      getSrv[AttachmentModel, AttachmentChunk](attachmentModel, s"${id}_$chunkNumber", Some(Seq(attachmentModel.data)))
         .map { entity ⇒ Some((chunkNumber + 1, ByteString(entity.data()))) }
         .recover { case _ ⇒ None }
     }
 
-  def stream(id: String) = source(id).runWith(StreamConverters.asInputStream(1.minute))
+  def stream(id: String): InputStream = source(id).runWith(StreamConverters.asInputStream(1.minute))
 
   def getHashes(id: String): Future[Seq[Hash]] = extraHashers.fromSource(source(id))
 }
