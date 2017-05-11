@@ -193,7 +193,7 @@ object Operation {
   def apply(table: String)(transform: JsObject ⇒ JsObject): Operation = mapEntity(_ == table, transform)
 
   def removeEntity(tableFilter: String ⇒ Boolean, filter: JsObject ⇒ Boolean): Operation = Operation((f: String ⇒ Source[JsObject, NotUsed]) ⇒ {
-    case table if tableFilter(table) ⇒ f(table).filter(filter)
+    case table if tableFilter(table) ⇒ f(table).filterNot(filter)
     case other                       ⇒ f(other)
   })
 

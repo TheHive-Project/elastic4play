@@ -3,18 +3,19 @@ package org.elastic4play.controllers
 import java.nio.file.Path
 import java.util.Locale
 
-import scala.collection.{ GenTraversableOnce, immutable }
-import scala.util.Try
-import play.api.Logger
-import play.api.libs.json.{ JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsValue, Json }
-import play.api.libs.json.Json.toJsFieldJsValueWrapper
-import play.api.libs.streams.Accumulator
-import play.api.mvc.{ BodyParser, MultipartFormData, RequestHeader, Result }
+import akka.util.ByteString
 import org.elastic4play.BadRequestError
+import org.elastic4play.controllers.JsonFormat.{ fieldsReader, pathFormat }
 import org.elastic4play.services.Attachment
 import org.elastic4play.utils.Hash
-import org.elastic4play.controllers.JsonFormat.{ fieldsReader, pathFormat }
-import akka.util.ByteString
+import play.api.Logger
+import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import play.api.libs.json._
+import play.api.libs.streams.Accumulator
+import play.api.mvc.{ BodyParser, MultipartFormData, RequestHeader, Result }
+
+import scala.collection.{ GenTraversableOnce, immutable }
+import scala.util.Try
 
 /**
  * Define a data value from HTTP request. It can be simple string, json, file or null (maybe xml in future)
