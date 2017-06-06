@@ -28,9 +28,14 @@ case class Hasher(algorithms: String*) {
   }
 
   def fromString(data: String): Seq[Hash] = {
-    val mds = algorithms.map(algo ⇒ MessageDigest.getInstance(algo))
-    mds.map(md ⇒ Hash(md.digest(data.getBytes(Charset.forName("UTF8")))))
+    fromByteArray(data.getBytes(Charset.forName("UTF8")))
   }
+
+  def fromByteArray(data: Array[Byte]): Seq[Hash] = {
+    val mds = algorithms.map(algo ⇒ MessageDigest.getInstance(algo))
+    mds.map(md ⇒ Hash(md.digest(data)))
+  }
+
 }
 
 class MultiHash(algorithms: String)(implicit mat: Materializer, ec: ExecutionContext) {
