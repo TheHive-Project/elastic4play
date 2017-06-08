@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
 import java.util
-import java.util.{ Date, Map, UUID }
+import java.util.{ Date, UUID }
 
 import scala.language.{ existentials, implicitConversions, postfixOps }
 import scala.math.BigDecimal.{ int2bigDecimal, long2bigDecimal }
@@ -25,6 +25,10 @@ import com.sksamuel.elastic4s.mappings._
 
 abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Format[T]) {
   def checkJson(subNames: Seq[String], value: JsValue): JsValue Or Every[AttributeError]
+  def checkJsonForCreation(subNames: Seq[String], value: JsValue): JsValue Or Every[AttributeError] =
+    checkJson(subNames, value)
+  def checkJsonForUpdate(subNames: Seq[String], value: JsValue): JsValue Or Every[AttributeError] =
+    checkJson(subNames, value)
   def inputValueToJson(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] = fromInputValue(subNames, value).map(v ⇒ jsFormat.writes(v))
   def elasticToJson(values: Seq[Any]): Option[JsValue]
   def fromInputValue(subNames: Seq[String], value: InputValue): T Or Every[AttributeError]
@@ -37,6 +41,7 @@ object TextAttributeFormat extends AttributeFormat[String]("text") {
     case _: JsString if subNames.isEmpty ⇒ Good(value)
     case _                               ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
   }
+
   override def fromInputValue(subNames: Seq[String], value: InputValue): String Or Every[AttributeError] = {
     if (subNames.nonEmpty)
       Bad(One(InvalidFormatAttributeError("", name, value)))
@@ -47,11 +52,14 @@ object TextAttributeFormat extends AttributeFormat[String]("text") {
         case _                           ⇒ Bad(One(InvalidFormatAttributeError("", name, value)))
       }
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match {
     case Seq(s: String) ⇒ Some(JsString(s))
     case _              ⇒ None
   }
+
   override val swaggerType: JsObject = Json.obj("type" → "string")
+
   override def elasticType(attributeName: String): StringFieldDefinition = field(attributeName, StringType)
 }
 
@@ -60,15 +68,19 @@ object StringAttributeFormat extends AttributeFormat[String]("string") {
     case _: JsString if subNames.isEmpty ⇒ Good(value)
     case _                               ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
   }
+
   override def fromInputValue(subNames: Seq[String], value: InputValue): String Or Every[AttributeError] = TextAttributeFormat.fromInputValue(subNames, value) match {
     case Bad(One(ifae: InvalidFormatAttributeError)) ⇒ Bad(One(ifae.copy(format = name)))
     case other                                       ⇒ other
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match {
     case Seq(s: String) ⇒ Some(JsString(s))
     case _              ⇒ None
   }
+
   override val swaggerType: JsObject = Json.obj("type" → "string")
+
   override def elasticType(attributeName: String): StringFieldDefinition = field(attributeName, StringType) index "not_analyzed"
 }
 
@@ -83,11 +95,13 @@ object DateAttributeFormat extends AttributeFormat[Date]("date") {
       new Date(d.toLong)
     }
   }
+
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
     case JsString(v) if subNames.isEmpty ⇒ try { parse(v); Good(value) } catch { case _: Throwable ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value)))) }
     case JsNumber(_) if subNames.isEmpty ⇒ Good(value)
     case _                               ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
   }
+
   override def fromInputValue(subNames: Seq[String], value: InputValue): Date Or Every[AttributeError] = {
     if (subNames.nonEmpty)
       Bad(One(InvalidFormatAttributeError("", name, value)))
@@ -100,12 +114,15 @@ object DateAttributeFormat extends AttributeFormat[Date]("date") {
       }
     }
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match { // FIXME
     case Seq(s: String) ⇒ Some(JsString(s))
     case Seq(n: Number) ⇒ Some(JsNumber(n.longValue))
     case _              ⇒ None
   }
+
   override val swaggerType: JsObject = Json.obj("type" → "dateTime")
+
   override def elasticType(attributeName: String): DateFieldDefinition = field(attributeName, DateType) format "epoch_millis||basic_date_time_no_millis"
 }
 
@@ -114,6 +131,7 @@ object BooleanAttributeFormat extends AttributeFormat[Boolean]("boolean") {
     case _: JsBoolean if subNames.isEmpty ⇒ Good(value)
     case _                                ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
   }
+
   override def fromInputValue(subNames: Seq[String], value: InputValue): Boolean Or Every[AttributeError] = {
     if (subNames.nonEmpty)
       Bad(One(InvalidFormatAttributeError("", name, value)))
@@ -124,11 +142,14 @@ object BooleanAttributeFormat extends AttributeFormat[Boolean]("boolean") {
         case _                            ⇒ Bad(One(InvalidFormatAttributeError("", name, value)))
       }
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match {
     case Seq(b: Boolean) ⇒ Some(JsBoolean(b))
     case _               ⇒ None
   }
+
   override val swaggerType: JsObject = Json.obj("type" → "boolean")
+
   override def elasticType(attributeName: String): BooleanFieldDefinition = field(attributeName, BooleanType)
 }
 
@@ -137,6 +158,7 @@ object NumberAttributeFormat extends AttributeFormat[Long]("number") {
     case _: JsNumber if subNames.isEmpty ⇒ Good(value)
     case _                               ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
   }
+
   override def fromInputValue(subNames: Seq[String], value: InputValue): Long Or Every[AttributeError] = {
     if (subNames.nonEmpty)
       Bad(One(InvalidFormatAttributeError("", name, value)))
@@ -147,12 +169,15 @@ object NumberAttributeFormat extends AttributeFormat[Long]("number") {
         case _                           ⇒ Bad(One(InvalidFormatAttributeError("", name, value)))
       }
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match {
     case Seq(i: Int)  ⇒ Some(JsNumber(i))
     case Seq(l: Long) ⇒ Some(JsNumber(l))
     case _            ⇒ None
   }
+
   override val swaggerType: JsObject = Json.obj("type" → "integer")
+
   override def elasticType(attributeName: String): LongFieldDefinition = field(attributeName, LongType)
 }
 
@@ -202,11 +227,14 @@ case class ListEnumeration(enumerationName: String)(dblists: DBLists) extends At
         case _                                                ⇒ Bad(One(InvalidFormatAttributeError("", name, value)))
       }
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match {
     case Seq(s: String) if items.contains(s) ⇒ Some(JsString(s))
     case _                                   ⇒ None
   }
+
   override def swaggerType = JsObject(Seq("type" → JsString("string"), "enum" → JsArray(items.toSeq.map(JsString))))
+
   override def elasticType(attributeName: String): StringFieldDefinition = field(attributeName, StringType) index "not_analyzed"
 }
 
@@ -215,6 +243,7 @@ object UUIDAttributeFormat extends AttributeFormat[UUID]("uuid") {
     case JsString(v) if subNames.isEmpty ⇒ try { UUID.fromString(v); Good(value) } catch { case _: Throwable ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value)))) }
     case _                               ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
   }
+
   override def fromInputValue(subNames: Seq[String], value: InputValue): UUID Or Every[AttributeError] = {
     if (subNames.nonEmpty)
       Bad(One(InvalidFormatAttributeError("", name, value)))
@@ -225,16 +254,20 @@ object UUIDAttributeFormat extends AttributeFormat[UUID]("uuid") {
         case _                           ⇒ Bad(One(InvalidFormatAttributeError("", name, value)))
       }
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match {
     case Seq(s: String) ⇒ Try(UUID.fromString(s)).toOption.map(_ ⇒ JsString(s))
     case _              ⇒ None
   }
+
   override val swaggerType: JsObject = Json.obj("type" → "string")
+
   override def elasticType(attributeName: String): StringFieldDefinition = field(attributeName, StringType) index "not_analyzed"
 }
 
 object HashAttributeFormat extends AttributeFormat[String]("hash") {
   val validDigits = "0123456789abcdefABCDEF"
+
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
     case JsString(v) if subNames.isEmpty && v.forall(c ⇒ validDigits.contains(c)) ⇒ Good(value)
     case _ ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
@@ -250,11 +283,14 @@ object HashAttributeFormat extends AttributeFormat[String]("hash") {
         case _ ⇒ Bad(One(InvalidFormatAttributeError("", name, value)))
       }
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match {
     case Seq(s: String) if s.forall(c ⇒ validDigits.contains(c)) ⇒ Some(JsString(s))
     case _                                                       ⇒ None
   }
+
   override val swaggerType: JsObject = Json.obj("type" → "string")
+
   override def elasticType(attributeName: String): StringFieldDefinition = field(attributeName, StringType) index "not_analyzed"
 }
 
@@ -266,7 +302,9 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
     else
       Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
   }
+
   val forbiddenChar = Seq('/', '\n', '\r', '\t', '\u0000', '\f', '`', '?', '*', '\\', '<', '>', '|', '\"', ':', ';')
+
   override def inputValueToJson(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] = {
     if (subNames.nonEmpty)
       Bad(One(InvalidFormatAttributeError("", name, value)))
@@ -277,7 +315,9 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
         case _ ⇒ Bad(One(InvalidFormatAttributeError("", name, value)))
       }
   }
+
   override def fromInputValue(subNames: Seq[String], value: InputValue): Attachment Or Every[AttributeError] = sys.error("not implemented")
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match {
     case Seq(m: util.Map[_, _]) ⇒
       for {
@@ -294,6 +334,7 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
         "id" → id))
     case _ ⇒ None
   }
+
   override val swaggerType: JsObject = Json.obj("type" → "File", "required" → true) // swagger bug : File input must be required
   override def elasticType(attributeName: String): NestedFieldDefinition = field(attributeName, NestedType) as (
     field("name", StringType) index "not_analyzed",
@@ -305,7 +346,34 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
 
 case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends AttributeFormat[JsObject]("nested") {
   lazy val log = Logger(getClass)
-  override def checkJson(subNames: Seq[String], value: JsValue): Or[JsObject, Every[AttributeError]] = fromInputValue(subNames, JsonInputValue(value))
+
+  override def checkJson(subNames: Seq[String], value: JsValue): JsObject Or Every[AttributeError] = ???
+
+  override def checkJsonForCreation(subNames: Seq[String], value: JsValue): JsObject Or Every[AttributeError] = {
+    value match {
+      case obj: JsObject if subNames.isEmpty ⇒
+        subAttributes.validatedBy { attr ⇒
+          attr.validateForCreation((value \ attr.name).asOpt[JsValue])
+        }
+          .map { _ ⇒ obj }
+      case _ ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
+    }
+  }
+
+  override def checkJsonForUpdate(subNames: Seq[String], value: JsValue): JsObject Or Every[AttributeError] = {
+    value match {
+      case obj: JsObject if subNames.isEmpty ⇒
+        obj.fields.validatedBy {
+          case (name, v) ⇒
+            subAttributes
+              .find(_.name == name)
+              .map(_.validateForUpdate(subNames, v))
+              .getOrElse(Bad(One(UnknownAttributeError(name, v))))
+        }
+          .map { _ ⇒ obj }
+      case _ ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
+    }
+  }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): JsObject Or Every[AttributeError] = {
     subNames
@@ -339,8 +407,11 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
         }
       }
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = ???
+
   override val swaggerType: JsObject = Json.obj("type" → "string")
+
   override def elasticType(attributeName: String): NestedFieldDefinition = field(attributeName, NestedType) as (subAttributes.map(_.elasticMapping): _*)
 }
 
@@ -361,17 +432,22 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
 
 object BinaryAttributeFormat extends AttributeFormat[Array[Byte]]("binary")(binaryFormats) {
   override def checkJson(subNames: Seq[String], value: JsValue) = Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
+
   override def fromInputValue(subNames: Seq[String], value: InputValue): Array[Byte] Or Every[AttributeError] = sys.error("not supported")
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match {
     case Seq(s: String) ⇒ Some(JsString(s))
     case _              ⇒ None
   }
+
   override def swaggerType: Nothing = sys.error("not supported")
+
   override def elasticType(attributeName: String): BinaryFieldDefinition = field(attributeName, BinaryType)
 }
 
 object MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = fromInputValue(subNames, JsonInputValue(value))
+
   override def fromInputValue(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] = {
     if (subNames.isEmpty) {
       value match {
@@ -390,30 +466,46 @@ object MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
       OptionalAttributeFormat(NumberAttributeFormat).inputValueToJson(subNames.tail, value) //.map(v => JsObject(Seq(subNames.head -> v)))
     }
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = ???
+
   //values match { // FIXME
   //    case Seq(s: String) => Some(JsString(s))
   //    case _              => None
   //  }
   override val swaggerType: JsObject = Json.obj("type" → "string")
+
   override def elasticType(attributeName: String): ObjectFieldDefinition = field(attributeName, ObjectType).as(field("_default_", LongType))
 }
 
-case class MultiAttributeFormat[T](attributeFormat: AttributeFormat[T]) extends AttributeFormat[Seq[T]](attributeFormat.name)(multiFormat(attributeFormat.jsFormat)) { // {//}(Format(Reads.seq(attributeFormat.jsFormat), Writes.seq(attributeFormat.jsFormat))) {
-  override def checkJson(subNames: Seq[String], value: JsValue): Or[JsArray, Every[AttributeError]] = value match {
-    case JsArray(values) if subNames.isEmpty ⇒ values.validatedBy(v ⇒ attributeFormat.checkJson(Nil, v)).map(JsArray)
+case class MultiAttributeFormat[T](attributeFormat: AttributeFormat[T]) extends AttributeFormat[Seq[T]]("multi-" + attributeFormat.name)(multiFormat(attributeFormat.jsFormat)) { // {//}(Format(Reads.seq(attributeFormat.jsFormat), Writes.seq(attributeFormat.jsFormat))) {
+  override def checkJsonForCreation(subNames: Seq[String], value: JsValue): Or[JsArray, Every[AttributeError]] = value match {
+    case JsArray(values) if subNames.isEmpty ⇒ values.validatedBy(v ⇒ attributeFormat.checkJsonForCreation(Nil, v)).map(JsArray)
     case _                                   ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
   }
+
+  override def checkJsonForUpdate(subNames: Seq[String], value: JsValue): Or[JsArray, Every[AttributeError]] = value match {
+    case JsArray(values) if subNames.isEmpty ⇒ values.validatedBy(v ⇒ attributeFormat.checkJsonForUpdate(Nil, v)).map(JsArray)
+    case _                                   ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
+  }
+
+  override def checkJson(subNames: Seq[String], value: JsValue): Or[JsArray, Every[AttributeError]] = value match {
+    case JsArray(values) if subNames.isEmpty ⇒ values.validatedBy(v ⇒ attributeFormat.checkJsonForUpdate(Nil, v)).map(JsArray)
+    case _                                   ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
+  }
+
   override def inputValueToJson(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] = value match {
     case JsonInputValue(JsArray(xs)) ⇒ xs.map(x ⇒ JsonInputValue(x)).validatedBy(i ⇒ attributeFormat.inputValueToJson(subNames, i)).map(JsArray)
     case StringInputValue(xs)        ⇒ xs.filterNot(_.isEmpty).map(x ⇒ StringInputValue(x :: Nil)).validatedBy(i ⇒ attributeFormat.inputValueToJson(subNames, i)).map(JsArray)
     case _                           ⇒ Bad(One(InvalidFormatAttributeError("", name, value)))
   }
+
   override def fromInputValue(subNames: Seq[String], value: InputValue): Seq[T] Or Every[AttributeError] = value match {
     case JsonInputValue(JsArray(xs)) ⇒ xs.map(JsonInputValue).validatedBy(i ⇒ attributeFormat.fromInputValue(subNames, i))
     case StringInputValue(xs)        ⇒ xs.filterNot(_.isEmpty).map(x ⇒ StringInputValue(x :: Nil)).validatedBy(i ⇒ attributeFormat.fromInputValue(subNames, i))
     case _                           ⇒ Bad(One(InvalidFormatAttributeError("", name, value)))
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match {
     case xs: Seq[_] ⇒ xs.foldLeft[Option[JsArray]](Some(JsArray())) {
       case (Some(arr), x) ⇒ attributeFormat.elasticToJson(Seq(x)).fold[Option[JsArray]](None)(j ⇒ Some(arr :+ j))
@@ -421,6 +513,7 @@ case class MultiAttributeFormat[T](attributeFormat: AttributeFormat[T]) extends 
     }
     case _ ⇒ None
   }
+
   override def swaggerType: JsObject = attributeFormat.swaggerType // TODO Add array
   override def elasticType(attributeName: String): TypedFieldDefinition = attributeFormat.elasticType(attributeName)
 }
@@ -431,15 +524,19 @@ case class OptionalAttributeFormat[T](attributeFormat: AttributeFormat[T]) exten
     case JsNull if subNames.isEmpty ⇒ Good(value)
     case _                          ⇒ attributeFormat.checkJson(subNames, value)
   }
+
   override def inputValueToJson(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] = value match {
     case NullInputValue | JsonInputValue(JsNull) ⇒ Good(JsNull)
     case x                                       ⇒ attributeFormat.inputValueToJson(subNames, x)
   }
+
   override def fromInputValue(subNames: Seq[String], value: InputValue): Option[T] Or Every[AttributeError] = value match {
     case NullInputValue ⇒ Good(None)
     case x              ⇒ attributeFormat.fromInputValue(subNames, x).map(v ⇒ Some(v))
   }
+
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = attributeFormat.elasticToJson(values)
+
   override def swaggerType: JsObject = attributeFormat.swaggerType // TODO Add array
   override def elasticType(attributeName: String): TypedFieldDefinition = attributeFormat.elasticType(attributeName)
 }
@@ -450,13 +547,18 @@ object AttributeFormat {
   val stringFmt = StringAttributeFormat
   val booleanFmt = BooleanAttributeFormat
   val numberFmt = NumberAttributeFormat
+
   def enumFmt[T <: Enumeration](e: T)(implicit tag: ClassTag[T], format: Format[T#Value]): EnumerationAttributeFormat[T] = EnumerationAttributeFormat[T](e)
+
   val uuidFmt = UUIDAttributeFormat
   val hashFmt = HashAttributeFormat
   val binaryFmt = BinaryAttributeFormat
+
   def listEnumFmt(enumerationName: String)(dblists: DBLists): ListEnumeration = ListEnumeration(enumerationName)(dblists)
+
   val attachmentFmt = AttachmentAttributeFormat
   val metricsFmt = MetricsAttributeFormat
+
   def objectFmt(subAttributes: Seq[Attribute[_]]) = ObjectAttributeFormat(subAttributes)
 }
 
@@ -473,6 +575,7 @@ case class Attribute[T](
     defaultValue: Option[() ⇒ T],
     description: String) {
   def defaultValueJson: Option[JsValue] = defaultValue.map(d ⇒ format.jsFormat.writes(d()))
+
   lazy val isMulti: Boolean = format match {
     case _: MultiAttributeFormat[_] ⇒ true
     case _                          ⇒ false
@@ -488,10 +591,12 @@ case class Attribute[T](
     case _                             ⇒ true
   }
   lazy val isUser: Boolean = options.contains(AttributeOption.user)
+
   def elasticMapping: TypedFieldDefinition = format.elasticType(name) match {
     case a: attributes.AttributeIndex if isSensitive ⇒ a index "no"
     case a                                           ⇒ a
   }
+
   def validateForCreation(value: Option[JsValue]): Option[JsValue] Or Every[AttributeError] = {
     value match {
       case Some(JsNull) if !isRequired       ⇒ Good(value)
@@ -503,7 +608,7 @@ case class Attribute[T](
         else
           Bad(One(MissingAttributeError(name)))
       case Some(v) ⇒
-        format.checkJson(Nil, v).transform(g ⇒ Good(Some(g)), x ⇒ Bad(x.map {
+        format.checkJsonForCreation(Nil, v).transform(g ⇒ Good(Some(g)), x ⇒ Bad(x.map {
           case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = name)
           case other                             ⇒ other
         }))
@@ -516,7 +621,7 @@ case class Attribute[T](
       case JsNull | JsArray(Nil) if isRequired ⇒ Bad(One(MissingAttributeError(name)))
       case JsNull | JsArray(Nil)               ⇒ Good(value)
       case v ⇒
-        format.checkJson(subNames, v).badMap(_.map {
+        format.checkJsonForUpdate(subNames, v).badMap(_.map {
           case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = name)
           case other                             ⇒ other
         })
