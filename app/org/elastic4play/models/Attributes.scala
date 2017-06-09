@@ -316,7 +316,8 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
       }
   }
 
-  override def fromInputValue(subNames: Seq[String], value: InputValue): Attachment Or Every[AttributeError] = sys.error("not implemented")
+  override def fromInputValue(subNames: Seq[String], value: InputValue): Attachment Or Every[AttributeError] =
+    Bad(One(InvalidFormatAttributeError("", name, value)))
 
   override def elasticToJson(values: Seq[Any]): Option[JsValue] = values match {
     case Seq(m: util.Map[_, _]) ⇒
@@ -575,6 +576,15 @@ case class Attribute[T](
     defaultValue: Option[() ⇒ T],
     description: String) {
   def defaultValueJson: Option[JsValue] = defaultValue.map(d ⇒ format.jsFormat.writes(d()))
+
+  def toOptional: Attribute[Option[T]] =
+    Attribute[Option[T]](
+      modelName,
+      name,
+      OptionalAttributeFormat(format),
+      options,
+      defaultValue.map(a ⇒ () ⇒ Some(a())),
+      description)
 
   lazy val isMulti: Boolean = format match {
     case _: MultiAttributeFormat[_] ⇒ true
