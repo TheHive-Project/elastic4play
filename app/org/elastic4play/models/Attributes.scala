@@ -365,11 +365,11 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
     value match {
       case obj: JsObject if subNames.isEmpty ⇒
         obj.fields.validatedBy {
-          case (name, v) ⇒
+          case (_name, v) ⇒
             subAttributes
-              .find(_.name == name)
+              .find(_.name == _name)
               .map(_.validateForUpdate(subNames, v))
-              .getOrElse(Bad(One(UnknownAttributeError(name, v))))
+              .getOrElse(Bad(One(UnknownAttributeError(_name, v))))
         }
           .map { _ ⇒ obj }
       case _ ⇒ Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
@@ -519,9 +519,8 @@ case class MultiAttributeFormat[T](attributeFormat: AttributeFormat[T]) extends 
   override def elasticType(attributeName: String): TypedFieldDefinition = attributeFormat.elasticType(attributeName)
 }
 
-case class OptionalAttributeFormat[T](attributeFormat: AttributeFormat[T]) extends AttributeFormat[Option[T]](attributeFormat.name)(optionFormat(attributeFormat.jsFormat)) { //}(Format(Reads.seq(attributeFormat.jsFormat), Writes.seq(attributeFormat.jsFormat))) {
+case class OptionalAttributeFormat[T](attributeFormat: AttributeFormat[T]) extends AttributeFormat[Option[T]]("optional-" + attributeFormat.name)(optionFormat(attributeFormat.jsFormat)) {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = value match {
-    //case _ if !subNames.isEmpty => Bad(One(InvalidFormatAttributeError("", name, JsonInputValue(value))))
     case JsNull if subNames.isEmpty ⇒ Good(value)
     case _                          ⇒ attributeFormat.checkJson(subNames, value)
   }
@@ -576,15 +575,6 @@ case class Attribute[T](
     defaultValue: Option[() ⇒ T],
     description: String) {
   def defaultValueJson: Option[JsValue] = defaultValue.map(d ⇒ format.jsFormat.writes(d()))
-
-  def toOptional: Attribute[Option[T]] =
-    Attribute[Option[T]](
-      modelName,
-      name,
-      OptionalAttributeFormat(format),
-      options,
-      defaultValue.map(a ⇒ () ⇒ Some(a())),
-      description)
 
   lazy val isMulti: Boolean = format match {
     case _: MultiAttributeFormat[_] ⇒ true
