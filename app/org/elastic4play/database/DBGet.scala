@@ -21,23 +21,21 @@ class DBGet @Inject() (
    * Retrieve entities from ElasticSearch
    * @param modelName the name of the model (ie. document type)
    * @param id identifier of the entity to retrieve
-   * @param fields optional field list to retrieve. By default all fields are retrieved. Fields "_routing", "_parent" and "_id" is automatically added.
    * @return the entity
    */
 
-  def apply(modelName: String, id: String, fields: Option[Seq[Attribute[_]]] = None): Future[JsObject] = {
-    val fieldsName = fields.fold(Seq("_source", "_routing", "_parent"))(f ⇒ "_routing" +: "_parent" +: f.map(_.name))
+  def apply(modelName: String, id: String): Future[JsObject] = {
     db
       .execute {
         // Search by id is not possible on child entity without routing information => id query
-        search in db.indexName query { idsQuery(id).types(modelName) } fields (fieldsName: _*)
+        search in db.indexName query { idsQuery(id).types(modelName) } fields ("_source", "_routing", "_parent")
       }
       .map { searchResponse ⇒
         searchResponse
           .hits
           .headOption
           .fold[JsObject](throw NotFoundError(s"$modelName $id not found")) { hit ⇒
-            DBUtils.hit2json(fields, hit)
+            DBUtils.hit2json(hit)
           }
       }
   }

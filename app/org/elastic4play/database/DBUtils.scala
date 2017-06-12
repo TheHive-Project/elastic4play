@@ -27,13 +27,10 @@ object DBUtils {
       .map(_._2) :+ (field sort "_uid" order DESC)
   }
 
-  def hit2json(fields: Option[Seq[Attribute[_]]], hit: RichSearchHit): JsObject = {
+  def hit2json( /*fields: Option[Seq[Attribute[_]]], */ hit: RichSearchHit): JsObject = {
     val fieldsValue = hit.fields
     val id = JsString(hit.id)
-    Option(hit.sourceAsString).filterNot(_ == "").fold(JsObject(Nil))(s ⇒ Json.parse(s).as[JsObject]) ++
-      fields.fold(JsObject(Nil)) { rf ⇒
-        JsObject(rf flatMap { attr ⇒ fieldsValue.get(attr.name).flatMap(f ⇒ attr.format.elasticToJson(f.values)).map(attr.name → _) })
-      } +
+    Option(hit.sourceAsString).filterNot(_ == "").fold(JsObject(Nil))(s ⇒ Json.parse(s).as[JsObject]) +
       ("_type" → JsString(hit.`type`)) +
       ("_routing" → fieldsValue.get("_routing").map(r ⇒ JsString(r.value[String])).getOrElse(id)) +
       ("_parent" → fieldsValue.get("_parent").map(r ⇒ JsString(r.value[String])).getOrElse(JsNull)) +

@@ -108,7 +108,7 @@ class AttachmentSrv(
     for {
       hash ← mainHasher.fromPath(fiv.filepath).map(_.head.toString())
       hashes ← extraHashers.fromPath(fiv.filepath)
-      attachment ← getSrv[AttachmentModel, AttachmentChunk](attachmentModel, hash + "_0", Some(Nil))
+      attachment ← getSrv[AttachmentModel, AttachmentChunk](attachmentModel, hash + "_0")
         .map { _ ⇒ Attachment(hash, hashes, fiv) }
         .fallbackTo { // it it doesn't exist, create it
           FileIO.fromPath(fiv.filepath, chunkSize)
@@ -126,7 +126,7 @@ class AttachmentSrv(
 
   def source(id: String): Source[ByteString, NotUsed] =
     Source.unfoldAsync(0) { chunkNumber ⇒
-      getSrv[AttachmentModel, AttachmentChunk](attachmentModel, s"${id}_$chunkNumber", Some(Seq(attachmentModel.data)))
+      getSrv[AttachmentModel, AttachmentChunk](attachmentModel, s"${id}_$chunkNumber")
         .map { entity ⇒ Some((chunkNumber + 1, ByteString(entity.data()))) }
         .recover { case _ ⇒ None }
     }
