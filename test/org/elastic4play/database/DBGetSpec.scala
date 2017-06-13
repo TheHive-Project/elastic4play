@@ -1,21 +1,16 @@
 package org.elastic4play.database
 
-import javax.inject.{ Inject, Singleton }
-
-import scala.concurrent.Future
-
-import play.api.libs.iteratee.Execution.trampoline
-import play.api.libs.json.{ JsNull, Json }
-import play.api.libs.json.Json.toJsFieldJsValueWrapper
-import play.api.test.PlaySpecification
-
-import org.elastic4play.Timed
+import com.sksamuel.elastic4s.{ RichSearchHit, RichSearchResponse, SearchDefinition }
 import org.elastic4play.utils.RichFuture
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
 import org.specs2.runner.JUnitRunner
+import play.api.libs.iteratee.Execution.trampoline
+import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import play.api.libs.json.{ JsNull, Json }
+import play.api.test.PlaySpecification
 
-import com.sksamuel.elastic4s.{ RichSearchHit, RichSearchResponse, SearchDefinition }
+import scala.concurrent.Future
 
 @RunWith(classOf[JUnitRunner])
 class DBGetSpec extends PlaySpecification with Mockito {
@@ -27,7 +22,6 @@ class DBGetSpec extends PlaySpecification with Mockito {
       db.indexName returns "testIndex"
       val modelName = "user"
       val entityId = "me"
-      val fieldsName = Seq("_source", "_routing", "_parent")
 
       val searchDefinition = capture[SearchDefinition]
       val response = mock[RichSearchResponse]
@@ -38,7 +32,7 @@ class DBGetSpec extends PlaySpecification with Mockito {
       searchHit.fields returns Map.empty
 
       db.execute(searchDefinition.capture) returns Future.successful(response)
-      dbget(modelName, entityId, None).await must_== Json.obj(
+      dbget(modelName, entityId).await must_== Json.obj(
         "_type" → modelName,
         "_routing" → entityId,
         "_parent" → JsNull,
@@ -47,7 +41,7 @@ class DBGetSpec extends PlaySpecification with Mockito {
       Json.parse(searchDefinition.value._builder.toString) must_== Json.obj(
         "query" → Json.obj(
           "ids" → Json.obj(
-            "_type" → "user",
+            "type" → "user",
             "values" → Seq("me"))),
         "fields" → Seq("_source", "_routing", "_parent"))
     }

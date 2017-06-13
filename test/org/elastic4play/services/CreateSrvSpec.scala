@@ -2,23 +2,17 @@ package org.elastic4play.services
 
 import java.util.{ Date, UUID }
 
-import scala.concurrent.Future
-import org.specs2.runner.JUnitRunner
+import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, MissingAttributeError, UnknownAttributeError }
+import org.elastic4play.controllers.JsonInputValue
+import org.elastic4play.database.DBCreate
+import org.elastic4play.models.{ Attribute, EntityDef, ModelDef, AttributeFormat ⇒ F }
+import org.elastic4play.utils.RichFuture
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
-import org.mockito.Matchers._
-import org.scalactic._
-import play.api.test.PlaySpecification
-import play.api.libs.json._
+import org.specs2.runner.JUnitRunner
 import play.api.libs.iteratee.Execution.trampoline
-import org.elastic4play.controllers.{ Fields, JsonInputValue }
-import org.elastic4play.database.DBCreate
-import org.elastic4play.models.{ Attribute, EntityDef, ModelDef, AttributeFormat => F }
-import org.elastic4play.utils.RichFuture
-import org.elastic4play.AttributeCheckingError
-import org.elastic4play.InvalidFormatAttributeError
-import org.elastic4play.UnknownAttributeError
-import org.elastic4play.MissingAttributeError
+import play.api.libs.json._
+import play.api.test.PlaySpecification
 
 @RunWith(classOf[JUnitRunner])
 class CreateSrvSpec extends PlaySpecification with Mockito {
@@ -71,7 +65,7 @@ class CreateSrvSpec extends PlaySpecification with Mockito {
         "metricAttribute.metric3" → "aze")
 
       createSrv.checkAttributes(attrs, model).await must throwA[AttributeCheckingError].like {
-        case AttributeCheckingError(name, errors) ⇒
+        case AttributeCheckingError(_, errors) ⇒
           errors must contain(exactly[Throwable](
             InvalidFormatAttributeError("textAttribute", model.textAttribute.format.name, JsonInputValue(JsBoolean(true))),
             InvalidFormatAttributeError("dateAttribute", model.dateAttribute.format.name, JsonInputValue(JsString("2016-01-28"))),

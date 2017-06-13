@@ -2,7 +2,7 @@ package common
 
 import scala.util.Random
 
-import play.api.libs.json.{ Json, JsObject, JsNumber, JsBoolean, JsString }
+import play.api.libs.json.{ JsObject, JsNumber, JsBoolean, JsString }
 
 object Fabricator {
   def string(prefix: String = "", size: Int = 10) = prefix + Random.alphanumeric.take(size).mkString

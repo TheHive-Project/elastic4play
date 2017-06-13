@@ -2,20 +2,17 @@ package org.elastic4play.database
 
 import java.util.{ Map ⇒ JMap }
 
-import javax.inject.{ Inject, Singleton }
-
-import scala.collection.JavaConversions.mapAsScalaMap
-
-import play.api.libs.iteratee.Execution.trampoline
-import play.api.libs.json.{ JsArray, JsNull, Json }
-import play.api.libs.json.Json.toJsFieldJsValueWrapper
-import play.api.test.PlaySpecification
-
 import org.elastic4play.models.BaseEntity
 import org.junit.runner.RunWith
 import org.specs2.matcher.ValueCheck.typedValueCheck
 import org.specs2.mock.Mockito
 import org.specs2.runner.JUnitRunner
+import play.api.libs.iteratee.Execution.trampoline
+import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import play.api.libs.json.{ JsArray, JsNull, Json }
+import play.api.test.PlaySpecification
+
+import scala.collection.JavaConversions.mapAsScalaMap
 
 @RunWith(classOf[JUnitRunner])
 class DBModifySpec extends PlaySpecification with Mockito {
