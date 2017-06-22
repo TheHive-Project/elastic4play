@@ -9,7 +9,7 @@ import org.elastic4play.JsonFormat.dateFormat
 import org.elastic4play._
 import play.api.Logger
 import play.api.libs.json._
-import org.elastic4play.controllers.JsonFormat.{ fileInputValueFormat, inputValueFormat }
+import org.elastic4play.controllers.JsonFormat.{ fileInputValueFormat, inputValueFormat, attachmentInputValueReads }
 import org.elastic4play.controllers._
 import org.elastic4play.models.JsonFormat.{ binaryFormats, multiFormat, optionFormat }
 import org.elastic4play.services.JsonFormat.attachmentFormat
@@ -289,12 +289,18 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
       value match {
         case fiv: FileInputValue if fiv.name.intersect(forbiddenChar).isEmpty ⇒ Good(Json.toJson(fiv)(fileInputValueFormat))
         case aiv: AttachmentInputValue ⇒ Good(Json.toJson(aiv.toAttachment)(jsFormat))
+        case JsonInputValue(json) if attachmentInputValueReads.reads(json).isSuccess ⇒ Good(json)
         case _ ⇒ formatError(value)
       }
   }
 
-  override def fromInputValue(subNames: Seq[String], value: InputValue): Attachment Or Every[AttributeError] =
-    formatError(value)
+  override def fromInputValue(subNames: Seq[String], value: InputValue): Attachment Or Every[AttributeError] = {
+    value match {
+      case JsonInputValue(json) if subNames.isEmpty ⇒ attachmentInputValueReads.reads(json).map(aiv ⇒ Good(aiv.toAttachment)).getOrElse(formatError(value))
+      case _                                        ⇒ formatError(value)
+    }
+
+  }
 
   override def elasticType(attributeName: String): NestedFieldDefinition = field(attributeName, NestedType) as (
     field("name", StringType) index "not_analyzed",
@@ -305,12 +311,12 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
 }
 
 case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends AttributeFormat[JsObject]("nested") {
-  lazy val log = Logger(getClass)
+  private[ObjectAttributeFormat] lazy val logger = Logger(getClass)
 
   override def checkJson(subNames: Seq[String], value: JsValue): JsObject Or Every[AttributeError] = checkJsonForCreation(subNames, value)
 
   override def checkJsonForCreation(subNames: Seq[String], value: JsValue): JsObject Or Every[AttributeError] = {
-    value match {
+    val result = value match {
       case obj: JsObject if subNames.isEmpty ⇒
         subAttributes.validatedBy { attr ⇒
           attr.validateForCreation((value \ attr.name).asOpt[JsValue])
@@ -318,6 +324,8 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
           .map { _ ⇒ obj }
       case _ ⇒ formatError(JsonInputValue(value))
     }
+    logger.debug(s"checkJsonForCreation($subNames, $value) => $result")
+    result
   }
 
   override def checkJsonForUpdate(subNames: Seq[String], value: JsValue): JsObject Or Every[AttributeError] = {
@@ -336,7 +344,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
   }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): JsObject Or Every[AttributeError] = {
-    subNames
+    val result = subNames
       .headOption
       .map { subName ⇒
         subAttributes
@@ -366,6 +374,8 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
           case _ ⇒ formatError(value)
         }
       }
+    logger.debug(s"fromInputValue($subNames, $value) => $result")
+    result
   }
 
   override def elasticType(attributeName: String): NestedFieldDefinition = field(attributeName, NestedType) as (subAttributes.map(_.elasticMapping): _*)
@@ -541,6 +551,8 @@ case class Attribute[T](
     options: Seq[AttributeOption.Type],
     defaultValue: Option[() ⇒ T],
     description: String) {
+  private[Attribute] lazy val logger = Logger(getClass)
+
   def defaultValueJson: Option[JsValue] = defaultValue.map(d ⇒ format.jsFormat.writes(d()))
 
   lazy val isMulti: Boolean = format match {
@@ -565,7 +577,7 @@ case class Attribute[T](
   }
 
   def validateForCreation(value: Option[JsValue]): Option[JsValue] Or Every[AttributeError] = {
-    value match {
+    val result = value match {
       case Some(JsNull) if !isRequired       ⇒ Good(value)
       case Some(JsArray(Nil)) if !isRequired ⇒ Good(value)
       case None if !isRequired               ⇒ Good(value)
@@ -580,10 +592,12 @@ case class Attribute[T](
           case other                             ⇒ other
         }))
     }
+    logger.debug(s"$modelName.$name(${format.name}).validateForCreation($value) => $result")
+    result
   }
 
   def validateForUpdate(subNames: Seq[String], value: JsValue): JsValue Or Every[AttributeError] = {
-    value match {
+    val result = value match {
       case _ if isReadonly                     ⇒ Bad(One(UpdateReadOnlyAttributeError(name)))
       case JsNull | JsArray(Nil) if isRequired ⇒ Bad(One(MissingAttributeError(name)))
       case JsNull | JsArray(Nil)               ⇒ Good(value)
@@ -593,5 +607,7 @@ case class Attribute[T](
           case other                             ⇒ other
         })
     }
+    logger.debug(s"$modelName.$name(${format.name}).validateForUpdate($value) => $result")
+    result
   }
 }
