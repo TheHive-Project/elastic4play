@@ -2,14 +2,12 @@ package org.elastic4play.controllers
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.concurrent.ExecutionContext
-import scala.reflect.runtime.universe
+import org.elastic4play.{ MissingAttributeError, Timed }
+import org.elastic4play.services.{ DBLists, Role }
 import play.api.libs.json.JsValue
 import play.api.mvc.{ Action, AnyContent, Controller }
-import org.elastic4play.Timed
-import org.elastic4play.services.{ DBLists, Role }
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 
 @Singleton
 class DBListCtrl @Inject() (
@@ -48,5 +46,18 @@ class DBListCtrl @Inject() (
     dblists.deleteItem(itemId).map { _ ⇒
       NoContent
     }
+  }
+
+  @Timed("controllers.DBListCtrl.udpateItem")
+  def updateItem(itemId: String) = authenticated(Role.admin).async(fieldsBodyParser) { implicit request ⇒
+    request.body.getValue("value")
+      .map { value ⇒
+        for {
+          item ← dblists.getItem(itemId)
+          _ ← dblists.deleteItem(item)
+          newItem ← dblists(item.dblist).addItem(value)
+        } yield renderer.toOutput(OK, newItem.id)
+      }
+      .getOrElse(Future.failed(MissingAttributeError("value")))
   }
 }

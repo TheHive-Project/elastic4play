@@ -2,24 +2,21 @@ package org.elastic4play.services
 
 import javax.inject.{ Inject, Provider, Singleton }
 
-import scala.annotation.implicitNotFound
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.concurrent.duration.DurationInt
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{ Sink, Source }
-import play.api.Configuration
-import play.api.cache.CacheApi
-import play.api.libs.json.{ JsObject, JsString, JsValue }
-import play.api.libs.json.{ Reads, Writes }
-import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json.Json
-import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import org.elastic4play.database.DBCreate
 import org.elastic4play.models.{ Attribute, EntityDef, ModelDef, AttributeFormat ⇒ F }
 import org.elastic4play.utils.{ Hasher, RichFuture }
+import play.api.Configuration
+import play.api.cache.CacheApi
+import play.api.libs.json.JsValue.jsValueToJsLookup
+import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import play.api.libs.json._
 
 import scala.collection.immutable
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{ ExecutionContext, Future }
 
 @Singleton
 class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName) { model ⇒
@@ -69,12 +66,17 @@ class DBLists @Inject() (
   }
 
   def deleteItem(itemId: String)(implicit authContext: AuthContext): Future[Unit] = {
+    getItem(itemId).flatMap(deleteItem)
+  }
+
+  def deleteItem(item: DBListItemEntity)(implicit authContext: AuthContext): Future[Unit] = {
     for {
-      item ← getSrv[DBListModel, DBListItemEntity](dblistModel, itemId)
       _ ← deleteSrv.get.realDelete[DBListModel, DBListItemEntity](dblistModel, item)
       _ = cache.remove(dblistModel.name + "_" + item.dblist)
     } yield ()
   }
+
+  def getItem(itemId: String): Future[DBListItemEntity] = getSrv[DBListModel, DBListItemEntity](dblistModel, itemId)
 
   def apply(name: String): DBList = new DBList {
     def cachedItems: immutable.Seq[DBListItem] = cache.getOrElse(dblistModel.name + "_" + name, 10.seconds) {
