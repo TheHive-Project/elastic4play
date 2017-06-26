@@ -4,7 +4,7 @@ import javax.inject.{ Inject, Singleton }
 
 import org.elastic4play.{ MissingAttributeError, Timed }
 import org.elastic4play.services.{ DBLists, Role }
-import play.api.libs.json.JsValue
+import play.api.libs.json.{ JsBoolean, JsValue }
 import play.api.mvc.{ Action, AnyContent, Controller }
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -59,5 +59,12 @@ class DBListCtrl @Inject() (
         } yield renderer.toOutput(OK, newItem.id)
       }
       .getOrElse(Future.failed(MissingAttributeError("value")))
+  }
+
+  @Timed("controllers.DBListCtrl.itemExists")
+  def itemExists(listName: String): Action[Fields] = authenticated(Role.read).async(fieldsBodyParser) { implicit request ⇒
+    val itemKey = request.body.getString("key").getOrElse(throw MissingAttributeError("Parameter key is missing"))
+    val itemValue = request.body.getValue("value").getOrElse(throw MissingAttributeError("Parameter value is missing"))
+    dblists(listName).exists(itemKey, itemValue).map(r ⇒ Ok(JsBoolean(r)))
   }
 }

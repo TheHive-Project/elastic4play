@@ -19,32 +19,43 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ ExecutionContext, Future }
 
 @Singleton
-class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName) { model ⇒
+class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName) {
+  model ⇒
   @Inject def this(configuration: Configuration) = this(configuration.getString("dblist.name").get)
 
   val value: Attribute[String] = attribute("value", F.stringFmt, "Content of the dblist item")
   val dblist: Attribute[String] = attribute("dblist", F.stringFmt, "Name of the dblist")
+
   override def apply(attributes: JsObject) = new DBListItemEntity(this, attributes)
 
 }
 
 class DBListItemEntity(model: DBListModel, attributes: JsObject) extends EntityDef[DBListModel, DBListItemEntity](model, attributes) with DBListItem {
   def mapTo[T](implicit reads: Reads[T]): T = Json.parse((attributes \ "value").as[String]).as[T]
+
   def dblist: String = (attributes \ "dblist").as[String]
+
   override def toJson: JsObject = super.toJson - "value" + ("value" → mapTo[JsValue])
 }
 
 trait DBListItem {
   def id: String
+
   def dblist: String
+
   def mapTo[A](implicit reads: Reads[A]): A
 }
 
 trait DBList {
   def cachedItems: Seq[DBListItem]
+
   def getItems(): (Source[DBListItem, NotUsed], Future[Long])
+
   def getItems[A](implicit reads: Reads[A]): (Source[(String, A), NotUsed], Future[Long])
+
   def addItem[A](item: A)(implicit writes: Writes[A]): Future[DBListItem]
+
+  def exists(key: String, value: JsValue): Future[Boolean]
 }
 
 @Singleton
@@ -103,6 +114,15 @@ class DBLists @Inject() (
           cache.remove(dblistModel.name + "_" + name)
           dblistModel(newItem)
         }
+    }
+
+    def exists(key: String, value: JsValue): Future[Boolean] = {
+      getItems()._1
+        .filter { item ⇒
+          (item.mapTo[JsValue] \ key).asOpt[JsValue].contains(value)
+        }
+        .runWith(Sink.headOption)
+        .map(_.isDefined)
     }
   }
 
