@@ -119,7 +119,11 @@ class DBLists @Inject() (
     def exists(key: String, value: JsValue): Future[Boolean] = {
       getItems()._1
         .filter { item ⇒
-          (item.mapTo[JsValue] \ key).asOpt[JsValue].contains(value)
+          item
+            .mapTo[JsValue]
+            .asOpt[JsObject]
+            .flatMap { obj ⇒ (obj \ key).asOpt[JsValue] }
+            .contains(value)
         }
         .runWith(Sink.headOption)
         .map(_.isDefined)
