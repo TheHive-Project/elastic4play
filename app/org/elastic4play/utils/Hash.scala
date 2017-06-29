@@ -50,10 +50,7 @@ class MultiHash(algorithms: String)(implicit mat: Materializer, ec: ExecutionCon
   }
   def addFile[A](source: Source[ByteString, A]): Future[A] = {
     md.update(0.asInstanceOf[Byte])
-    source.toMat(Sink.foreach { bs ⇒
-      logger.info(s"Add to hash: ${bs.map(b ⇒ "%02x".format(b)).mkString}")
-      md.update(bs.toByteBuffer)
-    })((a, done) ⇒ done.map(_ ⇒ a))
+    source.toMat(Sink.foreach { bs ⇒ md.update(bs.toByteBuffer) })((a, done) ⇒ done.map(_ ⇒ a))
       .run()
   }
   def digest: Hash = Hash(md.digest())

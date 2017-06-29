@@ -1,10 +1,10 @@
 package org.elastic4play.services
 
-import javax.inject.{Inject, Singleton}
+import javax.inject.{ Inject, Singleton }
 
 import akka.NotUsed
 import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.scaladsl.{ Sink, Source }
 import com.sksamuel.elastic4s.ElasticDsl.search
 import com.sksamuel.elastic4s.IndexesAndTypes.apply
 import org.elastic4play.InternalError
@@ -14,8 +14,8 @@ import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json._
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.{ Failure, Success }
 
 case class MigrationEvent(modelName: String, current: Long, total: Long) extends EventMessage
 case object EndOfMigrationEvent extends EventMessage
