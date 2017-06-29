@@ -1,21 +1,21 @@
 package org.elastic4play.services
 
-import javax.inject.{ Inject, Singleton }
+import javax.inject.{Inject, Singleton}
 
 import akka.NotUsed
 import akka.stream.Materializer
-import akka.stream.scaladsl.{ Sink, Source }
+import akka.stream.scaladsl.{Sink, Source}
 import com.sksamuel.elastic4s.ElasticDsl.search
 import com.sksamuel.elastic4s.IndexesAndTypes.apply
 import org.elastic4play.InternalError
 import org.elastic4play.database._
 import play.api.Logger
 import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json._
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import play.api.libs.json._
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success }
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 case class MigrationEvent(modelName: String, current: Long, total: Long) extends EventMessage
 case object EndOfMigrationEvent extends EventMessage
@@ -118,7 +118,7 @@ class MigrationSrv @Inject() (
         eventSrv.publish(MigrationEvent(modelName, current.toLong, total))
         entity
       }
-      .runWith(dbcreate.sink(modelName))
+      .runWith(dbcreate.sink())
     r.onComplete { x ⇒
       println(s"migrateEntity($modelName) has finished : $x")
     }
@@ -164,6 +164,7 @@ class MigrationSrv @Inject() (
   }
 
   def isMigrating: Boolean = !migrationProcess.isCompleted
+  def isReady: Boolean = dbindex.indexStatus && !migrationProcess.isCompleted
 }
 /* Operation applied to the previous state of the database to get next version */
 trait Operation extends ((String ⇒ Source[JsObject, NotUsed]) ⇒ (String ⇒ Source[JsObject, NotUsed]))
