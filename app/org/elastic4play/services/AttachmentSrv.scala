@@ -51,7 +51,9 @@ class AttachmentSrv(
     implicit val ec: ExecutionContext,
     implicit val mat: Materializer) {
 
-  @Inject() def this(configuration: Configuration, dbCreate: DBCreate,
+  @Inject() def this(
+    configuration: Configuration,
+    dbCreate: DBCreate,
     getSrv: GetSrv,
     attachmentModel: AttachmentModel,
     ec: ExecutionContext,
@@ -120,7 +122,7 @@ class AttachmentSrv(
             }
             .runWith(Sink.ignore)
         }
-        .map(_ ⇒ Attachment(filename, hashes, data.size, contentType, hash))
+        .map(_ ⇒ Attachment(filename, hashes, data.length, contentType, hash))
     } yield attachment
   }
 
