@@ -2,28 +2,23 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success, Try }
-
 import akka.stream.scaladsl.Sink
-
-import play.api.Logger
-import play.api.libs.json.{ JsNull, JsObject, JsString, JsValue }
-import play.api.libs.json.JsValue.jsValueToJsLookup
-
-import org.elasticsearch.action.index.IndexResponse
-import org.elasticsearch.transport.RemoteTransportException
-
 import com.sksamuel.elastic4s.ElasticDsl.{ bulk, index }
 import com.sksamuel.elastic4s.IndexAndTypes.apply
 import com.sksamuel.elastic4s.IndexDefinition
 import com.sksamuel.elastic4s.source.JsonDocumentSource
 import com.sksamuel.elastic4s.streams.RequestBuilder
-
-import org.elastic4play.{ CreateError, Timed }
 import org.elastic4play.models.BaseEntity
+import org.elastic4play.{ ConflictError, CreateError, InternalError }
+import org.elasticsearch.action.index.IndexResponse
 import org.elasticsearch.index.engine.DocumentAlreadyExistsException
-import org.elastic4play.ConflictError
+import org.elasticsearch.transport.RemoteTransportException
+import play.api.Logger
+import play.api.libs.json.JsValue.jsValueToJsLookup
+import play.api.libs.json.{ JsNull, JsObject, JsString, JsValue }
+
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.{ Failure, Success, Try }
 
 /**
  * Service lass responsible for entity creation
@@ -171,14 +166,15 @@ class DBCreate @Inject() (
    * Class used to build index definition based on model name and attributes
    * This class is used by sink (ElasticSearch reactive stream)
    */
-  private class AttributeRequestBuilder(modelName: String) extends RequestBuilder[JsObject] {
+  private class AttributeRequestBuilder() extends RequestBuilder[JsObject] {
     override def request(attributes: JsObject): IndexDefinition = {
       val docSource = JsonDocumentSource(JsObject(attributes.fields.filterNot(_._1.startsWith("_"))).toString)
       val id = (attributes \ "_id").asOpt[String]
       val parent = (attributes \ "_parent").asOpt[String]
       val routing = (attributes \ "_routing").asOpt[String] orElse parent orElse id
+      val modelName = (attributes \ "_type").asOpt[String].getOrElse(throw InternalError("The entity doesn't contain _type attribute"))
       addId(id).andThen(addParent(parent)).andThen(addRouting(routing)) {
-        index into db.indexName → modelName doc docSource update true
+        index.into(db.indexName → modelName).doc(docSource).update(true)
       }
     }
   }
@@ -186,5 +182,5 @@ class DBCreate @Inject() (
   /**
    * build a akka stream sink that create entities
    */
-  def sink(modelName: String): Sink[JsObject, Future[Unit]] = db.sink(new AttributeRequestBuilder(modelName))
+  def sink(): Sink[JsObject, Future[Unit]] = db.sink(new AttributeRequestBuilder())
 }

@@ -24,6 +24,8 @@ import play.api.http.Writeable
  */
 class ErrorHandler extends HttpErrorHandler {
 
+  private[ErrorHandler] lazy val logger = Logger(getClass)
+
   def onClientError(request: RequestHeader, statusCode: Int, message: String): Future[Result] = Future.successful {
     Results.Status(statusCode)(s"A client error occurred on ${request.method} ${request.uri} : $message")
   }
@@ -62,7 +64,7 @@ class ErrorHandler extends HttpErrorHandler {
 
   def onServerError(request: RequestHeader, exception: Throwable): Future[Result] = {
     val (status, body) = toErrorResult(exception).getOrElse(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → exception.getClass.getName, "message" → exception.getMessage))
-    Logger.info(s"${request.method} ${request.uri} returned $status", exception)
+    logger.info(s"${request.method} ${request.uri} returned $status", exception)
     Future.successful(toResult(status, body))
   }
 }

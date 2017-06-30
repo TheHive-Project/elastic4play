@@ -50,7 +50,7 @@ trait FieldSelectable { self: Agg ⇒
           throw BadRequestError(s"Field $field is unknown in ${model.name}"))
         Seq(aggFunction.script(script).asInstanceOf[AbstractAggregationDefinition])
       case array ⇒
-        val attribute = model.attributes.find(_.name == array(0)).getOrElse {
+        if (!model.attributes.exists(_.name == array(0))) {
           throw BadRequestError(s"Field $field is unknown in ${model.name}")
         }
         // TODO check attribute type
@@ -113,8 +113,7 @@ class SelectTop(size: Int, sortBy: Seq[String]) extends Agg {
   def apply(model: BaseModelDef) = Seq(aggregation topHits name size size sort (DBUtils.sortDefinition(sortBy): _*))
   def processResult(model: BaseModelDef, aggregations: Aggregations): JsObject = {
     val top = aggregations.get[TopHits](name)
-    // "top" -> JsArray(top.getHits.getHits.map(h => FindSrv.hit2json(RichSearchHit(h))))
-    JsObject(Seq("top" → JsArray(top.getHits.getHits.map(h ⇒ DBUtils.hit2json(None, RichSearchHit(h)))))) // FIXME migration for ElasticSearch 2.x
+    JsObject(Seq("top" → JsArray(top.getHits.getHits.map(h ⇒ DBUtils.hit2json(RichSearchHit(h))))))
   }
 }
 

@@ -1,16 +1,35 @@
 # Change Log
 
-## [1.1.5](https://github.com/CERT-BDF/elastic4play/tree/1.1.4) (2017-05-11)
+## [1.2.0](https://github.com/CERT-BDF/elastic4play/tree/1.2.0) (2017-06-30)
 
+[Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.1.5...1.2.0)
+
+**Implemented enhancements:**
+
+- Add ability to create different document types in stream sink [\#21](https://github.com/CERT-BDF/elastic4play/issues/21)
+- Add an API to check if a dblist item exists [\#20](https://github.com/CERT-BDF/elastic4play/issues/20)
+- Add method to update a dblist [\#19](https://github.com/CERT-BDF/elastic4play/issues/19)
+- Save attachment from data in memory [\#18](https://github.com/CERT-BDF/elastic4play/issues/18)
+- Support of attachment in subattribute [\#17](https://github.com/CERT-BDF/elastic4play/issues/17)
+- Add support of custom fields attribute [\#16](https://github.com/CERT-BDF/elastic4play/issues/16)
+
+**Fixed bugs:**
+
+- Object attributes are not checked for mandatory subattributes [\#15](https://github.com/CERT-BDF/elastic4play/issues/15)
+
+## [1.1.5](https://github.com/CERT-BDF/elastic4play/tree/1.1.5) (2017-05-11)
 [Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.1.4...1.1.5)
 
 **Implemented enhancements:**
 
 - Make index creation configurable [\#9](https://github.com/CERT-BDF/elastic4play/issues/9)
 
+**Fixed bugs:**
+
+- Offset is not taken into account if search uses scroll [\#12](https://github.com/CERT-BDF/elastic4play/issues/12)
+
 **Closed issues:**
 
-- Offset is not taken into account if search uses scroll bug [\#12](https://github.com/CERT-BDF/elastic4play/issues/12)
 - Scala code cleanup [\#14](https://github.com/CERT-BDF/elastic4play/issues/14)
 
 ## [1.1.4](https://github.com/CERT-BDF/elastic4play/tree/1.1.4) (2017-04-18)
@@ -19,10 +38,6 @@
 **Implemented enhancements:**
 
 - Update playframework to 2.5.14 [\#13](https://github.com/CERT-BDF/elastic4play/issues/13)
-
-**Fixed bugs:**
-
-- Offset is not taken into account if search uses scroll [\#12](https://github.com/CERT-BDF/elastic4play/issues/12)
 
 ## [1.1.3](https://github.com/CERT-BDF/elastic4play/tree/1.1.3) (2017-03-07)
 [Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.1.2...1.1.3)

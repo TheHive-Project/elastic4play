@@ -51,7 +51,9 @@ class AttachmentSrv(
     implicit val ec: ExecutionContext,
     implicit val mat: Materializer) {
 
-  @Inject() def this(configuration: Configuration, dbCreate: DBCreate,
+  @Inject() def this(
+    configuration: Configuration,
+    dbCreate: DBCreate,
     getSrv: GetSrv,
     attachmentModel: AttachmentModel,
     ec: ExecutionContext,
@@ -104,12 +106,31 @@ class AttachmentSrv(
     }
   }
 
+  def save(filename: String, contentType: String, data: Array[Byte]): Future[Attachment] = {
+    val hash = mainHasher.fromByteArray(data).head.toString()
+    val hashes = extraHashers.fromByteArray(data)
+
+    for {
+      attachment ← getSrv[AttachmentModel, AttachmentChunk](attachmentModel, hash + "_0")
+        .fallbackTo { // it it doesn't exist, create it
+          Source.fromIterator(() ⇒ data.grouped(chunkSize))
+            .zip(Source.unfold(0)(i ⇒ Some((i + 1) → i)))
+            .mapAsync(5) {
+              case (buffer, index) ⇒
+                val data = java.util.Base64.getEncoder.encodeToString(buffer)
+                dbCreate(attachmentModel.name, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
+            }
+            .runWith(Sink.ignore)
+        }
+        .map(_ ⇒ Attachment(filename, hashes, data.length, contentType, hash))
+    } yield attachment
+  }
+
   def save(fiv: FileInputValue): Future[Attachment] = {
     for {
       hash ← mainHasher.fromPath(fiv.filepath).map(_.head.toString())
       hashes ← extraHashers.fromPath(fiv.filepath)
-      attachment ← getSrv[AttachmentModel, AttachmentChunk](attachmentModel, hash + "_0", Some(Nil))
-        .map { _ ⇒ Attachment(hash, hashes, fiv) }
+      attachment ← getSrv[AttachmentModel, AttachmentChunk](attachmentModel, hash + "_0")
         .fallbackTo { // it it doesn't exist, create it
           FileIO.fromPath(fiv.filepath, chunkSize)
             .zip(Source.fromIterator { () ⇒ Iterator.iterate(0)(_ + 1) })
@@ -119,14 +140,14 @@ class AttachmentSrv(
                 dbCreate(attachmentModel.name, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
             }
             .runWith(Sink.ignore)
-            .map { _ ⇒ Attachment(hash, hashes, fiv) }
         }
+        .map { _ ⇒ Attachment(hash, hashes, fiv) }
     } yield attachment
   }
 
   def source(id: String): Source[ByteString, NotUsed] =
     Source.unfoldAsync(0) { chunkNumber ⇒
-      getSrv[AttachmentModel, AttachmentChunk](attachmentModel, s"${id}_$chunkNumber", Some(Seq(attachmentModel.data)))
+      getSrv[AttachmentModel, AttachmentChunk](attachmentModel, s"${id}_$chunkNumber")
         .map { entity ⇒ Some((chunkNumber + 1, ByteString(entity.data()))) }
         .recover { case _ ⇒ None }
     }

@@ -1,19 +1,19 @@
 package org.elastic4play.database
 
-import scala.concurrent.Future
-import org.specs2.runner.JUnitRunner
+import com.sksamuel.elastic4s.{ IndexDefinition, IndexResult }
+import common.{ Fabricator ⇒ F }
+import org.elastic4play.models.BaseEntity
+import org.elastic4play.utils._
+import org.elasticsearch.action.index.IndexRequest
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
-import play.api.libs.json.{ JsObject, JsString, Json }
-import play.api.libs.iteratee.Execution.trampoline
-import play.api.test.PlaySpecification
-import org.elasticsearch.action.bulk.BulkItemResponse
-import org.elasticsearch.action.index.{ IndexRequest, IndexResponse }
-import com.sksamuel.elastic4s.{ BulkDefinition, BulkItemResult, BulkResult, IndexDefinition, IndexResult }
-import org.elastic4play.models.BaseEntity
-import common.{ Fabricator => F }
-import org.elastic4play.utils._
+import org.specs2.runner.JUnitRunner
 import play.api.libs.iteratee.Execution
+import play.api.libs.iteratee.Execution.trampoline
+import play.api.libs.json.{ JsObject, JsString, Json }
+import play.api.test.PlaySpecification
+
+import scala.concurrent.Future
 
 @RunWith(classOf[JUnitRunner])
 class DBCreateSpec extends PlaySpecification with Mockito {

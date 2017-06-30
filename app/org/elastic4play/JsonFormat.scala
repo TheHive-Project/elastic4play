@@ -13,10 +13,26 @@ object JsonFormat {
   private val dateWrites: Writes[Date] = Writes[Date](d ⇒ JsNumber(d.getTime))
   implicit val dateFormat: Format[Date] = Format(dateReads, dateWrites)
 
-  private val invalidFormatAttributeErrorWrites = Json.writes[InvalidFormatAttributeError]
-  private val unknownAttributeErrorWrites = Json.writes[UnknownAttributeError]
-  private val updateReadOnlyAttributeErrorWrites = Json.writes[UpdateReadOnlyAttributeError]
-  private val missingAttributeErrorWrites = Json.writes[MissingAttributeError]
+  private val invalidFormatAttributeErrorWrites = Writes[InvalidFormatAttributeError] { ifae ⇒
+    Json.writes[InvalidFormatAttributeError].writes(ifae) +
+      ("type" → JsString("InvalidFormatAttributeError")) +
+      ("message" → JsString(ifae.toString))
+  }
+  private val unknownAttributeErrorWrites = Writes[UnknownAttributeError] { uae ⇒
+    Json.writes[UnknownAttributeError].writes(uae) +
+      ("type" → JsString("UnknownAttributeError")) +
+      ("message" → JsString(uae.toString))
+  }
+  private val updateReadOnlyAttributeErrorWrites = Writes[UpdateReadOnlyAttributeError] { uroae ⇒
+    Json.writes[UpdateReadOnlyAttributeError].writes(uroae) +
+      ("type" → JsString("UpdateReadOnlyAttributeError")) +
+      ("message" → JsString(uroae.toString))
+  }
+  private val missingAttributeErrorWrites = Writes[MissingAttributeError] { mae ⇒
+    Json.writes[MissingAttributeError].writes(mae) +
+      ("type" → JsString("MissingAttributeError")) +
+      ("message" → JsString(mae.toString))
+  }
 
   implicit val attributeCheckingExceptionWrites: OWrites[AttributeCheckingError] = OWrites[AttributeCheckingError] { ace ⇒
     Json.obj(

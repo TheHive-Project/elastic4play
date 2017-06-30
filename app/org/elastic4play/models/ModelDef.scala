@@ -2,14 +2,12 @@ package org.elastic4play.models
 
 import java.util.Date
 
+import org.elastic4play.InternalError
+import play.api.libs.json.JsValue.jsValueToJsLookup
+import play.api.libs.json.{ JsObject, JsString, Json }
+
 import scala.concurrent.Future
 import scala.language.higherKinds
-
-import play.api.libs.json.{ JsObject, JsString }
-import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json.Json
-
-import org.elastic4play.InternalError
 
 trait AttributeDef {
   type A[B]
@@ -26,8 +24,6 @@ trait AttributeDef {
     multiAttribute(name, format, description, None, options: _*)
 
   def optionalAttribute[T](name: String, format: AttributeFormat[T], description: String, defaultValue: Option[() ⇒ Option[T]], options: AttributeOption.Type*): A[Option[T]]
-  //  def optionalAttribute[T](name: String, format: AttributeFormat[T], description: String, defaultValue: Option[T], options: AttributeOption.Type*): A[Option[T]] =
-  //    optionalAttribute(name, format, description, Some(() => defaultValue), options: _*)
   def optionalAttribute[T](name: String, format: AttributeFormat[T], description: String, options: AttributeOption.Type*): A[Option[T]] =
     optionalAttribute(name, format, description, None: Option[() ⇒ Option[T]], options: _*)
 }

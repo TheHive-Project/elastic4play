@@ -1,26 +1,16 @@
 package org.elastic4play.services
 
-import scala.concurrent.Future
-
-import org.specs2.runner.JUnitRunner
+import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, UnknownAttributeError, UpdateReadOnlyAttributeError }
+import org.elastic4play.controllers.JsonInputValue
+import org.elastic4play.database.DBModify
+import org.elastic4play.models.{ EntityDef, ModelDef, AttributeFormat ⇒ F }
+import org.elastic4play.utils.RichFuture
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
-import org.mockito.Matchers._
-
-import org.scalactic._
-
-import play.api.test.PlaySpecification
-import play.api.libs.json._
+import org.specs2.runner.JUnitRunner
 import play.api.libs.iteratee.Execution.trampoline
-
-import org.elastic4play.controllers.{ Fields, JsonInputValue }
-import org.elastic4play.database.DBModify
-import org.elastic4play.models.{ ModelDef, EntityDef, Attribute, AttributeFormat ⇒ F }
-import org.elastic4play.utils.RichFuture
-import org.elastic4play.AttributeCheckingError
-import org.elastic4play.InvalidFormatAttributeError
-import org.elastic4play.UpdateReadOnlyAttributeError
-import org.elastic4play.UnknownAttributeError
+import play.api.libs.json._
+import play.api.test.PlaySpecification
 
 @RunWith(classOf[JUnitRunner])
 class UpdateSrvSpec extends PlaySpecification with Mockito {
@@ -85,7 +75,7 @@ class UpdateSrvSpec extends PlaySpecification with Mockito {
             UnknownAttributeError("unknownAttribute", JsNumber(1)),
             UpdateReadOnlyAttributeError("user"),
             InvalidFormatAttributeError("metricAttribute", "number", JsonInputValue(JsString("aze"))),
-            InvalidFormatAttributeError("multiAttribute", "string", JsonInputValue(JsString("single value")))))
+            InvalidFormatAttributeError("multiAttribute", "multi-string", JsonInputValue(JsString("single value")))))
       }
     }
   }

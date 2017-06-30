@@ -2,14 +2,12 @@ package org.elastic4play.controllers
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.concurrent.ExecutionContext
-import scala.reflect.runtime.universe
-import play.api.libs.json.JsValue
-import play.api.mvc.{ Action, AnyContent, Controller }
-import org.elastic4play.Timed
 import org.elastic4play.services.{ DBLists, Role }
+import org.elastic4play.{ MissingAttributeError, Timed }
+import play.api.libs.json.{ JsValue, Json }
+import play.api.mvc.{ Action, AnyContent, Controller }
 
-import scala.concurrent.Future
+import scala.concurrent.{ ExecutionContext, Future }
 
 @Singleton
 class DBListCtrl @Inject() (
@@ -48,5 +46,25 @@ class DBListCtrl @Inject() (
     dblists.deleteItem(itemId).map { _ ⇒
       NoContent
     }
+  }
+
+  @Timed("controllers.DBListCtrl.udpateItem")
+  def updateItem(itemId: String) = authenticated(Role.admin).async(fieldsBodyParser) { implicit request ⇒
+    request.body.getValue("value")
+      .map { value ⇒
+        for {
+          item ← dblists.getItem(itemId)
+          _ ← dblists.deleteItem(item)
+          newItem ← dblists(item.dblist).addItem(value)
+        } yield renderer.toOutput(OK, newItem.id)
+      }
+      .getOrElse(Future.failed(MissingAttributeError("value")))
+  }
+
+  @Timed("controllers.DBListCtrl.itemExists")
+  def itemExists(listName: String): Action[Fields] = authenticated(Role.read).async(fieldsBodyParser) { implicit request ⇒
+    val itemKey = request.body.getString("key").getOrElse(throw MissingAttributeError("Parameter key is missing"))
+    val itemValue = request.body.getValue("value").getOrElse(throw MissingAttributeError("Parameter value is missing"))
+    dblists(listName).exists(itemKey, itemValue).map(r ⇒ Ok(Json.obj("found" → r)))
   }
 }
