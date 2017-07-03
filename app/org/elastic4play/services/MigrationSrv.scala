@@ -164,13 +164,11 @@ class MigrationSrv @Inject() (
   }
 
   def isMigrating: Boolean = !migrationProcess.isCompleted
-  def isReady: Boolean = dbindex.indexStatus && !migrationProcess.isCompleted
+  def isReady: Boolean = dbindex.indexStatus && migrationProcess.isCompleted
 }
 /* Operation applied to the previous state of the database to get next version */
 trait Operation extends ((String ⇒ Source[JsObject, NotUsed]) ⇒ (String ⇒ Source[JsObject, NotUsed]))
 object Operation {
-  lazy val log = Logger(getClass)
-
   def apply(o: (String ⇒ Source[JsObject, NotUsed]) ⇒ String ⇒ Source[JsObject, NotUsed]) = new Operation {
     def apply(f: (String ⇒ Source[JsObject, NotUsed])): (String) ⇒ Source[JsObject, NotUsed] = o(f)
   }
