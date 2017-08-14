@@ -2,20 +2,22 @@ package org.elastic4play.controllers
 
 import javax.inject.{ Inject, Singleton }
 
+import scala.concurrent.{ ExecutionContext, Future }
+
+import play.api.libs.json.{ JsValue, Json }
+import play.api.mvc._
+
 import org.elastic4play.services.{ DBLists, Role }
 import org.elastic4play.{ MissingAttributeError, Timed }
-import play.api.libs.json.{ JsValue, Json }
-import play.api.mvc.{ Action, AnyContent, Controller }
-
-import scala.concurrent.{ ExecutionContext, Future }
 
 @Singleton
 class DBListCtrl @Inject() (
     dblists: DBLists,
     authenticated: Authenticated,
     renderer: Renderer,
+    components: ControllerComponents,
     fieldsBodyParser: FieldsBodyParser,
-    implicit val ec: ExecutionContext) extends Controller {
+    implicit val ec: ExecutionContext) extends AbstractController(components) {
 
   @Timed("controllers.DBListCtrl.list")
   def list: Action[AnyContent] = authenticated(Role.read).async { implicit request ⇒

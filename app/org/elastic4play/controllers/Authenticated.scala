@@ -1,17 +1,15 @@
 package org.elastic4play.controllers
 
 import java.util.Date
-
 import javax.inject.{ Inject, Singleton }
 
-import scala.language.reflectiveCalls
-import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.{ DurationLong, FiniteDuration }
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
 import play.api.Configuration
 import play.api.http.HeaderNames
-import play.api.mvc.{ ActionBuilder, Request, RequestHeader, Result, Security, WrappedRequest }
+import play.api.mvc._
 
 import org.elastic4play.AuthenticationError
 import org.elastic4play.services.{ AuthContext, AuthSrv, Role, UserSrv }
@@ -39,20 +37,25 @@ case object ExpirationError extends ExpirationStatus
 class Authenticated(
     maxSessionInactivity: FiniteDuration,
     sessionWarning: FiniteDuration,
+    sessionUsername: String,
     userSrv: UserSrv,
     authSrv: AuthSrv,
+    defaultParser: BodyParsers.Default,
     implicit val ec: ExecutionContext) {
 
   @Inject() def this(
     configuration: Configuration,
     userSrv: UserSrv,
     authSrv: AuthSrv,
+    defaultParser: BodyParsers.Default,
     ec: ExecutionContext) =
     this(
-      configuration.getMilliseconds("session.inactivity").get.millis,
-      configuration.getMilliseconds("session.warning").get.millis,
+      configuration.getMillis("session.inactivity").millis,
+      configuration.getMillis("session.warning").millis,
+      configuration.get[String]("session.username"),
       userSrv,
       authSrv,
+      defaultParser,
       ec)
 
   private def now = (new Date).getTime
@@ -62,14 +65,14 @@ class Authenticated(
    * Cookie is signed by Play framework (it cannot be modified by user)
    */
   def setSessingUser(result: Result, authContext: AuthContext)(implicit request: RequestHeader): Result =
-    result.addingToSession(Security.username → authContext.userId, "expire" → (now + maxSessionInactivity.toMillis).toString)
+    result.addingToSession(sessionUsername → authContext.userId, "expire" → (now + maxSessionInactivity.toMillis).toString)
 
   /**
    * Retrieve authentication information form cookie
    */
   def getFromSession(request: RequestHeader): Future[AuthContext] = {
     val userId = for {
-      userId ← request.session.get(Security.username)
+      userId ← request.session.get(sessionUsername)
       if expirationStatus(request) != ExpirationError
     } yield userId
     userId.fold(Future.failed[AuthContext](AuthenticationError("Not authenticated")))(id ⇒ userSrv.getFromId(request, id))
@@ -121,7 +124,10 @@ class Authenticated(
    * If user has sufficient right (have required role) action is executed
    * otherwise, action returns a not authorized error
    */
-  def apply(requiredRole: Role.Type) = new ActionBuilder[({ type R[A] = AuthenticatedRequest[A] })#R] {
+  def apply(requiredRole: Role.Type) = new ActionBuilder[AuthenticatedRequest, AnyContent] {
+    val executionContext: ExecutionContext = ec
+    def parser: BodyParser[AnyContent] = defaultParser
+
     def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) ⇒ Future[Result]): Future[Result] = {
       getContext(request).flatMap { authContext ⇒
         if (authContext.roles.contains(requiredRole))

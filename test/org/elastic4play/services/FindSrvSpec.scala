@@ -1,13 +1,15 @@
 package org.elastic4play.services
 
+import play.api.libs.json.Json
+import play.api.test.PlaySpecification
+
 import com.sksamuel.elastic4s.ElasticDsl.{ matchAllQuery, search }
 import com.sksamuel.elastic4s.IndexesAndTypes.apply
-import org.elastic4play.models.BaseModelDef
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
 import org.specs2.runner.JUnitRunner
-import play.api.libs.json.Json
-import play.api.test.PlaySpecification
+
+import org.elastic4play.models.BaseModelDef
 
 @RunWith(classOf[JUnitRunner])
 class FindSrvSpec extends PlaySpecification with Mockito {

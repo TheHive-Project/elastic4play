@@ -1,15 +1,17 @@
 package org.elastic4play.models
 
+import play.api.Logger
+import play.api.libs.json._
+
 import com.sksamuel.elastic4s.ElasticDsl.field
 import com.sksamuel.elastic4s.mappings.FieldType.NestedType
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
-import org.elastic4play.{ AttributeError, UnknownAttributeError }
-import org.elastic4play.controllers.{ InputValue, JsonInputValue }
-import org.elastic4play.controllers.JsonFormat.inputValueFormat
-import org.scalactic._
 import org.scalactic.Accumulation._
-import play.api.Logger
-import play.api.libs.json._
+import org.scalactic._
+
+import org.elastic4play.controllers.JsonFormat.inputValueFormat
+import org.elastic4play.controllers.{ InputValue, JsonInputValue }
+import org.elastic4play.{ AttributeError, UnknownAttributeError }
 
 case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends AttributeFormat[JsObject]("nested") {
   private[ObjectAttributeFormat] lazy val logger = Logger(getClass)
@@ -52,7 +54,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
           .find(_.name == subName)
           .map { subAttribute ⇒
             value.jsonValue match {
-              case jsvalue @ (JsNull | JsArray(Nil)) ⇒ Good(JsObject(Seq(subName → jsvalue)))
+              case jsvalue @ (JsNull | JsArray(Seq())) ⇒ Good(JsObject(Seq(subName → jsvalue)))
               case _ ⇒ subAttribute.format.inputValueToJson(subNames.tail, value)
                 .map(v ⇒ JsObject(Seq(subName → v)))
                 .badMap { errors ⇒ errors.map(e ⇒ e.withName(name + "." + e.name)) }

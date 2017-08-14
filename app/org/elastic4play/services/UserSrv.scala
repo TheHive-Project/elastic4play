@@ -2,7 +2,6 @@ package org.elastic4play.services
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import scala.annotation.implicitNotFound
 import scala.concurrent.Future
 
 import play.api.libs.json.JsObject

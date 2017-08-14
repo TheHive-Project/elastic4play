@@ -2,10 +2,11 @@ package org.elastic4play
 
 import java.util.Date
 
-import play.api.libs.json._
-import org.elastic4play.controllers.JsonFormat._
-
 import scala.util.{ Failure, Success, Try }
+
+import play.api.libs.json._
+
+import org.elastic4play.controllers.JsonFormat.inputValueFormat
 
 object JsonFormat {
   val datePattern = "yyyyMMdd'T'HHmmssZ"

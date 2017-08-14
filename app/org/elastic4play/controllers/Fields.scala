@@ -2,20 +2,22 @@ package org.elastic4play.controllers
 
 import java.nio.file.Path
 import java.util.Locale
+import javax.inject.Inject
 
-import akka.util.ByteString
-import org.elastic4play.BadRequestError
-import org.elastic4play.controllers.JsonFormat.{ fieldsReader, pathFormat }
-import org.elastic4play.services.Attachment
-import org.elastic4play.utils.Hash
+import scala.collection.{ GenTraversableOnce, immutable }
+import scala.concurrent.ExecutionContext
+import scala.util.Try
+
 import play.api.Logger
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json._
 import play.api.libs.streams.Accumulator
-import play.api.mvc.{ BodyParser, MultipartFormData, RequestHeader, Result }
+import play.api.mvc._
 
-import scala.collection.{ GenTraversableOnce, immutable }
-import scala.util.Try
+import org.elastic4play.BadRequestError
+import org.elastic4play.controllers.JsonFormat.{ fieldsReader, pathFormat }
+import org.elastic4play.services.Attachment
+import org.elastic4play.utils.Hash
 
 /**
  * Define a data value from HTTP request. It can be simple string, json, file or null (maybe xml in future)
@@ -214,36 +216,38 @@ object Fields {
   }
 }
 
-class FieldsBodyParser extends BodyParser[Fields] {
-  import play.api.libs.iteratee.Execution.Implicits.trampoline
-  import play.api.mvc.BodyParsers.parse._
+class FieldsBodyParser @Inject() (
+    playBodyParsers: PlayBodyParsers,
+    implicit val ec: ExecutionContext) extends BodyParser[Fields] {
 
-  def apply(request: RequestHeader): Accumulator[ByteString, Either[Result, Fields]] = {
+  def apply(request: RequestHeader) = {
     def queryFields = request.queryString.mapValues(v ⇒ StringInputValue(v))
 
     request.contentType.map(_.toLowerCase(Locale.ENGLISH)) match {
 
-      case Some("text/json") | Some("application/json") ⇒ json[Fields].map(f ⇒ f ++ queryFields).apply(request)
+      case Some("text/json") | Some("application/json") ⇒ playBodyParsers.json[Fields].map(f ⇒ f ++ queryFields).apply(request)
 
-      case Some("application/x-www-form-urlencoded") ⇒ tolerantFormUrlEncoded
+      case Some("application/x-www-form-urlencoded") ⇒ playBodyParsers.tolerantFormUrlEncoded
         .map { form ⇒ Fields(form.mapValues(v ⇒ StringInputValue(v))) }
         .map(f ⇒ f ++ queryFields)
         .apply(request)
 
-      case Some("multipart/form-data") ⇒ multipartFormData.map {
-        case MultipartFormData(dataParts, files, _) ⇒
-          val dataFields = dataParts
-            .getOrElse("_json", Nil)
-            .headOption
-            .map { s ⇒
-              Json.parse(s).as[JsObject]
-                .value.toMap
-                .mapValues(v ⇒ JsonInputValue(v))
-            }
-            .getOrElse(Map.empty)
-          val fileFields = files.map { f ⇒ f.key → FileInputValue(f.filename.split("[/\\\\]").last, f.ref.file.toPath, f.contentType.getOrElse("application/octet-stream")) }
-          Fields(dataFields ++ fileFields ++ queryFields)
-      }.apply(request)
+      case Some("multipart/form-data") ⇒ playBodyParsers.multipartFormData
+        .map {
+          case MultipartFormData(dataParts, files, _) ⇒
+            val dataFields = dataParts
+              .getOrElse("_json", Nil)
+              .headOption
+              .map { s ⇒
+                Json.parse(s).as[JsObject]
+                  .value.toMap
+                  .mapValues(v ⇒ JsonInputValue(v))
+              }
+              .getOrElse(Map.empty)
+            val fileFields = files.map { f ⇒ f.key → FileInputValue(f.filename.split("[/\\\\]").last, f.ref.path, f.contentType.getOrElse("application/octet-stream")) }
+            Fields(dataFields ++ fileFields ++ queryFields)
+        }
+        .apply(request)
 
       case contentType ⇒
         val contentLength = request.headers.get("Content-Length").fold(0)(_.toInt)

@@ -2,6 +2,15 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 
+import scala.annotation.tailrec
+import scala.collection.mutable
+import scala.concurrent.duration.{ DurationLong, FiniteDuration }
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.{ Failure, Success, Try }
+
+import play.api.libs.json.{ JsNull, JsObject, JsString, Json }
+import play.api.{ Configuration, Logger }
+
 import akka.NotUsed
 import akka.actor.{ PoisonPill, Props, Stash, actorRef2Scala }
 import akka.pattern.ask
@@ -11,15 +20,8 @@ import akka.stream.scaladsl.Source
 import akka.util.Timeout
 import com.sksamuel.elastic4s.ElasticDsl.{ clear, searchScroll }
 import com.sksamuel.elastic4s.{ RichSearchHit, RichSearchResponse, SearchDefinition }
-import org.elastic4play.{ InternalError, SearchError }
-import play.api.libs.json.{ JsNull, JsObject, JsString, Json }
-import play.api.{ Configuration, Logger }
 
-import scala.annotation.tailrec
-import scala.collection.mutable
-import scala.concurrent.duration.{ DurationLong, FiniteDuration }
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success, Try }
+import org.elastic4play.{ InternalError, SearchError }
 
 /**
  * Service class responsible for entity search
@@ -38,8 +40,8 @@ class DBFind(
     ec: ExecutionContext,
     mat: Materializer) =
     this(
-      configuration.getInt("search.pagesize").get,
-      configuration.getMilliseconds("search.keepalive").get.millis,
+      configuration.get[Int]("search.pagesize"),
+      configuration.getMillis("search.keepalive").millis,
       db,
       ec,
       mat)
@@ -184,9 +186,10 @@ class SearchPublisher(
     offset: Int,
     max: Int) extends ActorPublisher[RichSearchHit] with Stash {
 
-  import org.elastic4play.database.SearchPublisher._
   import akka.stream.actor.ActorPublisherMessage._
   import context.dispatcher
+
+  import org.elastic4play.database.SearchPublisher._
 
   private val queue: mutable.Queue[RichSearchHit] = mutable.Queue.empty
   private var processed: Long = 0

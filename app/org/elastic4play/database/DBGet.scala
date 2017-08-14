@@ -7,10 +7,8 @@ import scala.concurrent.{ ExecutionContext, Future }
 import play.api.libs.json.JsObject
 
 import com.sksamuel.elastic4s.ElasticDsl.{ idsQuery, search }
-import com.sksamuel.elastic4s.IndexesAndTypes.apply
 
-import org.elastic4play.{ NotFoundError, Timed }
-import org.elastic4play.models.Attribute
+import org.elastic4play.NotFoundError
 
 @Singleton
 class DBGet @Inject() (

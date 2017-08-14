@@ -1,28 +1,25 @@
 package org.elastic4play.services
 
 import java.util.Date
-
 import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
-import play.api.libs.json.{ JsNull, JsObject, JsValue }
 import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json.Json
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import play.api.libs.json.{ JsNull, JsObject, JsValue, Json }
 
-import org.elastic4play.AttributeCheckingError
+import org.scalactic.Accumulation.convertGenTraversableOnceToValidatable
+import org.scalactic.Every.everyToGenTraversableOnce
+import org.scalactic.{ Bad, One }
+
 import org.elastic4play.JsonFormat.dateFormat
-import org.elastic4play.UnknownAttributeError
 import org.elastic4play.controllers.Fields
 import org.elastic4play.database.DBCreate
-import org.elastic4play.models.{ BaseEntity, BaseModelDef, ChildModelDef, EntityDef, ModelDef }
+import org.elastic4play.models._
 import org.elastic4play.utils.{ RichFuture, RichOr }
-import org.scalactic.Accumulation.convertGenTraversableOnceToValidatable
-import org.scalactic.Bad
-import org.scalactic.Every.everyToGenTraversableOnce
-import org.scalactic.One
+import org.elastic4play.{ AttributeCheckingError, UnknownAttributeError }
 
 @Singleton
 class CreateSrv @Inject() (

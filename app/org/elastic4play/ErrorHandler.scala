@@ -1,23 +1,17 @@
 package org.elastic4play
 
-import scala.annotation.implicitNotFound
 import scala.concurrent.Future
 
 import play.api.Logger
-import play.api.http.HttpErrorHandler
-import play.api.libs.json.Json
-import play.api.mvc.{ RequestHeader, Result, Results }
+import play.api.http.{ HttpErrorHandler, Status, Writeable }
+import play.api.libs.json.{ JsNull, JsValue, Json }
+import play.api.mvc.{ RequestHeader, ResponseHeader, Result, Results }
 
 import org.elasticsearch.client.transport.NoNodeAvailableException
 import org.elasticsearch.index.IndexNotFoundException
 import org.elasticsearch.transport.RemoteTransportException
 
 import org.elastic4play.JsonFormat.attributeCheckingExceptionWrites
-import play.api.libs.json.JsValue
-import play.api.http.Status
-import play.api.libs.json.JsNull
-import play.api.mvc.ResponseHeader
-import play.api.http.Writeable
 
 /**
  * This class handles errors. It traverses all causes of exception to find known error and shows the appropriate message

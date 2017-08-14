@@ -3,10 +3,9 @@ package org.elastic4play.database
 import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.{ ExecutionContext, Future }
+
 import com.sksamuel.elastic4s.ElasticDsl.update
-import com.sksamuel.elastic4s.IndexAndTypes.apply
-import com.sksamuel.elastic4s.ScriptDefinition.string2Script
-import org.elastic4play.Timed
+
 import org.elastic4play.models.{ Attribute, ModelAttributes, AttributeFormat ⇒ F, AttributeOption ⇒ O }
 
 class SequenceModel extends ModelAttributes("sequence") {
@@ -23,7 +22,7 @@ class DBSequence @Inject() (
       b._builder.setFields("counter")
       b
     } map { updateResponse ⇒
-      updateResponse.getGetResult().field("counter").getValue().asInstanceOf[java.lang.Number].intValue()
+      updateResponse.getGetResult.field("counter").getValue.asInstanceOf[java.lang.Number].intValue()
     }
   }
 }

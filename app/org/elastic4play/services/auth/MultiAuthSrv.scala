@@ -2,15 +2,16 @@ package org.elastic4play.services.auth
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.annotation.implicitNotFound
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Try }
+
+import play.api.mvc.RequestHeader
+import play.api.{ Configuration, Logger }
+
 import org.elastic4play.AuthenticationError
 import org.elastic4play.services.AuthCapability.Type
 import org.elastic4play.services.{ AuthContext, AuthSrv, AuthSrvFactory }
-import play.api.{ Configuration, Logger }
-import play.api.mvc.RequestHeader
 
 object MultiAuthSrv {
   lazy val log = Logger(classOf[MultiAuthSrv])
@@ -54,7 +55,7 @@ class MultiAuthSrv(
     ec: ExecutionContext) =
     this(
       MultiAuthSrv.getAuthProviders(
-        configuration.getStringSeq("auth.type").getOrElse(Seq("local")),
+        configuration.getOptional[Seq[String]]("auth.type").getOrElse(Seq("local")),
         authModules,
         authFactoryModules),
       ec)

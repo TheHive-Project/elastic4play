@@ -2,23 +2,24 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 
-import akka.stream.scaladsl.Sink
-import com.sksamuel.elastic4s.ElasticDsl.{ bulk, index }
-import com.sksamuel.elastic4s.IndexAndTypes.apply
-import com.sksamuel.elastic4s.IndexDefinition
-import com.sksamuel.elastic4s.source.JsonDocumentSource
-import com.sksamuel.elastic4s.streams.RequestBuilder
-import org.elastic4play.models.BaseEntity
-import org.elastic4play.{ ConflictError, CreateError, InternalError }
-import org.elasticsearch.action.index.IndexResponse
-import org.elasticsearch.index.engine.DocumentAlreadyExistsException
-import org.elasticsearch.transport.RemoteTransportException
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.{ Failure, Success, Try }
+
 import play.api.Logger
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.{ JsNull, JsObject, JsString, JsValue }
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success, Try }
+import akka.stream.scaladsl.Sink
+import com.sksamuel.elastic4s.ElasticDsl.{ bulk, index }
+import com.sksamuel.elastic4s.IndexDefinition
+import com.sksamuel.elastic4s.source.JsonDocumentSource
+import com.sksamuel.elastic4s.streams.RequestBuilder
+import org.elasticsearch.action.index.IndexResponse
+import org.elasticsearch.index.engine.DocumentAlreadyExistsException
+import org.elasticsearch.transport.RemoteTransportException
+
+import org.elastic4play.models.BaseEntity
+import org.elastic4play.{ ConflictError, CreateError, InternalError }
 
 /**
  * Service lass responsible for entity creation

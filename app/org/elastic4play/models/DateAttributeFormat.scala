@@ -2,15 +2,17 @@ package org.elastic4play.models
 
 import java.util.Date
 
+import scala.util.Try
+
+import play.api.libs.json.{ JsNumber, JsString, JsValue }
+
 import com.sksamuel.elastic4s.ElasticDsl.field
 import com.sksamuel.elastic4s.mappings.DateFieldDefinition
 import com.sksamuel.elastic4s.mappings.FieldType.DateType
+import org.scalactic._
+
 import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
-import org.scalactic._
-import play.api.libs.json.{ JsNumber, JsString, JsValue }
-
-import scala.util.Try
 
 object DateAttributeFormat extends AttributeFormat[Date]("date") {
   def parse(d: String): Option[Date] = {

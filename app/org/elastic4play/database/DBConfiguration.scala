@@ -2,28 +2,24 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Named, Singleton }
 
-import scala.annotation.implicitNotFound
-import scala.concurrent.{ ExecutionContext, Future, Promise }
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.{ ExecutionContext, Future, Promise }
+
+import play.api.inject.ApplicationLifecycle
+import play.api.{ Configuration, Logger }
 
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{ Sink, Source }
-
-import play.api.{ Configuration, Logger }
-import play.api.inject.ApplicationLifecycle
-
+import com.sksamuel.elastic4s.ElasticDsl.{ BulkDefinitionExecutable, ClearScrollDefinitionExecutable, CreateIndexDefinitionExecutable, DeleteByIdDefinitionExecutable, GetDefinitionExecutable, IndexDefinitionExecutable, IndexExistsDefinitionExecutable, ScrollExecutable, SearchDefinitionExecutable, UpdateDefinitionExecutable }
+import com.sksamuel.elastic4s._
+import com.sksamuel.elastic4s.streams.ReactiveElastic.ReactiveElastic
+import com.sksamuel.elastic4s.streams.{ RequestBuilder, ResponseListener }
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse
 import org.elasticsearch.action.delete.DeleteResponse
 import org.elasticsearch.action.update.UpdateResponse
 import org.elasticsearch.common.settings.Settings
-
-import com.sksamuel.elastic4s.{ BulkDefinition, BulkItemResult, BulkResult, ClearScrollDefinition, ClearScrollResult, CreateIndexDefinition, DeleteByIdDefinition, ElasticClient }
-import com.sksamuel.elastic4s.{ ElasticsearchClientUri, GetDefinition, IndexDefinition, IndexResult, RichGetResponse, RichSearchHit, RichSearchResponse, SearchDefinition, SearchScrollDefinition, UpdateDefinition, admin }
-import com.sksamuel.elastic4s.ElasticDsl.{ BulkDefinitionExecutable, ClearScrollDefinitionExecutable, CreateIndexDefinitionExecutable, DeleteByIdDefinitionExecutable, GetDefinitionExecutable, IndexDefinitionExecutable, IndexExistsDefinitionExecutable, ScrollExecutable, SearchDefinitionExecutable, UpdateDefinitionExecutable }
-import com.sksamuel.elastic4s.streams.{ RequestBuilder, ResponseListener }
-import com.sksamuel.elastic4s.streams.ReactiveElastic.ReactiveElastic
 
 import org.elastic4play.Timed
 
@@ -49,9 +45,9 @@ class DBConfiguration(
     ec: ExecutionContext,
     actorSystem: ActorSystem) = {
     this(
-      configuration.getStringSeq("search.host").get,
-      configuration.getString("search.cluster").get,
-      configuration.getString("search.index").get,
+      configuration.get[Seq[String]]("search.host"),
+      configuration.get[String]("search.cluster"),
+      configuration.get[String]("search.index"),
       lifecycle,
       version,
       ec,

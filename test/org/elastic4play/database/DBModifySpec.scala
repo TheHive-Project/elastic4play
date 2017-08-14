@@ -2,17 +2,19 @@ package org.elastic4play.database
 
 import java.util.{ Map ⇒ JMap }
 
-import org.elastic4play.models.BaseEntity
-import org.junit.runner.RunWith
-import org.specs2.matcher.ValueCheck.typedValueCheck
-import org.specs2.mock.Mockito
-import org.specs2.runner.JUnitRunner
-import play.api.libs.iteratee.Execution.trampoline
+import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext.Implicits.{ global ⇒ ec }
+
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json.{ JsArray, JsNull, Json }
 import play.api.test.PlaySpecification
 
-import scala.collection.JavaConversions.mapAsScalaMap
+import org.junit.runner.RunWith
+import org.specs2.matcher.ValueCheck.typedValueCheck
+import org.specs2.mock.Mockito
+import org.specs2.runner.JUnitRunner
+
+import org.elastic4play.models.BaseEntity
 
 @RunWith(classOf[JUnitRunner])
 class DBModifySpec extends PlaySpecification with Mockito {
@@ -20,7 +22,7 @@ class DBModifySpec extends PlaySpecification with Mockito {
   "DBModify" should {
     "build correct update script" in {
       val db = mock[DBConfiguration]
-      val dbmodify = new DBModify(db, trampoline)
+      val dbmodify = new DBModify(db, ec)
       val attributes = Json.obj(
         "obj" → Json.obj("subAttr1" → 1),
         "arr" → Seq("a", "b", "c"),

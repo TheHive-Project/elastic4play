@@ -1,16 +1,18 @@
 package org.elastic4play.models
 
+import play.api.Logger
+import play.api.libs.json.{ JsValue, Json }
+
 import com.sksamuel.elastic4s.ElasticDsl.field
 import com.sksamuel.elastic4s.mappings.FieldType.{ LongType, NestedType, StringType }
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
+import org.scalactic._
+
+import org.elastic4play.controllers.JsonFormat._
 import org.elastic4play.controllers.{ AttachmentInputValue, FileInputValue, InputValue, JsonInputValue }
 import org.elastic4play.services.Attachment
 import org.elastic4play.services.JsonFormat.attachmentFormat
-import org.elastic4play.controllers.JsonFormat._
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
-import org.scalactic._
-import play.api.Logger
-import play.api.libs.json.{ JsValue, Json }
 
 object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment") {
   private[AttachmentAttributeFormat] lazy val logger = Logger(getClass)

@@ -4,16 +4,16 @@ import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.{ ExecutionContext, Future }
 
+import play.api.Logger
+import play.api.libs.json.{ JsObject, JsString, Json }
+
 import akka.stream.Materializer
 import akka.stream.scaladsl.{ Sink, Source }
 
-import play.api.Logger
-import play.api.libs.json.{ JsObject, Json, JsString }
-
 import org.elastic4play.InternalError
 import org.elastic4play.database.DBConfiguration
-import org.elastic4play.models.{ AttributeOption, BaseEntity, ChildModelDef }
 import org.elastic4play.models.JsonFormat.baseModelEntityWrites
+import org.elastic4play.models.{ AttributeOption, BaseEntity, ChildModelDef }
 
 @Singleton
 class AuxSrv @Inject() (

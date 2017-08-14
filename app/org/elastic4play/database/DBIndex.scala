@@ -2,13 +2,13 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.concurrent.blocking
+import scala.concurrent.{ ExecutionContext, Future, blocking }
+
+import play.api.Configuration
 
 import com.sksamuel.elastic4s.ElasticDsl.{ RichFuture, index, mapping, search }
 import com.sksamuel.elastic4s.IndexesAndTypes.apply
 
-import play.api.Configuration
 import org.elastic4play.models.{ ChildModelDef, ModelAttributes, ModelDef }
 
 @Singleton
@@ -23,8 +23,8 @@ class DBIndex(
     db: DBConfiguration,
     ec: ExecutionContext) = this(
     db,
-    configuration.getInt("search.nbshards").getOrElse(5),
-    configuration.getInt("search.nbreplicas").getOrElse(1),
+    configuration.getOptional[Int]("search.nbshards").getOrElse(5),
+    configuration.getOptional[Int]("search.nbreplicas").getOrElse(1),
     ec)
 
   /**

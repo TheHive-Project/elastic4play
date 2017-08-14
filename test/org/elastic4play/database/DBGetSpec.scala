@@ -1,16 +1,18 @@
 package org.elastic4play.database
 
-import com.sksamuel.elastic4s.{ RichSearchHit, RichSearchResponse, SearchDefinition }
-import org.elastic4play.utils.RichFuture
-import org.junit.runner.RunWith
-import org.specs2.mock.Mockito
-import org.specs2.runner.JUnitRunner
-import play.api.libs.iteratee.Execution.trampoline
+import scala.concurrent.ExecutionContext.Implicits.{ global ⇒ ec }
+import scala.concurrent.Future
+
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json.{ JsNull, Json }
 import play.api.test.PlaySpecification
 
-import scala.concurrent.Future
+import com.sksamuel.elastic4s.{ RichSearchHit, RichSearchResponse, SearchDefinition }
+import org.junit.runner.RunWith
+import org.specs2.mock.Mockito
+import org.specs2.runner.JUnitRunner
+
+import org.elastic4play.utils.RichFuture
 
 @RunWith(classOf[JUnitRunner])
 class DBGetSpec extends PlaySpecification with Mockito {
@@ -18,7 +20,7 @@ class DBGetSpec extends PlaySpecification with Mockito {
   "DBGet" should {
     "retrieve document" in {
       val db = mock[DBConfiguration]
-      val dbget = new DBGet(db, trampoline)
+      val dbget = new DBGet(db, ec)
       db.indexName returns "testIndex"
       val modelName = "user"
       val entityId = "me"

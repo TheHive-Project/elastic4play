@@ -2,13 +2,11 @@ package org.elastic4play.database
 
 import play.api.libs.json.{ JsNull, JsObject, JsString, Json }
 
+import com.sksamuel.elastic4s.ElasticDsl.field
+import com.sksamuel.elastic4s.{ FieldSortDefinition, RichSearchHit }
 import org.elasticsearch.index.IndexNotFoundException
 import org.elasticsearch.transport.RemoteTransportException
 
-import com.sksamuel.elastic4s.{ FieldSortDefinition, RichSearchHit }
-import com.sksamuel.elastic4s.ElasticDsl.field
-
-import org.elastic4play.models.Attribute
 import org.elastic4play.utils
 
 object DBUtils {

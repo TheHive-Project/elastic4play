@@ -1,13 +1,15 @@
 package org.elastic4play.models
 
+import play.api.Logger
+import play.api.libs.json._
+
 import com.sksamuel.elastic4s.ElasticDsl.field
 import com.sksamuel.elastic4s.mappings.FieldType._
 import com.sksamuel.elastic4s.mappings.ObjectFieldDefinition
+import org.scalactic._
+
 import org.elastic4play.AttributeError
 import org.elastic4play.controllers.{ InputValue, JsonInputValue }
-import play.api.Logger
-import play.api.libs.json._
-import org.scalactic._
 
 object CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
   private[CustomAttributeFormat] lazy val logger = Logger(getClass)

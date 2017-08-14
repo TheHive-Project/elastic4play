@@ -1,13 +1,15 @@
 package org.elastic4play.services
 
+import play.api.Logger
+import play.api.libs.json._
+
+import org.scalactic.Accumulation.convertGenTraversableOnceToValidatable
+import org.scalactic._
+
 import org.elastic4play.controllers.Fields
 import org.elastic4play.controllers.JsonFormat.inputValueFormat
 import org.elastic4play.models.BaseModelDef
 import org.elastic4play.{ AttributeCheckingError, UnknownAttributeError }
-import org.scalactic.Accumulation.convertGenTraversableOnceToValidatable
-import org.scalactic._
-import play.api.Logger
-import play.api.libs.json._
 
 class FieldsSrv {
   lazy val logger = Logger(getClass)

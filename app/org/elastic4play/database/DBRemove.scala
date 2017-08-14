@@ -4,11 +4,9 @@ import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import org.elastic4play.Timed
-import org.elastic4play.models.{ BaseEntity, BaseModelDef }
-
 import com.sksamuel.elastic4s.ElasticDsl.delete
-import com.sksamuel.elastic4s.IndexAndTypes.apply
+
+import org.elastic4play.models.{ BaseEntity, BaseModelDef }
 
 @Singleton
 class DBRemove @Inject() (

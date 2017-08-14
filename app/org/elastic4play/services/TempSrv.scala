@@ -1,18 +1,17 @@
 package org.elastic4play.services
 
 import java.io.IOException
-import java.nio.file.{ FileVisitResult, Files, Path, Paths, SimpleFileVisitor }
+import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
-
 import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import akka.stream.Materializer
-
 import play.api.Logger
 import play.api.inject.ApplicationLifecycle
 import play.api.mvc.{ Filter, RequestHeader, Result }
+
+import akka.stream.Materializer
 
 import org.elastic4play.utils.Instance
 

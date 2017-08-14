@@ -2,19 +2,20 @@ package org.elastic4play.services
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.collection.JavaConversions.{ asScalaBuffer, seqAsJavaList }
+import scala.collection.JavaConverters._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.language.reflectiveCalls
 import scala.math.BigDecimal.{ double2bigDecimal, int2bigDecimal, long2bigDecimal }
 import scala.util.Try
+
+import play.api.libs.json.JsValue.jsValueToJsLookup
+import play.api.libs.json.{ JsArray, JsNumber, JsObject }
+
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import play.api.libs.json.{ JsArray, JsNumber, JsObject }
-import play.api.libs.json.JsValue.jsValueToJsLookup
-import org.elastic4play.BadRequestError
-import org.elastic4play.database.{ DBConfiguration, DBFind, DBUtils }
-import org.elastic4play.models.{ AbstractModelDef, BaseEntity, BaseModelDef }
-import org.elastic4play.utils.Date.RichJoda
+import com.sksamuel.elastic4s.ElasticDsl.{ aggregation, bool, existsQuery, hasChildQuery, hasParentQuery, idsQuery, matchAllQuery, must, nestedQuery, query, rangeQuery, search, should, termQuery, termsQuery, not ⇒ _not }
+import com.sksamuel.elastic4s.ScriptDefinition.string2Script
+import com.sksamuel.elastic4s._
 import org.elasticsearch.search.aggregations.Aggregations
 import org.elasticsearch.search.aggregations.bucket.filter.Filter
 import org.elasticsearch.search.aggregations.bucket.filters.Filters
@@ -27,10 +28,11 @@ import org.elasticsearch.search.aggregations.metrics.min.Min
 import org.elasticsearch.search.aggregations.metrics.sum.Sum
 import org.elasticsearch.search.aggregations.metrics.tophits.TopHits
 import org.joda.time.DateTime
-import com.sksamuel.elastic4s._
-import com.sksamuel.elastic4s.ElasticDsl.{ aggregation, bool, existsQuery, hasChildQuery, hasParentQuery, idsQuery, matchAllQuery, must, nestedQuery, query, rangeQuery, search, should, termQuery, termsQuery, not ⇒ _not }
-import com.sksamuel.elastic4s.IndexesAndTypes.apply
-import com.sksamuel.elastic4s.ScriptDefinition.string2Script
+
+import org.elastic4play.BadRequestError
+import org.elastic4play.database.{ DBConfiguration, DBFind, DBUtils }
+import org.elastic4play.models.{ AbstractModelDef, BaseEntity, BaseModelDef }
+import org.elastic4play.utils.Date.RichJoda
 
 case class QueryDef(query: QueryDefinition)
 
@@ -144,7 +146,7 @@ class GroupByTime(fields: Seq[String], interval: String, subAggs: Seq[Agg]) exte
   def processResult(model: BaseModelDef, aggregations: Aggregations): JsObject = {
     val aggs = fields.map { f ⇒
       val buckets = aggregations.get[Histogram](s"datehistogram_$f").getBuckets
-      f → buckets.map { bucket ⇒
+      f → buckets.asScala.map { bucket ⇒
         val results = subAggs
           .map(_.processResult(model, bucket.getAggregations))
           .reduceOption(_ ++ _)
@@ -171,17 +173,19 @@ class GroupByField(field: String, size: Option[Int], sortBy: Seq[String], subAgg
       .map {
         case agg if sortBy.isEmpty ⇒ agg
         case agg ⇒
-          agg.order(Order.compound(sortBy.flatMap {
-            case f if f.startsWith("+") ⇒ Some(Order.aggregation(f.drop(1), true))
-            case f if f.startsWith("-") ⇒ Some(Order.aggregation(f.drop(1), false))
-            case f if f.length() > 0    ⇒ Some(Order.aggregation(f, true))
-          }))
+          val sortDefinition = sortBy
+            .flatMap {
+              case f if f.startsWith("+") ⇒ Some(Order.aggregation(f.drop(1), true))
+              case f if f.startsWith("-") ⇒ Some(Order.aggregation(f.drop(1), false))
+              case f if f.length() > 0    ⇒ Some(Order.aggregation(f, true))
+            }
+          agg.order(Order.compound(sortDefinition.asJava))
       }
   }
   def processResult(model: BaseModelDef, aggregations: Aggregations): JsObject = {
     val buckets = aggregations.get[Terms](s"term_$field").getBuckets
     JsObject {
-      buckets.map { bucket ⇒
+      buckets.asScala.map { bucket ⇒
         val results = subAggs
           .map(_.processResult(model, bucket.getAggregations))
           .reduceOption(_ ++ _)
@@ -245,7 +249,7 @@ class FindSrv @Inject() (
   def switchTo(db: DBConfiguration) = new FindSrv(dbfind.switchTo(db), modelSrv, ec)
 
   def apply(modelName: Option[String], queryDef: QueryDef, range: Option[String], sortBy: Seq[String]): (Source[BaseEntity, NotUsed], Future[Long]) = {
-    val (src, total) = dbfind(range, sortBy)(indexName ⇒ modelName.fold(search in indexName)(m ⇒ search in indexName → m) query queryDef.query)
+    val (src, total) = dbfind(range, sortBy)(indexName ⇒ modelName.fold(search in indexName)(m ⇒ search.in(indexName → m)) query queryDef.query)
     val entities = src.map { attrs ⇒
       modelName match {
         //case Some("audit") => auditModel.get()(attrs)

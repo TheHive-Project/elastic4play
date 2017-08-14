@@ -1,17 +1,18 @@
 package org.elastic4play.services.auth
 
 import java.util
-import java.util.Hashtable
 import javax.inject.{ Inject, Singleton }
 import javax.naming.Context
 import javax.naming.directory._
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
-import play.api.{ Configuration, Logger }
+
 import play.api.mvc.RequestHeader
-import org.elastic4play.{ AuthenticationError, AuthorizationError }
+import play.api.{ Configuration, Logger }
+
 import org.elastic4play.services._
+import org.elastic4play.{ AuthenticationError, AuthorizationError }
 
 @Singleton
 class ADAuthSrvFactory @Inject() (
@@ -20,9 +21,9 @@ class ADAuthSrvFactory @Inject() (
     ec: ExecutionContext) extends AuthSrvFactory { factory ⇒
   val name = "ad"
   def getAuthSrv: AuthSrv = new ADAuthSrv(
-    configuration.getString("auth.ad.domainFQDN").getOrElse(sys.error("Configuration error (auth.ad.domainFQDN is missing)")),
-    configuration.getString("auth.ad.domainName").getOrElse(sys.error("Configuration error (auth.ad.domainName is missing)")),
-    configuration.getBoolean("auth.ad.useSSL").getOrElse(false),
+    configuration.get[String]("auth.ad.domainFQDN"),
+    configuration.get[String]("auth.ad.domainName"),
+    configuration.getOptional[Boolean]("auth.ad.useSSL").getOrElse(false),
     userSrv,
     ec)
 

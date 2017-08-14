@@ -3,16 +3,17 @@ package org.elastic4play.database
 import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.{ ExecutionContext, Future }
-import scala.language.postfixOps
 import scala.util.{ Failure, Success, Try }
+
 import play.api.Logger
-import play.api.libs.json.{ JsArray, JsBoolean, JsNull, JsNumber, JsObject, JsString, JsValue, Json }
-import org.elastic4play.{ Timed, UpdateError }
-import org.elastic4play.models.BaseEntity
-import org.elasticsearch.action.update.UpdateResponse
+import play.api.libs.json._
+
 import com.sksamuel.elastic4s.ElasticDsl.{ bulk, script, update }
-import com.sksamuel.elastic4s.IndexAndTypes.apply
 import com.sksamuel.elastic4s.UpdateDefinition
+import org.elasticsearch.action.update.UpdateResponse
+
+import org.elastic4play.UpdateError
+import org.elastic4play.models.BaseEntity
 
 @Singleton
 class DBModify @Inject() (
@@ -24,7 +25,7 @@ class DBModify @Inject() (
    * Convert JSON value to java native value
    */
   private[database] def jsonToAny(json: JsValue): Any = {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
     json match {
       case v: JsObject  ⇒ mapAsJavaMap(v.fields.toMap.mapValues(jsonToAny))
       case v: JsArray   ⇒ v.value.map(jsonToAny).toArray
@@ -45,15 +46,15 @@ class DBModify @Inject() (
    * @return update parameters needed for execution
    */
   private[database] def buildScript(entity: BaseEntity, updateAttributes: JsObject): UpdateParams = {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
 
     val attrs = updateAttributes.fields.zipWithIndex
     val updateScript = attrs
       .map {
-        case ((name, JsArray(Nil)), index) ⇒
+        case ((name, JsArray(Seq())), _) ⇒
           val names = name.split("\\.")
           names.init.map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s""".remove("${names.last}")""")
-        case ((name, JsNull), index) ⇒
+        case ((name, JsNull), _) ⇒
           name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=null")
         case ((name, _), index) ⇒
           name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=param$index")
@@ -61,10 +62,10 @@ class DBModify @Inject() (
       .mkString(";")
 
     val parameters = jsonToAny(JsObject(attrs.collect {
-      case ((name, value), index) if value != JsArray(Nil) && value != JsNull ⇒ s"param$index" → value
+      case ((_, value), index) if value != JsArray(Nil) && value != JsNull ⇒ s"param$index" → value
     })).asInstanceOf[java.util.Map[String, Any]]
 
-    UpdateParams(entity, updateScript, parameters.toMap, updateAttributes)
+    UpdateParams(entity, updateScript, parameters.asScala.toMap, updateAttributes)
   }
 
   private[database] case class UpdateParams(entity: BaseEntity, updateScript: String, params: Map[String, Any], attributes: JsObject) {

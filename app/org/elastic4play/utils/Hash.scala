@@ -4,13 +4,14 @@ import java.nio.charset.Charset
 import java.nio.file.{ Path, Paths }
 import java.security.MessageDigest
 
-import akka.stream.{ IOResult, Materializer }
-import akka.stream.scaladsl.{ FileIO, Sink, Source }
-import akka.util.ByteString
+import scala.concurrent.{ ExecutionContext, Future }
+
 import play.api.Logger
 import play.api.libs.json.JsValue
 
-import scala.concurrent.{ ExecutionContext, Future }
+import akka.stream.scaladsl.{ FileIO, Sink, Source }
+import akka.stream.{ IOResult, Materializer }
+import akka.util.ByteString
 
 // TODO use play.api.libs.Codecs
 

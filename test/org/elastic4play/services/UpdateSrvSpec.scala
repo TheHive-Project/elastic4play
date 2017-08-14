@@ -1,16 +1,19 @@
 package org.elastic4play.services
 
+import scala.concurrent.ExecutionContext.Implicits.{ global ⇒ ec }
+
+import play.api.libs.json._
+import play.api.test.PlaySpecification
+
+import org.junit.runner.RunWith
+import org.specs2.mock.Mockito
+import org.specs2.runner.JUnitRunner
+
 import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, UnknownAttributeError, UpdateReadOnlyAttributeError }
 import org.elastic4play.controllers.JsonInputValue
 import org.elastic4play.database.DBModify
 import org.elastic4play.models.{ EntityDef, ModelDef, AttributeFormat ⇒ F }
 import org.elastic4play.utils.RichFuture
-import org.junit.runner.RunWith
-import org.specs2.mock.Mockito
-import org.specs2.runner.JUnitRunner
-import play.api.libs.iteratee.Execution.trampoline
-import play.api.libs.json._
-import play.api.test.PlaySpecification
 
 @RunWith(classOf[JUnitRunner])
 class UpdateSrvSpec extends PlaySpecification with Mockito {
@@ -31,7 +34,7 @@ class UpdateSrvSpec extends PlaySpecification with Mockito {
   val eventSrv = mock[EventSrv]
   val getSrv = mock[GetSrv]
   val attachmentSrv = mock[AttachmentSrv]
-  val updateSrv = new UpdateSrv(fieldsSrv, dbModify, getSrv, attachmentSrv, eventSrv, trampoline)
+  val updateSrv = new UpdateSrv(fieldsSrv, dbModify, getSrv, attachmentSrv, eventSrv, ec)
   val model = new TestModel
 
   "UpdateSrv.checkAttributes" should {
@@ -64,8 +67,8 @@ class UpdateSrvSpec extends PlaySpecification with Mockito {
         "multiAttribute" → "single value")
 
       updateSrv.checkAttributes(attrs, model).await must throwA[AttributeCheckingError].like {
-        case AttributeCheckingError(name, errors) ⇒
-          errors must contain(exactly[Throwable](
+        case AttributeCheckingError(_, errors) ⇒
+          errors must contain( //exactly[AttributeError](
             InvalidFormatAttributeError("textAttribute", model.textAttribute.format.name, JsonInputValue(JsBoolean(true))),
             InvalidFormatAttributeError("dateAttribute", model.dateAttribute.format.name, JsonInputValue(JsString("2016-01-28"))),
             InvalidFormatAttributeError("booleanAttribute", model.booleanAttribute.format.name, JsonInputValue(JsString("true"))),
@@ -75,7 +78,7 @@ class UpdateSrvSpec extends PlaySpecification with Mockito {
             UnknownAttributeError("unknownAttribute", JsNumber(1)),
             UpdateReadOnlyAttributeError("user"),
             InvalidFormatAttributeError("metricAttribute", "number", JsonInputValue(JsString("aze"))),
-            InvalidFormatAttributeError("multiAttribute", "multi-string", JsonInputValue(JsString("single value")))))
+            InvalidFormatAttributeError("multiAttribute", "multi-string", JsonInputValue(JsString("single value"))))
       }
     }
   }

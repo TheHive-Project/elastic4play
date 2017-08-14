@@ -1,19 +1,20 @@
 package org.elastic4play.database
 
+import scala.concurrent.ExecutionContext.Implicits.{ global ⇒ ec }
+import scala.concurrent.Future
+
+import play.api.libs.json.{ JsObject, JsString, Json }
+import play.api.test.PlaySpecification
+
 import com.sksamuel.elastic4s.{ IndexDefinition, IndexResult }
 import common.{ Fabricator ⇒ F }
-import org.elastic4play.models.BaseEntity
-import org.elastic4play.utils._
 import org.elasticsearch.action.index.IndexRequest
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
 import org.specs2.runner.JUnitRunner
-import play.api.libs.iteratee.Execution
-import play.api.libs.iteratee.Execution.trampoline
-import play.api.libs.json.{ JsObject, JsString, Json }
-import play.api.test.PlaySpecification
 
-import scala.concurrent.Future
+import org.elastic4play.models.BaseEntity
+import org.elastic4play.utils._
 
 @RunWith(classOf[JUnitRunner])
 class DBCreateSpec extends PlaySpecification with Mockito {
@@ -23,9 +24,7 @@ class DBCreateSpec extends PlaySpecification with Mockito {
 
   class DBCreateWrapper {
     val db: DBConfiguration = mock[DBConfiguration]
-    val dbcreate = new DBCreate(db, trampoline)
-
-    implicit val ec: Execution.trampoline.type = trampoline
+    val dbcreate = new DBCreate(db, ec)
 
     def apply(modelName: String, attributes: JsObject): (JsObject, IndexRequest) = {
       val indexResult = mock[IndexResult]

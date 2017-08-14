@@ -1,12 +1,14 @@
 package org.elastic4play.models
 
+import play.api.libs.json.{ JsString, JsValue }
+
 import com.sksamuel.elastic4s.ElasticDsl.field
 import com.sksamuel.elastic4s.mappings.FieldType.StringType
 import com.sksamuel.elastic4s.mappings.StringFieldDefinition
+import org.scalactic._
+
 import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
-import org.scalactic._
-import play.api.libs.json.{ JsString, JsValue }
 
 object HashAttributeFormat extends AttributeFormat[String]("hash") {
   val validDigits = "0123456789abcdefABCDEF"
