@@ -2,13 +2,14 @@ package org.elastic4play.models
 
 import java.util.UUID
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.FieldType.StringType
-import com.sksamuel.elastic4s.mappings.StringFieldDefinition
+import play.api.libs.json.{ JsString, JsValue }
+
+import com.sksamuel.elastic4s.ElasticDsl.keywordField
+import com.sksamuel.elastic4s.mappings.KeywordFieldDefinition
+import org.scalactic._
+
 import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
-import org.scalactic._
-import play.api.libs.json.{ JsString, JsValue }
 
 object UUIDAttributeFormat extends AttributeFormat[UUID]("uuid") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
@@ -42,5 +43,5 @@ object UUIDAttributeFormat extends AttributeFormat[UUID]("uuid") {
       }
   }
 
-  override def elasticType(attributeName: String): StringFieldDefinition = field(attributeName, StringType) index "not_analyzed"
+  override def elasticType(attributeName: String): KeywordFieldDefinition = keywordField(attributeName)
 }

@@ -1,16 +1,14 @@
 package org.elastic4play
 
-import scala.annotation.implicitNotFound
 import scala.collection.TraversableLike
 import scala.collection.generic.CanBuildFrom
-import scala.concurrent.{ Await, ExecutionContext, Future, Promise }
 import scala.concurrent.duration.{ Duration, DurationInt, FiniteDuration, span }
+import scala.concurrent.{ Await, ExecutionContext, Future, Promise }
 import scala.util.{ Failure, Success, Try }
-
-import akka.actor.ActorSystem
 
 import play.api.libs.json.{ JsObject, JsValue, Writes }
 
+import akka.actor.ActorSystem
 import org.scalactic.{ Bad, Good, Or }
 
 package object utils {

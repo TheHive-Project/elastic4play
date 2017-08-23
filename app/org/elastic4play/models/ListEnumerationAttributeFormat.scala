@@ -1,13 +1,14 @@
 package org.elastic4play.models
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.FieldType.StringType
-import com.sksamuel.elastic4s.mappings.StringFieldDefinition
+import play.api.libs.json.{ JsString, JsValue }
+
+import com.sksamuel.elastic4s.ElasticDsl.keywordField
+import com.sksamuel.elastic4s.mappings.KeywordFieldDefinition
+import org.scalactic._
+
 import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
 import org.elastic4play.services.DBLists
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
-import org.scalactic._
-import play.api.libs.json.{ JsString, JsValue }
 
 case class ListEnumerationAttributeFormat(enumerationName: String)(dblists: DBLists) extends AttributeFormat[String](s"enumeration") {
   def items: Set[String] = dblists("list_" + enumerationName).cachedItems.map(_.mapTo[String]).toSet //getItems[String].map(_.map(_._2).toSet)
@@ -27,5 +28,5 @@ case class ListEnumerationAttributeFormat(enumerationName: String)(dblists: DBLi
       }
   }
 
-  override def elasticType(attributeName: String): StringFieldDefinition = field(attributeName, StringType) index "not_analyzed"
+  override def elasticType(attributeName: String): KeywordFieldDefinition = keywordField(attributeName)
 }

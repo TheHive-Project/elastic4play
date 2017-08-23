@@ -2,20 +2,22 @@ package org.elastic4play.controllers
 
 import javax.inject.{ Inject, Singleton }
 
+import scala.concurrent.{ ExecutionContext, Future }
+
+import play.api.libs.json.{ JsValue, Json }
+import play.api.mvc._
+
 import org.elastic4play.services.{ DBLists, Role }
 import org.elastic4play.{ MissingAttributeError, Timed }
-import play.api.libs.json.{ JsValue, Json }
-import play.api.mvc.{ Action, AnyContent, Controller }
-
-import scala.concurrent.{ ExecutionContext, Future }
 
 @Singleton
 class DBListCtrl @Inject() (
     dblists: DBLists,
     authenticated: Authenticated,
     renderer: Renderer,
+    components: ControllerComponents,
     fieldsBodyParser: FieldsBodyParser,
-    implicit val ec: ExecutionContext) extends Controller {
+    implicit val ec: ExecutionContext) extends AbstractController(components) {
 
   @Timed("controllers.DBListCtrl.list")
   def list: Action[AnyContent] = authenticated(Role.read).async { implicit request ⇒
@@ -26,7 +28,7 @@ class DBListCtrl @Inject() (
 
   @Timed("controllers.DBListCtrl.listItems")
   def listItems(listName: String): Action[AnyContent] = authenticated(Role.read) { implicit request ⇒
-    val (src, total) = dblists(listName).getItems[JsValue]
+    val (src, _) = dblists(listName).getItems[JsValue]
     val items = src.map { case (id, value) ⇒ s""""$id":$value""" }
       .intersperse("{", ",", "}")
     Ok.chunked(items).as("application/json")
@@ -49,7 +51,7 @@ class DBListCtrl @Inject() (
   }
 
   @Timed("controllers.DBListCtrl.udpateItem")
-  def updateItem(itemId: String) = authenticated(Role.admin).async(fieldsBodyParser) { implicit request ⇒
+  def updateItem(itemId: String): Action[Fields] = authenticated(Role.admin).async(fieldsBodyParser) { implicit request ⇒
     request.body.getValue("value")
       .map { value ⇒
         for {

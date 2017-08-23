@@ -2,13 +2,13 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.concurrent.blocking
+import scala.concurrent.{ ExecutionContext, Future, blocking }
+
+import play.api.{ Configuration, Logger }
 
 import com.sksamuel.elastic4s.ElasticDsl.{ RichFuture, index, mapping, search }
-import com.sksamuel.elastic4s.IndexesAndTypes.apply
+import com.sksamuel.elastic4s.indexes.CreateIndexDefinition
 
-import play.api.Configuration
 import org.elastic4play.models.{ ChildModelDef, ModelAttributes, ModelDef }
 
 @Singleton
@@ -18,32 +18,40 @@ class DBIndex(
     nbReplicas: Int,
     implicit val ec: ExecutionContext) {
 
-  @Inject() def this(
+  @Inject def this(
     configuration: Configuration,
     db: DBConfiguration,
     ec: ExecutionContext) = this(
     db,
-    configuration.getInt("search.nbshards").getOrElse(5),
-    configuration.getInt("search.nbreplicas").getOrElse(1),
+    configuration.getOptional[Int]("search.nbshards").getOrElse(5),
+    configuration.getOptional[Int]("search.nbreplicas").getOrElse(1),
     ec)
 
+  private[DBIndex] lazy val logger = Logger(getClass)
   /**
    * Create a new index. Collect mapping for all attributes of all entities
-   *
    * @param models list of all ModelAttributes to used in order to build index mapping
    * @return a future which is completed when index creation is finished
    */
   def createIndex(models: Iterable[ModelAttributes]): Future[Unit] = {
     val modelsMapping = models
       .map {
-        case model: ModelDef[_, _]            ⇒ mapping(model.name) fields model.attributes.filterNot(_.name == "_id").map(_.elasticMapping) dateDetection false numericDetection false
-        case model: ChildModelDef[_, _, _, _] ⇒ mapping(model.name) fields model.attributes.filterNot(_.name == "_id").map(_.elasticMapping) parent model.parentModel.name dateDetection false numericDetection false
+        case model: ModelDef[_, _] ⇒
+          mapping(model.name)
+            .fields(model.attributes.filterNot(_.name == "_id").map(_.elasticMapping))
+            .dateDetection(false)
+            .numericDetection(false)
+        case model: ChildModelDef[_, _, _, _] ⇒
+          mapping(model.name)
+            .fields(model.attributes.filterNot(_.name == "_id").map(_.elasticMapping))
+            .parent(model.parentModel.name)
+            .dateDetection(false)
+            .numericDetection(false)
       }
       .toSeq
     db.execute {
-      com.sksamuel.elastic4s.ElasticDsl.create
-        .index(db.indexName)
-        .mappings(modelsMapping: _*)
+      CreateIndexDefinition(db.indexName)
+        .mappings(modelsMapping)
         .shards(nbShards)
         .replicas(nbReplicas)
     }
@@ -79,7 +87,7 @@ class DBIndex(
    * @return document count
    */
   def getSize(modelName: String): Future[Long] = db.execute {
-    search in db.indexName → modelName size 0
+    search(db.indexName → modelName).matchAllQuery().size(0)
   } map { searchResponse ⇒
     searchResponse.totalHits
   } recover {

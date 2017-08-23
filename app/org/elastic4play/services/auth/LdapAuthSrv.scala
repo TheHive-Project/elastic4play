@@ -1,17 +1,18 @@
 package org.elastic4play.services.auth
 
 import java.util
-import java.util.Hashtable
 import javax.inject.{ Inject, Singleton }
 import javax.naming.Context
-import javax.naming.directory.{ BasicAttribute, DirContext, InitialDirContext, ModificationItem, SearchControls }
+import javax.naming.directory._
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
-import play.api.{ Configuration, Logger }
+
 import play.api.mvc.RequestHeader
+import play.api.{ Configuration, Logger }
+
+import org.elastic4play.services._
 import org.elastic4play.{ AuthenticationError, AuthorizationError }
-import org.elastic4play.services.{ AuthCapability, AuthContext, AuthSrv, AuthSrvFactory, UserSrv }
 
 @Singleton
 class LdapAuthSrvFactory @Inject() (
@@ -20,12 +21,12 @@ class LdapAuthSrvFactory @Inject() (
     ec: ExecutionContext) extends AuthSrvFactory { factory ⇒
   val name = "ldap"
   def getAuthSrv: AuthSrv = new LdapAuthSrv(
-    configuration.getString("auth.ldap.serverName").getOrElse(sys.error("Configuration error (auth.ldap.serverName is missing)")),
-    configuration.getBoolean("auth.ldap.useSSL").getOrElse(false),
-    configuration.getString("auth.ldap.bindDN").getOrElse(sys.error("Configuration error (auth.ldap.bindDN is missing)")),
-    configuration.getString("auth.ldap.bindPW").getOrElse(sys.error("Configuration error (auth.ldap.bindPW is missing)")),
-    configuration.getString("auth.ldap.baseDN").getOrElse(sys.error("Configuration error (auth.ldap.baseDN is missing)")),
-    configuration.getString("auth.ldap.filter").getOrElse(sys.error("Configuration error (auth.ldap.filter is missing)")),
+    configuration.get[String]("auth.ldap.serverName"),
+    configuration.getOptional[Boolean]("auth.ldap.useSSL").getOrElse(false),
+    configuration.get[String]("auth.ldap.bindDN"),
+    configuration.get[String]("auth.ldap.bindPW"),
+    configuration.get[String]("auth.ldap.baseDN"),
+    configuration.get[String]("auth.ldap.filter"),
     userSrv,
     ec)
 
@@ -39,7 +40,7 @@ class LdapAuthSrvFactory @Inject() (
       userSrv: UserSrv,
       implicit val ec: ExecutionContext) extends AuthSrv {
 
-    lazy val log = Logger(getClass)
+    private[LdapAuthSrv] lazy val logger = Logger(getClass)
     val name = "ldap"
     val capabilities = Set(AuthCapability.changePassword)
 
@@ -48,12 +49,12 @@ class LdapAuthSrvFactory @Inject() (
       userSrv: UserSrv,
       ec: ExecutionContext) =
       this(
-        configuration.getString("auth.ldap.serverName").getOrElse(sys.error("Configuration error (auth.ldap.serverName is missing)")),
-        configuration.getBoolean("auth.ldap.useSSL").getOrElse(false),
-        configuration.getString("auth.ldap.bindDN").getOrElse(sys.error("Configuration error (auth.ldap.bindDN is missing)")),
-        configuration.getString("auth.ldap.bindPW").getOrElse(sys.error("Configuration error (auth.ldap.bindPW is missing)")),
-        configuration.getString("auth.ldap.baseDN").getOrElse(sys.error("Configuration error (auth.ldap.baseDN is missing)")),
-        configuration.getString("auth.ldap.filter").getOrElse(sys.error("Configuration error (auth.ldap.filter is missing)")),
+        configuration.get[String]("auth.ldap.serverName"),
+        configuration.getOptional[Boolean]("auth.ldap.useSSL").getOrElse(false),
+        configuration.get[String]("auth.ldap.bindDN"),
+        configuration.get[String]("auth.ldap.bindPW"),
+        configuration.get[String]("auth.ldap.baseDN"),
+        configuration.get[String]("auth.ldap.filter"),
         userSrv,
         ec)
 
@@ -78,7 +79,7 @@ class LdapAuthSrvFactory @Inject() (
         controls.setSearchScope(SearchControls.SUBTREE_SCOPE)
         controls.setCountLimit(1)
         val searchResult = ctx.search(baseDN, filter, Array[Object](username), controls)
-        if (searchResult.hasMore()) searchResult.next().getNameInNamespace
+        if (searchResult.hasMore) searchResult.next().getNameInNamespace
         else throw AuthenticationError("User not found in LDAP server")
       }
     }
@@ -89,7 +90,7 @@ class LdapAuthSrvFactory @Inject() (
       }
         .flatten
         .flatMap { userDN ⇒
-          connect(userDN, password) { ctx ⇒
+          connect(userDN, password) { _ ⇒
             userSrv.get(username)
               .flatMap { u ⇒ userSrv.getFromUser(request, u) }
           }
@@ -98,7 +99,7 @@ class LdapAuthSrvFactory @Inject() (
         .get
         .recoverWith {
           case t ⇒
-            log.error("LDAP authentication failure", t)
+            logger.error("LDAP authentication failure", t)
             Future.failed(AuthenticationError("Authentication failure"))
         }
     }
@@ -118,7 +119,7 @@ class LdapAuthSrvFactory @Inject() (
         .fromTry(changeTry)
         .recoverWith {
           case t ⇒
-            log.error("LDAP change password failure", t)
+            logger.error("LDAP change password failure", t)
             Future.failed(AuthorizationError("Change password failure"))
         }
     }

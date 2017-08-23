@@ -1,13 +1,14 @@
 package org.elastic4play.models
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.FieldType._
-import com.sksamuel.elastic4s.mappings.ObjectFieldDefinition
-import org.elastic4play.AttributeError
-import org.elastic4play.controllers.{ InputValue, JsonInputValue }
 import play.api.Logger
 import play.api.libs.json._
+
+import com.sksamuel.elastic4s.ElasticDsl.{ booleanField, dateField, longField, objectField, keywordField }
+import com.sksamuel.elastic4s.mappings.ObjectFieldDefinition
 import org.scalactic._
+
+import org.elastic4play.AttributeError
+import org.elastic4play.controllers.{ InputValue, JsonInputValue }
 
 object CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
   private[CustomAttributeFormat] lazy val logger = Logger(getClass)
@@ -61,11 +62,11 @@ object CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
   }
 
   override def elasticType(attributeName: String): ObjectFieldDefinition =
-    field(attributeName, ObjectType) as
-      field("_default_", ObjectType).as(
-        field("number", LongType),
-        field("string", StringType) index "not_analyzed",
-        field("date", DateType) format "epoch_millis||basic_date_time_no_millis",
-        field("boolean", BooleanType),
-        field("order", LongType))
+    objectField(attributeName).fields(Seq(
+      objectField("_default_").fields(
+        longField("number"),
+        keywordField("string"),
+        dateField("date").format("epoch_millis||basic_date_time_no_millis"),
+        booleanField("boolean"),
+        longField("order"))))
 }

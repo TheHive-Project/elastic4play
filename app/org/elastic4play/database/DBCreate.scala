@@ -2,23 +2,22 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 
-import akka.stream.scaladsl.Sink
-import com.sksamuel.elastic4s.ElasticDsl.{ bulk, index }
-import com.sksamuel.elastic4s.IndexAndTypes.apply
-import com.sksamuel.elastic4s.IndexDefinition
-import com.sksamuel.elastic4s.source.JsonDocumentSource
-import com.sksamuel.elastic4s.streams.RequestBuilder
-import org.elastic4play.models.BaseEntity
-import org.elastic4play.{ ConflictError, CreateError, InternalError }
-import org.elasticsearch.action.index.IndexResponse
-import org.elasticsearch.index.engine.DocumentAlreadyExistsException
-import org.elasticsearch.transport.RemoteTransportException
+import scala.concurrent.{ ExecutionContext, Future }
+
 import play.api.Logger
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.{ JsNull, JsObject, JsString, JsValue }
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success, Try }
+import akka.stream.scaladsl.Sink
+import com.sksamuel.elastic4s.ElasticDsl.indexInto
+import com.sksamuel.elastic4s.indexes.IndexDefinition
+import com.sksamuel.elastic4s.streams.RequestBuilder
+import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
+import org.elasticsearch.index.engine.VersionConflictEngineException
+import org.elasticsearch.transport.RemoteTransportException
+
+import org.elastic4play.models.BaseEntity
+import org.elastic4play.{ ConflictError, CreateError, InternalError }
 
 /**
  * Service lass responsible for entity creation
@@ -28,7 +27,8 @@ import scala.util.{ Failure, Success, Try }
 class DBCreate @Inject() (
     db: DBConfiguration,
     implicit val ec: ExecutionContext) {
-  val log = Logger(getClass)
+
+  private[DBCreate] lazy val logger = Logger(getClass)
 
   /**
    * Create an entity of type "modelName" with attributes
@@ -57,59 +57,37 @@ class DBCreate @Inject() (
     val routing = parent.map(_.routing)
       .orElse((attributes \ "_routing").asOpt[String])
       .orElse(id)
-    val params = CreateParams(modelName, id, parentId, routing, attributes)
-    create(params)
-  }
 
-  /**
-   * Create entities using list of CreateParams
-   *
-   * @param params data used for entity creation
-   * @return for each requested entity creation, a try of its attributes
-   * attributes contain _id and _routing (and _parent if entity is a child)
-   */
-  @deprecated("Bulk creation is deprecated. Use single creation in a loop", "1.1.2")
-  private[database] def create(params: Seq[CreateParams]): Future[Seq[Try[JsObject]]] = {
-    if (params.isEmpty)
-      return Future.successful(Nil)
-    db.execute(bulk(params.map(_.indexDef)) refresh true)
-      .map { bulkResult ⇒
-        bulkResult.items.zip(params).map {
-          case (bulkItemResponse, p) if bulkItemResponse.isFailure ⇒
-            val failure = bulkItemResponse.failure
-            log.warn(s"create failure : ${failure.getId} ${failure.getType} ${failure.getMessage} ${failure.getStatus}")
-            Failure(CreateError(Option(failure.getStatus.name), failure.getMessage, p.attributes))
-          case (bulkItemResponse, p) ⇒
-            Success(p.result(bulkItemResponse.original.getResponse[IndexResponse].getId))
+    // remove attributes that starts with "_" because we wan't permit to interfere with elasticsearch internal fields
+    val docSource = JsObject(attributes.fields.filterNot(_._1.startsWith("_"))).toString
+    db
+      .execute {
+        addId(id).andThen(addParent(parentId)).andThen(addRouting(routing)) {
+          indexInto(db.indexName, modelName).source(docSource).refresh(RefreshPolicy.WAIT_UNTIL)
         }
       }
+      .transform(
+        indexResponse ⇒ attributes +
+          ("_type" → JsString(modelName)) +
+          ("_id" → JsString(indexResponse.id)) +
+          ("_parent" → parentId.fold[JsValue](JsNull)(JsString)) +
+          ("_routing" → JsString(routing.getOrElse(indexResponse.id))),
+        convertError(attributes, _))
   }
 
-  @scala.annotation.tailrec
-  private def convertError(params: CreateParams, error: Throwable): Throwable = error match {
-    case rte: RemoteTransportException        ⇒ convertError(params, rte.getCause)
-    case daee: DocumentAlreadyExistsException ⇒ ConflictError(daee.getMessage, params.attributes)
-    case other                                ⇒ CreateError(None, other.getMessage, params.attributes)
-  }
-
-  /**
-   * Create an entity using CreateParams
-   *
-   * @param params data used for entity creation
-   * @return entity attributes
-   * attributes contain _id and _routing (and _parent if entity is a child)
-   */
-  private[database] def create(params: CreateParams): Future[JsObject] = {
-    db.execute(params.indexDef refresh true).transform(
-      indexResponse ⇒ params.result(indexResponse.getId),
-      convertError(params, _))
+  private[database] def convertError(attributes: JsObject, error: Throwable): Throwable = error match {
+    case rte: RemoteTransportException        ⇒ convertError(attributes, rte.getCause)
+    case vcee: VersionConflictEngineException ⇒ ConflictError(vcee.getMessage, attributes)
+    case other ⇒
+      logger.warn("create error", other)
+      CreateError(None, other.getMessage, attributes)
   }
 
   /**
    * add id information in index definition
    */
   private def addId(id: Option[String]): IndexDefinition ⇒ IndexDefinition = id match {
-    case Some(i) ⇒ _ id i
+    case Some(i) ⇒ _ id i createOnly true
     case None    ⇒ identity
   }
   /**
@@ -129,52 +107,18 @@ class DBCreate @Inject() (
   }
 
   /**
-   * Parameters required to create an entity
-   *
-   * @param modelName name of the model of the creating entity
-   * @param id optional id of the entity
-   * @param parentId optional parent id of the entity
-   * @param routing optional routing information to store entity in the right shard
-   * if parentId is set, routing must be the same as parent routing
-   * @param attributes entity content
-   */
-  private[database] case class CreateParams(modelName: String, id: Option[String], parentId: Option[String], routing: Option[String], attributes: JsObject) {
-    /**
-     * index definition used to store entity
-     */
-    val indexDef: IndexDefinition = {
-      // remove attributes that starts with "_" because we wan't permit to interfere with elasticsearch internal fields
-      val docSource = JsonDocumentSource(JsObject(attributes.fields.filterNot(_._1.startsWith("_"))).toString)
-      addId(id).andThen(addParent(parentId)).andThen(addRouting(routing)) {
-        index into db.indexName → modelName doc docSource update true
-      }
-    }
-
-    /**
-     * build entity attribute from its attributes and id
-     */
-    def result(id: String): JsObject = {
-      attributes +
-        ("_type" → JsString(modelName)) +
-        ("_id" → JsString(id)) +
-        ("_parent" → parentId.fold[JsValue](JsNull)(JsString)) +
-        ("_routing" → JsString(routing.getOrElse(id)))
-    }
-  }
-
-  /**
    * Class used to build index definition based on model name and attributes
    * This class is used by sink (ElasticSearch reactive stream)
    */
   private class AttributeRequestBuilder() extends RequestBuilder[JsObject] {
     override def request(attributes: JsObject): IndexDefinition = {
-      val docSource = JsonDocumentSource(JsObject(attributes.fields.filterNot(_._1.startsWith("_"))).toString)
+      val docSource = JsObject(attributes.fields.filterNot(_._1.startsWith("_"))).toString
       val id = (attributes \ "_id").asOpt[String]
       val parent = (attributes \ "_parent").asOpt[String]
       val routing = (attributes \ "_routing").asOpt[String] orElse parent orElse id
       val modelName = (attributes \ "_type").asOpt[String].getOrElse(throw InternalError("The entity doesn't contain _type attribute"))
       addId(id).andThen(addParent(parent)).andThen(addRouting(routing)) {
-        index.into(db.indexName → modelName).doc(docSource).update(true)
+        indexInto(db.indexName, modelName).source(docSource)
       }
     }
   }

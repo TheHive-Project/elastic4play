@@ -1,15 +1,17 @@
 package org.elastic4play.services
 
+import scala.collection.JavaConverters._
+
+import play.api.libs.json._
+import play.api.{ Configuration, Logger }
+
 import com.typesafe.config.ConfigValueType._
 import com.typesafe.config.{ ConfigList, ConfigObject, ConfigValue }
+
 import org.elastic4play.models.JsonFormat._
 import org.elastic4play.services.QueryDSL._
 import org.elastic4play.utils.Hash
 import org.elastic4play.utils.JsonFormat.hashFormat
-import play.api.{ Configuration, Logger }
-import play.api.libs.json._
-
-import scala.collection.JavaConversions._
 
 object JsonFormat {
   private[JsonFormat] lazy val logger = Logger(getClass)
@@ -37,13 +39,13 @@ object JsonFormat {
 
   implicit val roleFormat: Format[Role.Type] = enumFormat(Role)
 
-  implicit def configWrites = OWrites { (cfg: Configuration) ⇒
+  implicit def configWrites: OWrites[Configuration] = OWrites { (cfg: Configuration) ⇒
     JsObject(cfg.subKeys.map(key ⇒ key → configValueWrites.writes(cfg.underlying.getValue(key))).toSeq)
   }
 
   implicit def configValueWrites: Writes[ConfigValue] = Writes[ConfigValue] {
     case v: ConfigObject             ⇒ configWrites.writes(Configuration(v.toConfig))
-    case v: ConfigList               ⇒ JsArray(v.toSeq.map(x ⇒ configValueWrites.writes(x)))
+    case v: ConfigList               ⇒ JsArray(v.asScala.map(x ⇒ configValueWrites.writes(x)))
     case v if v.valueType == NUMBER  ⇒ JsNumber(BigDecimal(v.unwrapped.asInstanceOf[java.lang.Number].toString))
     case v if v.valueType == BOOLEAN ⇒ JsBoolean(v.unwrapped.asInstanceOf[Boolean])
     case v if v.valueType == NULL    ⇒ JsNull

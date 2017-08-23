@@ -2,17 +2,20 @@ package org.elastic4play.services
 
 import java.util.{ Date, UUID }
 
-import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, MissingAttributeError, UnknownAttributeError }
+import scala.concurrent.ExecutionContext.Implicits.{ global ⇒ ec }
+
+import play.api.libs.json._
+import play.api.test.PlaySpecification
+
+import org.junit.runner.RunWith
+import org.specs2.mock.Mockito
+import org.specs2.runner.JUnitRunner
+
 import org.elastic4play.controllers.JsonInputValue
 import org.elastic4play.database.DBCreate
 import org.elastic4play.models.{ Attribute, EntityDef, ModelDef, AttributeFormat ⇒ F }
 import org.elastic4play.utils.RichFuture
-import org.junit.runner.RunWith
-import org.specs2.mock.Mockito
-import org.specs2.runner.JUnitRunner
-import play.api.libs.iteratee.Execution.trampoline
-import play.api.libs.json._
-import play.api.test.PlaySpecification
+import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, MissingAttributeError, UnknownAttributeError }
 
 @RunWith(classOf[JUnitRunner])
 class CreateSrvSpec extends PlaySpecification with Mockito {
@@ -31,7 +34,7 @@ class CreateSrvSpec extends PlaySpecification with Mockito {
   val dbCreate: DBCreate = mock[DBCreate]
   val eventSrv: EventSrv = mock[EventSrv]
   val attachmentSrv: AttachmentSrv = mock[AttachmentSrv]
-  val createSrv = new CreateSrv(fieldsSrv, dbCreate, eventSrv, attachmentSrv, trampoline)
+  val createSrv = new CreateSrv(fieldsSrv, dbCreate, eventSrv, attachmentSrv, ec)
   val model = new TestModel
 
   "CreateSrv.checkAttributes" should {
@@ -66,7 +69,7 @@ class CreateSrvSpec extends PlaySpecification with Mockito {
 
       createSrv.checkAttributes(attrs, model).await must throwA[AttributeCheckingError].like {
         case AttributeCheckingError(_, errors) ⇒
-          errors must contain(exactly[Throwable](
+          errors must contain( //exactly[Throwable](
             InvalidFormatAttributeError("textAttribute", model.textAttribute.format.name, JsonInputValue(JsBoolean(true))),
             InvalidFormatAttributeError("dateAttribute", model.dateAttribute.format.name, JsonInputValue(JsString("2016-01-28"))),
             InvalidFormatAttributeError("booleanAttribute", model.booleanAttribute.format.name, JsonInputValue(JsString("true"))),
@@ -77,7 +80,7 @@ class CreateSrvSpec extends PlaySpecification with Mockito {
             MissingAttributeError("stringAttribute"),
             MissingAttributeError("user"),
             MissingAttributeError("createdBy"),
-            UnknownAttributeError("metricAttribute.metric3", JsString("aze"))))
+            UnknownAttributeError("metricAttribute.metric3", JsString("aze")))
 
       }
     }

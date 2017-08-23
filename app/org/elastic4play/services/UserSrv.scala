@@ -2,7 +2,6 @@ package org.elastic4play.services
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import scala.annotation.implicitNotFound
 import scala.concurrent.Future
 
 import play.api.libs.json.JsObject
@@ -21,7 +20,7 @@ trait AuthContext {
   def requestId: String
   def roles: Seq[Role.Type]
   private val baseAudit = new AtomicBoolean(true)
-  def getBaseAudit(): Boolean = baseAudit.get && baseAudit.getAndSet(false)
+  def getBaseAudit: Boolean = baseAudit.get && baseAudit.getAndSet(false)
 }
 
 trait UserSrv {

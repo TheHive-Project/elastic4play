@@ -4,26 +4,26 @@ import java.io.InputStream
 import java.nio.file.Files
 import javax.inject.{ Inject, Singleton }
 
-import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.{ ExecutionContext, Future }
+
+import play.api.Configuration
+import play.api.libs.json.JsValue.jsValueToJsLookup
+import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import play.api.libs.json._
+
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{ FileIO, Sink, Source, StreamConverters }
 import akka.util.ByteString
-import play.api.Configuration
-import play.api.libs.json.{ JsArray, JsNull, JsObject, JsValue }
-import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json.Json
-import play.api.libs.json.Json.toJsFieldJsValueWrapper
-import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, MissingAttributeError }
-import org.elastic4play.controllers.{ AttachmentInputValue, FileInputValue }
-import org.elastic4play.controllers.JsonFormat.attachmentInputValueReads
-import org.elastic4play.controllers.JsonInputValue
+
+import org.elastic4play.controllers.JsonFormat.{ attachmentInputValueReads, fileInputValueFormat }
+import org.elastic4play.controllers.{ AttachmentInputValue, FileInputValue, JsonInputValue }
 import org.elastic4play.database.DBCreate
 import org.elastic4play.models.{ AttributeDef, BaseModelDef, EntityDef, ModelDef, AttributeFormat ⇒ F }
 import org.elastic4play.services.JsonFormat.attachmentFormat
 import org.elastic4play.utils.{ Hash, Hasher }
-import org.elastic4play.controllers.JsonFormat.fileInputValueFormat
+import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, MissingAttributeError }
 
 case class Attachment(name: String, hashes: Seq[Hash], size: Long, contentType: String, id: String)
 object Attachment {
@@ -36,7 +36,7 @@ trait AttachmentAttributes { _: AttributeDef ⇒
 
 @Singleton
 class AttachmentModel(datastoreName: String) extends ModelDef[AttachmentModel, AttachmentChunk](datastoreName) with AttachmentAttributes {
-  @Inject() def this(configuration: Configuration) = this(configuration.getString("datastore.name").get)
+  @Inject() def this(configuration: Configuration) = this(configuration.get[String]("datastore.name"))
 }
 class AttachmentChunk(model: AttachmentModel, attributes: JsObject) extends EntityDef[AttachmentModel, AttachmentChunk](model, attributes) with AttachmentAttributes
 
@@ -59,9 +59,9 @@ class AttachmentSrv(
     ec: ExecutionContext,
     mat: Materializer) =
     this(
-      configuration.getString("datastore.hash.main").get,
-      configuration.getStringSeq("datastore.hash.extra").get,
-      configuration.getBytes("datastore.chunksize").get.toInt,
+      configuration.get[String]("datastore.hash.main"),
+      configuration.get[Seq[String]]("datastore.hash.extra"),
+      configuration.underlying.getBytes("datastore.chunksize").toInt,
       dbCreate,
       getSrv,
       attachmentModel,

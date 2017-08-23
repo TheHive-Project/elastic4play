@@ -1,6 +1,6 @@
 package org.elastic4play.models
 
-import play.api.libs.json.{ Format, JsError, JsNull, JsString, JsSuccess, JsValue, Reads, Writes }
+import play.api.libs.json._
 
 object JsonFormat {
   implicit val baseModelEntityWrites: Writes[BaseEntity] = Writes((entity: BaseEntity) ⇒ entity.toJson)

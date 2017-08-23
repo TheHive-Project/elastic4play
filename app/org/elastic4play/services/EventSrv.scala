@@ -1,18 +1,19 @@
 package org.elastic4play.services
 
+import java.util.Date
+import javax.inject.Singleton
+
 import scala.util.Try
+
+import play.api.Logger
+import play.api.libs.json.JsObject
+import play.api.mvc.{ RequestHeader, Result }
 
 import akka.actor.{ ActorRef, actorRef2Scala }
 import akka.event.{ ActorEventBus, SubchannelClassification }
 import akka.util.Subclassification
 
-import play.api.libs.json.JsObject
-import play.api.mvc.{ RequestHeader, Result }
-
 import org.elastic4play.models.{ BaseEntity, HiveEnumeration }
-import play.api.Logger
-import javax.inject.Singleton
-import java.util.Date
 
 trait EventMessage
 
@@ -33,7 +34,7 @@ case class AuditOperation(
 
 @Singleton
 class EventSrv extends ActorEventBus with SubchannelClassification {
-  lazy val log = Logger(getClass)
+  private[EventSrv] lazy val logger = Logger(getClass)
   override type Classifier = Class[_ <: EventMessage]
   override type Event = EventMessage
 

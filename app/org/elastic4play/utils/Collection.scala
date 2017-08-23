@@ -1,7 +1,7 @@
 package org.elastic4play.utils
 
-import scala.collection.{ IterableLike, TraversableLike }
 import scala.collection.generic.CanBuildFrom
+import scala.collection.{ IterableLike, TraversableLike }
 import scala.util.{ Failure, Success, Try }
 object Collection {
   def distinctBy[A, B, Repr, That](xs: IterableLike[A, Repr])(f: A ⇒ B)(implicit cbf: CanBuildFrom[Repr, A, That]): That = {

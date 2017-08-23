@@ -1,18 +1,20 @@
 package org.elastic4play.services
 
-import org.elastic4play.NotFoundError
-import org.elastic4play.database.DBRemove
-import org.elastic4play.models.{ EntityDef, ModelDef, AttributeFormat ⇒ F }
-import org.elastic4play.utils.RichFuture
-import org.junit.runner.RunWith
-import org.specs2.mock.Mockito
-import org.specs2.runner.JUnitRunner
-import play.api.libs.iteratee.Execution.trampoline
+import scala.concurrent.ExecutionContext.Implicits.{ global ⇒ ec }
+import scala.concurrent.Future
+
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json.{ JsObject, Json }
 import play.api.test.PlaySpecification
 
-import scala.concurrent.Future
+import org.junit.runner.RunWith
+import org.specs2.mock.Mockito
+import org.specs2.runner.JUnitRunner
+
+import org.elastic4play.NotFoundError
+import org.elastic4play.database.DBRemove
+import org.elastic4play.models.{ EntityDef, ModelDef, AttributeFormat ⇒ F }
+import org.elastic4play.utils.RichFuture
 
 @RunWith(classOf[JUnitRunner])
 class DeleteSrvSpec extends PlaySpecification with Mockito {
@@ -28,7 +30,6 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
   }
   class TestEntity(model: TestModel, attributes: JsObject) extends EntityDef[TestModel, TestEntity](model, attributes)
 
-  implicit val ec = trampoline
   implicit val authContext = mock[AuthContext]
 
   val model = new TestModel
@@ -53,12 +54,12 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
       val getSrv = mock[GetSrv]
       val dbRemove = mock[DBRemove]
       val eventSrv = mock[EventSrv]
-      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, trampoline)
+      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, ec)
 
       val id = "42"
       getSrv[TestModel, TestEntity](model, id) returns Future.successful(entity)
       dbRemove(model, entity) returns Future.successful(true)
-      deleteSrv.realDelete[TestModel, TestEntity](model, id).await must_== (())
+      deleteSrv.realDelete[TestModel, TestEntity](model, id).await must not(throwA[Exception])
       there was one(dbRemove).apply(model, entity)
     }
 
@@ -67,7 +68,7 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
       val getSrv = mock[GetSrv]
       val dbRemove = mock[DBRemove]
       val eventSrv = mock[EventSrv]
-      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, trampoline)
+      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, ec)
 
       val id = "42"
       val error = NotFoundError(s"${model.name} $id not found")
@@ -80,7 +81,7 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
       val getSrv = mock[GetSrv]
       val dbRemove = mock[DBRemove]
       val eventSrv = mock[EventSrv]
-      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, trampoline)
+      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, ec)
 
       val id = "42"
       getSrv[TestModel, TestEntity](model, id) returns Future.successful(entity)

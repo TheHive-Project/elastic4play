@@ -3,11 +3,9 @@ package org.elastic4play.controllers
 import java.io.File
 import java.nio.file.{ Path, Paths }
 
-import play.api.libs.json.{ Format, JsError, JsObject, JsString, JsSuccess, JsValue }
-import play.api.libs.json.{ Reads, Writes }
 import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json.Json
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import play.api.libs.json._
 
 import org.elastic4play.utils.Hash
 
