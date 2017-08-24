@@ -22,7 +22,7 @@ class AuthenticatedRequest[A](val authContext: AuthContext, request: Request[A])
   def userId: String = authContext.userId
   def userName: String = authContext.userName
   def requestId: String = Instance.getRequestId(request)
-  def roles: Seq[Role.Type] = authContext.roles
+  def roles: Seq[Role] = authContext.roles
 }
 
 sealed trait ExpirationStatus
@@ -137,7 +137,7 @@ class Authenticated(
    * If user has sufficient right (have required role) action is executed
    * otherwise, action returns a not authorized error
    */
-  def apply(requiredRole: Role.Type) = new ActionBuilder[AuthenticatedRequest, AnyContent] {
+  def apply(requiredRole: Role) = new ActionBuilder[AuthenticatedRequest, AnyContent] {
     val executionContext: ExecutionContext = ec
 
     def parser: BodyParser[AnyContent] = defaultParser
