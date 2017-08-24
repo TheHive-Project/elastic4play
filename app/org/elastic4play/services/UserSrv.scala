@@ -7,18 +7,13 @@ import scala.concurrent.Future
 import play.api.libs.json.JsObject
 import play.api.mvc.RequestHeader
 
-import org.elastic4play.models.HiveEnumeration
-
-object Role extends Enumeration with HiveEnumeration {
-  type Type = Value
-  val read, write, admin = Value
-}
+abstract class Role(val name: String)
 
 trait AuthContext {
   def userId: String
   def userName: String
   def requestId: String
-  def roles: Seq[Role.Type]
+  def roles: Seq[Role]
   private val baseAudit = new AtomicBoolean(true)
   def getBaseAudit: Boolean = baseAudit.get && baseAudit.getAndSet(false)
 }
@@ -35,7 +30,7 @@ trait User {
   val attributes: JsObject
   val id: String
   def getUserName: String
-  def getRoles: Seq[Role.Type]
+  def getRoles: Seq[Role]
 }
 
 object AuthCapability extends Enumeration {

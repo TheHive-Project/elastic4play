@@ -15,7 +15,7 @@ import akka.stream.scaladsl.Source
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.searches.RichSearchHit
 import com.sksamuel.elastic4s.searches.aggs.{ AggregationDefinition, KeyedFiltersAggregationDefinition, RichAggregations }
-import com.sksamuel.elastic4s.searches.queries.{ BuildableTermsQueryImplicits, ParentIdQueryDefinition, QueryDefinition }
+import com.sksamuel.elastic4s.searches.queries.{ BuildableTermsQueryImplicits, QueryDefinition }
 import org.apache.lucene.search.join.ScoreMode
 import org.elasticsearch.search.aggregations.bucket.filter.Filter
 import org.elasticsearch.search.aggregations.bucket.filters.Filters
