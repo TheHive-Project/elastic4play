@@ -96,6 +96,14 @@ object JsonFormat {
       } yield (t, q)
   }
 
+  object JsParentId {
+    def unapply(v: JsValue): Option[(String, String)] =
+      for {
+        t ← (v \ "_type").asOpt[String]
+        i ← (v \ "_id").asOpt[String]
+      } yield (t, i)
+  }
+
   object JsField {
     def unapply(v: JsValue): Option[(String, Any)] =
       for {
@@ -128,6 +136,7 @@ object JsonFormat {
         case JsObjOne(("_lte", JsObjOne(n, JsVal(v)))) ⇒ JsSuccess(n ~<= v)
         case JsObjOne(("_between", JsRange(n, f, t)))  ⇒ JsSuccess(n ~<> (f → t))
         case JsObjOne(("_parent", JsParent(p, q)))     ⇒ JsSuccess(parent(p, q))
+        case JsObjOne(("_parent", JsParentId(p, i)))   ⇒ JsSuccess(withParent(p, i))
         case JsObjOne(("_id", JsString(id)))           ⇒ JsSuccess(withId(id))
         case JsField(field, value)                     ⇒ JsSuccess(field ~= value)
         case JsObjOne(("_child", JsParent(p, q)))      ⇒ JsSuccess(child(p, q))

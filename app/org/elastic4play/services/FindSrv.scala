@@ -15,7 +15,7 @@ import akka.stream.scaladsl.Source
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.searches.RichSearchHit
 import com.sksamuel.elastic4s.searches.aggs.{ AggregationDefinition, KeyedFiltersAggregationDefinition, RichAggregations }
-import com.sksamuel.elastic4s.searches.queries.{ BuildableTermsQueryImplicits, QueryDefinition }
+import com.sksamuel.elastic4s.searches.queries.{ BuildableTermsQueryImplicits, ParentIdQueryDefinition, QueryDefinition }
 import org.apache.lucene.search.join.ScoreMode
 import org.elasticsearch.search.aggregations.bucket.filter.Filter
 import org.elasticsearch.search.aggregations.bucket.filters.Filters
@@ -252,6 +252,8 @@ object QueryDSL {
   def not(query: QueryDef): QueryDef = QueryDef(boolQuery.not(query.query))
   def child(childType: String, query: QueryDef): QueryDef = QueryDef(hasChildQuery(childType).query(query.query).scoreMode(ScoreMode.None))
   def parent(parentType: String, query: QueryDef): QueryDef = QueryDef(hasParentQuery(parentType).query(query.query).scoreMode(false))
+  def withParent(parent: BaseEntity): QueryDef = withParent(parent.model.name, parent.id)
+  def withParent(parentType: String, parentId: String): QueryDef = QueryDef(ParentIdQueryDefinition(parentType, parentId))
   def string(queryString: String): QueryDef = QueryDef(query(queryString))
 }
 
