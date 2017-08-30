@@ -20,7 +20,7 @@ class DBRemove @Inject() (
       delete(entity.id)
         .from(db.indexName / model.name)
         .routing(entity.routing)
-        .refresh(RefreshPolicy.WAIT_UNTIL)
+        .refresh(RefreshPolicy.IMMEDIATE)
     }
       .map { deleteResponse ⇒
         deleteResponse.status != RestStatus.NOT_FOUND

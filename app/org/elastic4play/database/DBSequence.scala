@@ -27,7 +27,7 @@ class DBSequence @Inject() (
         .retryOnConflict(5)
         //.fetchSource(Seq("counter"), Nil) // doesn't work any longer
         .fetchSource(true)
-        .refresh(RefreshPolicy.WAIT_UNTIL)
+        .refresh(RefreshPolicy.IMMEDIATE)
     } map { updateResponse ⇒
       updateResponse.get.sourceAsMap().get("counter").asInstanceOf[Int]
     }

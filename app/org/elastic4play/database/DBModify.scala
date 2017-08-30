@@ -80,7 +80,7 @@ class DBModify @Inject() (
           .script(buildScript(entity, updateAttributes))
           .fetchSource(true)
           .retryOnConflict(5)
-          .refresh(RefreshPolicy.WAIT_UNTIL)
+          .refresh(RefreshPolicy.IMMEDIATE)
       }
       .map { updateResponse ⇒
         entity.model(Json.parse(updateResponse.get.sourceAsString).as[JsObject] +
