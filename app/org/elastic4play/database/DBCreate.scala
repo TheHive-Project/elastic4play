@@ -63,7 +63,7 @@ class DBCreate @Inject() (
     db
       .execute {
         addId(id).andThen(addParent(parentId)).andThen(addRouting(routing)) {
-          indexInto(db.indexName, modelName).source(docSource).refresh(RefreshPolicy.IMMEDIATE)
+          indexInto(db.indexName, modelName).source(docSource).refresh(RefreshPolicy.WAIT_UNTIL)
         }
       }
       .transform(
