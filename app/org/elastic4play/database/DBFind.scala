@@ -13,7 +13,7 @@ import play.api.{ Configuration, Logger }
 import akka.NotUsed
 import akka.stream.{ Attributes, Materializer, Outlet, SourceShape }
 import akka.stream.scaladsl.Source
-import akka.stream.stage.{ GraphStage, GraphStageLogic, OutHandler }
+import akka.stream.stage.{ AsyncCallback, GraphStage, GraphStageLogic, OutHandler }
 import com.sksamuel.elastic4s.searches.{ RichSearchHit, RichSearchResponse, SearchBuilderFn, SearchDefinition }
 
 import org.elastic4play.SearchError
@@ -160,17 +160,7 @@ class SearchWithScroll(
     var skip: Int = offset
     val queue: mutable.Queue[RichSearchHit] = mutable.Queue.empty
     var scrollId: Future[String] = firstResults.map(_.scrollId)
-    firstResults.foreach {
-      case searchResponse if skip > 0 ⇒
-        if (searchResponse.hits.length <= skip)
-          skip -= searchResponse.hits.length
-        else {
-          queue ++= searchResponse.hits.drop(skip)
-          skip = 0
-        }
-      case searchResponse ⇒
-        queue ++= searchResponse.hits
-    }
+    var firstResultProcessed = false
 
     setHandler(out, new OutHandler {
 
@@ -182,7 +172,23 @@ class SearchWithScroll(
         }
       }
 
-      override def onPull(): Unit = {
+      val firstCallback: AsyncCallback[RichSearchResponse] = getAsyncCallback[RichSearchResponse] {
+        case searchResponse if skip > 0 ⇒
+          if (searchResponse.hits.length <= skip)
+            skip -= searchResponse.hits.length
+          else {
+            queue ++= searchResponse.hits.drop(skip)
+            skip = 0
+          }
+          firstResultProcessed = true
+          onPull()
+        case searchResponse ⇒
+          queue ++= searchResponse.hits
+          firstResultProcessed = true
+          onPull()
+      }
+
+      override def onPull(): Unit = if (firstResultProcessed) {
         import com.sksamuel.elastic4s.ElasticDsl.searchScroll
         if (processed >= max) completeStage()
 
@@ -218,6 +224,7 @@ class SearchWithScroll(
           pushNextHit()
         }
       }
+      else firstResults.foreach(firstCallback.invoke)
     })
     override def postStop(): Unit = {
       import com.sksamuel.elastic4s.ElasticDsl.clearScroll

@@ -253,7 +253,7 @@ object QueryDSL {
   def child(childType: String, query: QueryDef): QueryDef = QueryDef(hasChildQuery(childType).query(query.query).scoreMode(ScoreMode.None))
   def parent(parentType: String, query: QueryDef): QueryDef = QueryDef(hasParentQuery(parentType).query(query.query).scoreMode(false))
   def withParent(parent: BaseEntity): QueryDef = withParent(parent.model.name, parent.id)
-  def withParent(parentType: String, parentId: String): QueryDef = QueryDef(ParentIdQueryDefinition(parentType, parentId))
+  def withParent(parentType: String, parentId: String): QueryDef = QueryDef(hasParentQuery(parentType).query(idsQuery(parentId).types(parentType)).scoreMode(false)) // QueryDef(ParentIdQueryDefinition(parentType, parentId)) FIXME doesn't work yet
   def string(queryString: String): QueryDef = QueryDef(query(queryString))
 }
 
