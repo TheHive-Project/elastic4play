@@ -38,7 +38,7 @@ class ErrorHandler extends HttpErrorHandler {
       case iae: IllegalArgumentException       ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "IllegalArgument", "message" → iae.getMessage))
       case _: NoNodeAvailableException         ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "NoNodeAvailable", "message" → "ElasticSearch cluster is unreachable"))
       case CreateError(_, message, attributes) ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "CreateError", "message" → message, "object" → attributes))
-      case ConflictError(message, attributes)  ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "ConflictError", "message" → message, "object" → attributes))
+      case ErrorWithObject(tpe, message, obj)  ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → tpe, "message" → message, "object" → obj))
       case GetError(message)                   ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "GetError", "message" → message))
       case MultiError(message, exceptions) ⇒
         val suberrors = exceptions.map(e ⇒ toErrorResult(e)).collect {
