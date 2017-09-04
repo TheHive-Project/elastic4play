@@ -28,9 +28,6 @@ class LdapAuthSrvFactory @Inject() (
     configuration.get[String]("auth.ldap.bindPW"),
     configuration.get[String]("auth.ldap.baseDN"),
     configuration.get[String]("auth.ldap.filter"),
-    configuration.getOptional[String]("auth.ldap.keyAttribute"),
-    configuration.getOptional[String]("auth.ldap.keyFilter"),
-    configuration.getOptional[String]("auth.ldap.loginAttribute").getOrElse("uid"),
     userSrv,
     ec)
 
@@ -41,18 +38,12 @@ class LdapAuthSrvFactory @Inject() (
       bindPW: String,
       baseDN: String,
       filter: String,
-      keyAttribute: Option[String],
-      keyFilter: Option[String],
-      loginAttribute: String,
       userSrv: UserSrv,
       implicit val ec: ExecutionContext) extends AuthSrv {
 
     private[LdapAuthSrv] lazy val logger = Logger(getClass)
     val name = "ldap"
-    override val capabilities: Set[AuthCapability.Value] = keyAttribute match {
-      case Some(_) ⇒ Set(AuthCapability.changePassword, AuthCapability.allowKey)
-      case None    ⇒ Set(AuthCapability.changePassword)
-    }
+    val capabilities = Set(AuthCapability.changePassword)
 
     private[auth] def connect[A](username: String, password: String)(f: InitialDirContext ⇒ Try[A]): Try[A] = {
       val protocol = if (useSSL) "ldaps://" else "ldap://"

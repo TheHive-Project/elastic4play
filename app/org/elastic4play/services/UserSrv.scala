@@ -39,15 +39,10 @@ trait User {
 
 object AuthCapability extends Enumeration {
   type Type = Value
-  val changePassword, setPassword, allowKey = Value
+  val changePassword, setPassword = Value
 }
 
 trait AuthSrv {
-  protected final def generateKey(): String = {
-    val bytes = Array.ofDim[Byte](24)
-    Random.nextBytes(bytes)
-    Base64.getEncoder.encodeToString(bytes)
-  }
   val name: String
   val capabilities = Set.empty[AuthCapability.Type]
 
