@@ -36,7 +36,7 @@ class ADAuthSrvFactory @Inject() (
 
     private[ADAuthSrv] lazy val logger = Logger(getClass)
     val name: String = factory.name
-    val capabilities: Set[AuthCapability.Value] = Set(AuthCapability.changePassword)
+    override val capabilities: Set[AuthCapability.Value] = Set(AuthCapability.changePassword)
 
     private[auth] def connect[A](username: String, password: String)(f: InitialDirContext ⇒ A): Try[A] = {
       val protocol = if (useSSL) "ldaps://" else "ldap://"
@@ -65,7 +65,7 @@ class ADAuthSrvFactory @Inject() (
       }
     }
 
-    def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] = {
+    override def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] = {
       (for {
         _ ← Future.fromTry(connect(domainName + "\\" + username, password)(identity))
         u ← userSrv.get(username)
@@ -78,7 +78,7 @@ class ADAuthSrvFactory @Inject() (
         }
     }
 
-    def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] = {
+    override def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] = {
       val unicodeOldPassword = ("\"" + oldPassword + "\"").getBytes("UTF-16LE")
       val unicodeNewPassword = ("\"" + newPassword + "\"").getBytes("UTF-16LE")
       val changeTry = connect(domainName + "\\" + username, oldPassword) { ctx ⇒
@@ -98,7 +98,5 @@ class ADAuthSrvFactory @Inject() (
             Future.failed(AuthorizationError("Change password failure"))
         }
     }
-
-    def setPassword(username: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] = Future.failed(AuthorizationError("Operation not supported"))
   }
 }

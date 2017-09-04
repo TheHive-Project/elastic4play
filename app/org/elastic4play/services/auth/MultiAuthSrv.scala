@@ -61,7 +61,7 @@ class MultiAuthSrv(
       ec)
 
   val name = "multi"
-  def capabilities: Set[Type] = authProviders.flatMap(_.capabilities).toSet
+  override val capabilities: Set[Type] = authProviders.flatMap(_.capabilities).toSet
 
   private[auth] def forAllAuthProvider[A](body: AuthSrv ⇒ Future[A]) = {
     authProviders.foldLeft(Future.failed[A](new Exception("no authentication provider found"))) {
@@ -69,13 +69,24 @@ class MultiAuthSrv(
     }
   }
 
-  def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] =
+  override def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] =
     forAllAuthProvider(_.authenticate(username, password))
       .recoverWith { case _ ⇒ Future.failed(AuthenticationError("Authentication failure")) }
 
-  def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
+  override def authenticate(key: String)(implicit request: RequestHeader): Future[AuthContext] =
+    forAllAuthProvider(_.authenticate(key))
+      .recoverWith { case _ ⇒ Future.failed(AuthenticationError("Authentication failure")) }
+
+  override def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
     forAllAuthProvider(_.changePassword(username, oldPassword, newPassword))
 
-  def setPassword(username: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
+  override def setPassword(username: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
     forAllAuthProvider(_.setPassword(username, newPassword))
+
+  override def renewKey(username: String)(implicit authContext: AuthContext): Future[String] =
+    forAllAuthProvider(_.renewKey(username))
+
+  override def getKey(username: String)(implicit authContext: AuthContext): Future[String] =
+    forAllAuthProvider(_.getKey(username))
+
 }
