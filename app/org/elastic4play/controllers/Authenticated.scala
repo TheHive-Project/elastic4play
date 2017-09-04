@@ -5,6 +5,7 @@ import java.util.Date
 import javax.inject.{ Inject, Singleton }
 import javax.naming.ldap.LdapName
 
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.{ DurationLong, FiniteDuration }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.JavaConverters._
@@ -43,11 +44,12 @@ class Authenticated(
     maxSessionInactivity: FiniteDuration,
     sessionWarning: FiniteDuration,
     sessionUsername: String,
+    certificateField: Option[String],
     authBySessionCookie: Boolean,
     authByKey: Boolean,
     authByBasicAuth: Boolean,
     authByInitialUser: Boolean,
-    certificateField: Option[String],
+    authByPki: Boolean,
     userSrv: UserSrv,
     authSrv: AuthSrv,
     defaultParser: BodyParsers.Default,
@@ -63,11 +65,12 @@ class Authenticated(
       configuration.getMillis("session.inactivity").millis,
       configuration.getMillis("session.warning").millis,
       configuration.getOptional[String]("session.username").getOrElse("username"),
+      configuration.getOptional[String]("auth.pki.certificateField"),
       configuration.getOptional[Boolean]("auth.method.session").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.key").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.basic").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.init").getOrElse(true),
-      configuration.getOptional[String]("auth.pki.certificateField"),
+      configuration.getOptional[Boolean]("auth.method.pki").getOrElse(true),
       userSrv,
       authSrv,
       defaultParser,
@@ -220,6 +223,7 @@ class Authenticated(
     }
   val authenticationMethods =
     (if (authBySessionCookie) Seq("session" → getFromSession _) else Nil) ++
+      (if (authByPki) Seq("pki" → getFromClientCertificate _) else Nil) ++
       (if (authByKey) Seq("key" → getFromApiKey _) else Nil) ++
       (if (authByBasicAuth) Seq("basic" → getFromBasicAuth _) else Nil) ++
       (if (authByInitialUser) Seq("init" → userSrv.getInitialUser _) else Nil)
