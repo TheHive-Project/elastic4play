@@ -193,34 +193,6 @@ class Authenticated(
       }
   }
 
-  /**
-   * Get user in session -orElse- get user from key parameter
-   */
-  def getContext(request: RequestHeader): Future[AuthContext] =
-    getFromSession(request).recoverWith {
-      case getFromSessionError ⇒
-        getFromApiKey(request).recoverWith {
-          case getFromApiKeyError ⇒
-            getFromBasicAuth(request).recoverWith {
-              case getFromBasicAuthError ⇒
-                getFromClientCertificate(request).recoverWith {
-                  case getFromClientCertificateError ⇒
-                    userSrv.getInitialUser(request).recoverWith {
-                      case getInitialUserError ⇒
-                        logger.error(
-                          s"""Authentication error:
-                           |  From session   : ${getFromSessionError.getClass.getSimpleName} ${getFromSessionError.getMessage}
-                           |  From api key   : ${getFromApiKeyError.getClass.getSimpleName} ${getFromApiKeyError.getMessage}
-                           |  From basic auth: ${getFromBasicAuthError.getClass.getSimpleName} ${getFromBasicAuthError.getMessage}
-                           |  From cert auth : ${getFromClientCertificateError.getClass.getSimpleName} ${getFromClientCertificateError.getMessage}
-                           |  Initial user   : ${getInitialUserError.getClass.getSimpleName} ${getInitialUserError.getMessage}
-                          """.stripMargin)
-                        Future.failed(AuthenticationError("Not authenticated"))
-                    }
-                }
-            }
-        }
-    }
   val authenticationMethods =
     (if (authBySessionCookie) Seq("session" → getFromSession _) else Nil) ++
       (if (authByPki) Seq("pki" → getFromClientCertificate _) else Nil) ++
