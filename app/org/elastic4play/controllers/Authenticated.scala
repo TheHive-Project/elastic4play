@@ -2,9 +2,11 @@ package org.elastic4play.controllers
 
 import java.util.Date
 import javax.inject.{ Inject, Singleton }
+import javax.naming.ldap.LdapName
 
 import scala.concurrent.duration.{ DurationLong, FiniteDuration }
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.collection.JavaConverters._
 import scala.util.Try
 
 import play.api.{ Configuration, Logger }
@@ -38,6 +40,7 @@ class Authenticated(
     maxSessionInactivity: FiniteDuration,
     sessionWarning: FiniteDuration,
     sessionUsername: String,
+    certificateField: Option[String],
     userSrv: UserSrv,
     authSrv: AuthSrv,
     defaultParser: BodyParsers.Default,
@@ -53,12 +56,14 @@ class Authenticated(
       configuration.getMillis("session.inactivity").millis,
       configuration.getMillis("session.warning").millis,
       configuration.getOptional[String]("session.username").getOrElse("username"),
+      configuration.getOptional[String]("auth.pki.certificateField"),
       userSrv,
       authSrv,
       defaultParser,
       ec)
 
   private[Authenticated] lazy val logger = Logger(getClass)
+
   private def now = (new Date).getTime
 
   /**
@@ -111,6 +116,52 @@ class Authenticated(
       }
     } yield authContext
 
+  private val certificateSANField = certificateField.flatMap {
+    case "otherName"                 ⇒ Some(0)
+    case "rfc822Name"                ⇒ Some(1)
+    case "dNSName"                   ⇒ Some(2)
+    case "x400Address"               ⇒ Some(3)
+    case "directoryName"             ⇒ Some(4)
+    case "ediPartyName"              ⇒ Some(5)
+    case "uniformResourceIdentifier" ⇒ Some(6)
+    case "iPAddress"                 ⇒ Some(7)
+    case "registeredID"              ⇒ Some(8)
+  }
+
+  private object CertificateSAN {
+    def unapply(l: java.util.List[_]): Option[(Int, String)] =
+      for {
+        t ← Option(l.get(0))
+        v ← Option(l.get(1))
+        if t.isInstanceOf[Integer]
+      } yield (t.asInstanceOf[Integer].toInt, v.toString)
+  }
+
+  def getFromClientCertificate(request: RequestHeader): Future[AuthContext] = {
+    certificateField
+      .fold[Future[AuthContext]](Future.failed(AuthenticationError("Certificate authentication is not configured"))) { cf ⇒
+        request.clientCertificateChain.flatMap(_.headOption)
+          .flatMap { cert ⇒
+            val dn = cert.getSubjectX500Principal.getName
+            val ldapName = new LdapName(dn)
+            ldapName.getRdns.asScala
+              .collectFirst {
+                case rdn if rdn.getType == cf ⇒ userSrv.getFromId(request, rdn.getValue.toString)
+              }
+              .orElse {
+                for {
+                  csf ← certificateSANField
+                  san ← Option(cert.getSubjectAlternativeNames)
+                  fieldValue ← san.asScala.collectFirst {
+                    case CertificateSAN(`csf`, value) ⇒ userSrv.getFromId(request, value)
+                  }
+                } yield fieldValue
+              }
+          }
+          .getOrElse(Future.failed(AuthenticationError("Certificate doesn't contain user information")))
+      }
+  }
+
   /**
    * Get user in session -orElse- get user from key parameter
    */
@@ -119,6 +170,7 @@ class Authenticated(
       case getFromSessionError ⇒
         getFromApiKey(request).recoverWith {
           case getFromApiKeyError ⇒
+<<<<<<< Updated upstream
             userSrv.getInitialUser(request).recoverWith {
               case getInitialUserError ⇒
                 logger.error(
@@ -128,6 +180,25 @@ class Authenticated(
                    |  Initial user: ${getInitialUserError.getClass.getSimpleName} ${getInitialUserError.getMessage}
                  """.stripMargin)
                 Future.failed(AuthenticationError("Not authenticated"))
+=======
+            getFromBasicAuth(request).recoverWith {
+              case getFromBasicAuthError ⇒
+                getFromClientCertificate(request).recoverWith {
+                  case getFromClientCertificateError ⇒
+                    userSrv.getInitialUser(request).recoverWith {
+                      case getInitialUserError ⇒
+                        logger.error(
+                          s"""Authentication error:
+                           |  From session   : ${getFromSessionError.getClass.getSimpleName} ${getFromSessionError.getMessage}
+                           |  From api key   : ${getFromApiKeyError.getClass.getSimpleName} ${getFromApiKeyError.getMessage}
+                           |  From basic auth: ${getFromBasicAuthError.getClass.getSimpleName} ${getFromBasicAuthError.getMessage}
+                           |  From cert auth : ${getFromClientCertificateError.getClass.getSimpleName} ${getFromClientCertificateError.getMessage}
+                           |  Initial user   : ${getInitialUserError.getClass.getSimpleName} ${getInitialUserError.getMessage}
+                          """.stripMargin)
+                        Future.failed(AuthenticationError("Not authenticated"))
+                    }
+                }
+>>>>>>> Stashed changes
             }
         }
     }
