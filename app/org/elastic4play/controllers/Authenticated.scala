@@ -183,7 +183,7 @@ class Authenticated(
           case getFromApiKeyError ⇒
             getFromBasicAuth(request).recoverWith {
               case getFromBasicAuthError ⇒
-                userSrv.getInitialUser(request).recoverWith {
+                getFromClientCertificate(request).recoverWith {
                   case getFromClientCertificateError ⇒
                     userSrv.getInitialUser(request).recoverWith {
                       case getInitialUserError ⇒
