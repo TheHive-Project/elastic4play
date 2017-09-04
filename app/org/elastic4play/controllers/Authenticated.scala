@@ -22,7 +22,7 @@ class AuthenticatedRequest[A](val authContext: AuthContext, request: Request[A])
   def userId: String = authContext.userId
   def userName: String = authContext.userName
   def requestId: String = Instance.getRequestId(request)
-  def roles: Seq[Role.Type] = authContext.roles
+  def roles: Seq[Role] = authContext.roles
 }
 
 sealed trait ExpirationStatus
@@ -102,6 +102,17 @@ class Authenticated(
         .headers
         .get(HeaderNames.AUTHORIZATION)
         .fold(Future.failed[String](AuthenticationError("Authentication header not found")))(Future.successful)
+      _ ← if (!auth.startsWith("Bearer ")) Future.failed(AuthenticationError("Only bearer authentication is supported")) else Future.successful(())
+      key = auth.substring(7)
+      authContext ← authSrv.authenticate(key)(request)
+    } yield authContext
+
+  def getFromBasicAuth(request: RequestHeader): Future[AuthContext] =
+    for {
+      auth ← request
+        .headers
+        .get(HeaderNames.AUTHORIZATION)
+        .fold(Future.failed[String](AuthenticationError("Authentication header not found")))(Future.successful)
       _ ← if (!auth.startsWith("Basic ")) Future.failed(AuthenticationError("Only basic authentication is supported")) else Future.successful(())
       authWithoutBasic = auth.substring(6)
       decodedAuth = new String(java.util.Base64.getDecoder.decode(authWithoutBasic), "UTF-8")
@@ -119,15 +130,19 @@ class Authenticated(
       case getFromSessionError ⇒
         getFromApiKey(request).recoverWith {
           case getFromApiKeyError ⇒
-            userSrv.getInitialUser(request).recoverWith {
-              case getInitialUserError ⇒
-                logger.error(
-                  s"""Authentication error:
-                   |  From session: ${getFromSessionError.getClass.getSimpleName} ${getFromSessionError.getMessage}
-                   |  From api key: ${getFromApiKeyError.getClass.getSimpleName} ${getFromApiKeyError.getMessage}
-                   |  Initial user: ${getInitialUserError.getClass.getSimpleName} ${getInitialUserError.getMessage}
-                 """.stripMargin)
-                Future.failed(AuthenticationError("Not authenticated"))
+            getFromBasicAuth(request).recoverWith {
+              case getFromBasicAuthError ⇒
+                userSrv.getInitialUser(request).recoverWith {
+                  case getInitialUserError ⇒
+                    logger.error(
+                      s"""Authentication error:
+                       |  From session   : ${getFromSessionError.getClass.getSimpleName} ${getFromSessionError.getMessage}
+                       |  From api key   : ${getFromApiKeyError.getClass.getSimpleName} ${getFromApiKeyError.getMessage}
+                       |  From basic auth: ${getFromBasicAuthError.getClass.getSimpleName} ${getFromBasicAuthError.getMessage}
+                       |  Initial user   : ${getInitialUserError.getClass.getSimpleName} ${getInitialUserError.getMessage}
+                     """.stripMargin)
+                    Future.failed(AuthenticationError("Not authenticated"))
+                }
             }
         }
     }
@@ -137,7 +152,7 @@ class Authenticated(
    * If user has sufficient right (have required role) action is executed
    * otherwise, action returns a not authorized error
    */
-  def apply(requiredRole: Role.Type) = new ActionBuilder[AuthenticatedRequest, AnyContent] {
+  def apply(requiredRole: Role) = new ActionBuilder[AuthenticatedRequest, AnyContent] {
     val executionContext: ExecutionContext = ec
 
     def parser: BodyParser[AnyContent] = defaultParser

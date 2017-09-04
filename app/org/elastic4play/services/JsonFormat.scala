@@ -37,7 +37,7 @@ object JsonFormat {
 
   implicit val attachmentFormat: OFormat[Attachment] = OFormat(attachmentReads, attachmentWrites)
 
-  implicit val roleFormat: Format[Role.Type] = enumFormat(Role)
+  implicit val roleWrites: Writes[Role] = Writes[Role](role ⇒ JsString(role.name))
 
   implicit def configWrites: OWrites[Configuration] = OWrites { (cfg: Configuration) ⇒
     JsObject(cfg.subKeys.map(key ⇒ key → configValueWrites.writes(cfg.underlying.getValue(key))).toSeq)
