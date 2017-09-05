@@ -50,7 +50,7 @@ class LdapAuthSrvFactory @Inject() (
     private[LdapAuthSrv] lazy val logger = Logger(getClass)
     val name = "ldap"
     override val capabilities: Set[AuthCapability.Value] = keyAttribute match {
-      case Some(_) ⇒ Set(AuthCapability.changePassword, AuthCapability.renewKey)
+      case Some(_) ⇒ Set(AuthCapability.changePassword, AuthCapability.allowKey)
       case None    ⇒ Set(AuthCapability.changePassword)
     }
 
