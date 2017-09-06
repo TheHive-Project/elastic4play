@@ -1,10 +1,8 @@
 package org.elastic4play.services
 
-import java.util.Base64
 import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.concurrent.Future
-import scala.util.Random
 
 import play.api.libs.json.JsObject
 import play.api.mvc.RequestHeader
@@ -39,15 +37,10 @@ trait User {
 
 object AuthCapability extends Enumeration {
   type Type = Value
-  val changePassword, setPassword, renewKey = Value
+  val changePassword, setPassword, authByKey = Value
 }
 
 trait AuthSrv {
-  protected final def generateKey(): String = {
-    val bytes = Array.ofDim[Byte](24)
-    Random.nextBytes(bytes)
-    Base64.getEncoder.encodeToString(bytes)
-  }
   val name: String
   val capabilities = Set.empty[AuthCapability.Type]
 
@@ -57,9 +50,5 @@ trait AuthSrv {
   def setPassword(username: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] = Future.failed(AuthorizationError("Operation not supported"))
   def renewKey(username: String)(implicit authContext: AuthContext): Future[String] = Future.failed(AuthorizationError("Operation not supported"))
   def getKey(username: String)(implicit authContext: AuthContext): Future[String] = Future.failed(AuthorizationError("Operation not supported"))
-}
-
-trait AuthSrvFactory {
-  val name: String
-  def getAuthSrv: AuthSrv
+  def removeKey(username: String)(implicit authContext: AuthContext): Future[Unit] = Future.failed(AuthorizationError("Operation not supported"))
 }
