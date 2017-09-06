@@ -9,6 +9,7 @@ import play.api.mvc.{ RequestHeader, ResponseHeader, Result, Results }
 
 import org.elasticsearch.client.transport.NoNodeAvailableException
 import org.elasticsearch.index.IndexNotFoundException
+import org.elasticsearch.index.query.QueryShardException
 import org.elasticsearch.transport.RemoteTransportException
 
 import org.elastic4play.JsonFormat.attributeCheckingExceptionWrites
@@ -45,12 +46,9 @@ class ErrorHandler extends HttpErrorHandler {
           case Some((_, j)) ⇒ j
         }
         Some(Status.MULTI_STATUS → Json.obj("type" → "MultiError", "error" → message, "suberrors" → suberrors))
-      case rte: RemoteTransportException ⇒
-        rte.getCause match {
-          case _: IndexNotFoundException ⇒ Some(520 → JsNull)
-          case t: Throwable              ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → t.getClass.getName, "error" → s"Database error : ${t.getMessage}"))
-        }
-      case t: Throwable ⇒ Option(t.getCause).flatMap(toErrorResult)
+      case _: IndexNotFoundException ⇒ Some(520 → JsNull)
+      case qse: QueryShardException  ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "Invalid search query", "message" → qse.getMessage))
+      case t: Throwable              ⇒ Option(t.getCause).flatMap(toErrorResult)
     }
   }
 
