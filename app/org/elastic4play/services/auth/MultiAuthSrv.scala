@@ -4,41 +4,16 @@ import javax.inject.{ Inject, Singleton }
 
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Try }
 
 import play.api.mvc.RequestHeader
 import play.api.{ Configuration, Logger }
 
 import org.elastic4play.AuthenticationError
 import org.elastic4play.services.AuthCapability.Type
-import org.elastic4play.services.{ AuthContext, AuthSrv, AuthSrvFactory }
+import org.elastic4play.services.{ AuthContext, AuthSrv }
 
 object MultiAuthSrv {
-  private[MultiAuthSrv] lazy val logger = Logger(classOf[MultiAuthSrv])
-  def getAuthProviders(
-    authTypes: Seq[String],
-    authModules: immutable.Set[AuthSrv],
-    authFactoryModules: immutable.Set[AuthSrvFactory]): Seq[AuthSrv] = {
-
-    authTypes.flatMap { authType ⇒
-      authFactoryModules
-        .find(_.name == authType)
-        .flatMap { authFactory ⇒
-          Try(authFactory.getAuthSrv)
-            .recoverWith {
-              case error ⇒
-                logger.error(s"Initialization of authentication module $authType has failed", error)
-                Failure(error)
-            }
-            .toOption
-        }
-        .orElse(authModules.find(_.name == authType))
-        .orElse {
-          logger.error(s"Authentication module $authType not found")
-          None
-        }
-    }
-  }
+  private[MultiAuthSrv] lazy val logger = Logger(getClass)
 }
 
 @Singleton
@@ -46,18 +21,21 @@ class MultiAuthSrv(
     val authProviders: Seq[AuthSrv],
     implicit val ec: ExecutionContext) extends AuthSrv {
 
-  private[MultiAuthSrv] lazy val logger = Logger(getClass)
-
   @Inject() def this(
     configuration: Configuration,
     authModules: immutable.Set[AuthSrv],
-    authFactoryModules: immutable.Set[AuthSrvFactory],
     ec: ExecutionContext) =
     this(
-      MultiAuthSrv.getAuthProviders(
-        configuration.getOptional[Seq[String]]("auth.type").getOrElse(Seq("local")),
-        authModules,
-        authFactoryModules),
+      configuration
+        .getOptional[Seq[String]]("auth.type")
+        .getOrElse(Nil)
+        .flatMap { authType ⇒
+          authModules.find(_.name == authType)
+            .orElse {
+              MultiAuthSrv.logger.error(s"Authentication module $authType not found")
+              None
+            }
+        },
       ec)
 
   val name = "multi"
@@ -65,7 +43,13 @@ class MultiAuthSrv(
 
   private[auth] def forAllAuthProvider[A](body: AuthSrv ⇒ Future[A]) = {
     authProviders.foldLeft(Future.failed[A](new Exception("no authentication provider found"))) {
-      (f, a) ⇒ f.recoverWith { case _ ⇒ body(a) }
+      (f, a) ⇒
+        f.recoverWith {
+          case _ ⇒
+            val r = body(a)
+            r.failed.foreach(error ⇒ MultiAuthSrv.logger.debug(s"${a.name} ${error.getClass.getSimpleName} ${error.getMessage}"))
+            r
+        }
     }
   }
 
