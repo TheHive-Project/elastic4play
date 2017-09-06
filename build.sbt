@@ -20,7 +20,8 @@ libraryDependencies ++= Seq(
   "com.sksamuel.elastic4s" %% "elastic4s-tcp" % "5.4.11",
   "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.4" % Test,
   "org.scalactic" %% "scalactic" % "3.0.1",
-    specs2 % Test
+  "org.bouncycastle" % "bcprov-jdk15on" % "1.58",
+  specs2 % Test
 )
 
 PlayKeys.externalizeResources := false

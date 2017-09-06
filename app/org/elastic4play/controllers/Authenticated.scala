@@ -1,5 +1,6 @@
 package org.elastic4play.controllers
 
+import java.io.ByteArrayInputStream
 import java.util.Date
 import javax.inject.{ Inject, Singleton }
 import javax.naming.ldap.LdapName
@@ -12,6 +13,8 @@ import scala.util.Try
 import play.api.{ Configuration, Logger }
 import play.api.http.HeaderNames
 import play.api.mvc._
+
+import org.bouncycastle.asn1._
 
 import org.elastic4play.AuthenticationError
 import org.elastic4play.services.{ AuthContext, AuthSrv, Role, UserSrv }
@@ -127,25 +130,32 @@ class Authenticated(
       }
     } yield authContext
 
-  private val certificateSANField = certificateField.flatMap {
-    case "otherName"                 ⇒ Some(0)
-    case "rfc822Name"                ⇒ Some(1)
-    case "dNSName"                   ⇒ Some(2)
-    case "x400Address"               ⇒ Some(3)
-    case "directoryName"             ⇒ Some(4)
-    case "ediPartyName"              ⇒ Some(5)
-    case "uniformResourceIdentifier" ⇒ Some(6)
-    case "iPAddress"                 ⇒ Some(7)
-    case "registeredID"              ⇒ Some(8)
-  }
-
   private object CertificateSAN {
-    def unapply(l: java.util.List[_]): Option[(Int, String)] =
-      for {
-        t ← Option(l.get(0))
-        v ← Option(l.get(1))
-        if t.isInstanceOf[Integer]
-      } yield (t.asInstanceOf[Integer].toInt, v.toString)
+    def unapply(l: java.util.List[_]): Option[(String, String)] = {
+      val typeValue = for (t ← Option(l.get(0)); v ← Option(l.get(1))) yield t → v
+      typeValue
+        .collect { case (t: Integer, v) ⇒ t.toInt → v }
+        .collect {
+          case (0, value: Array[Byte]) ⇒
+            val asn1 = new ASN1InputStream(new ByteArrayInputStream(value)).readObject()
+            val asn1Seq = ASN1Sequence.getInstance(asn1)
+            val id = ASN1ObjectIdentifier.getInstance(asn1Seq.getObjectAt(0)).getId
+            val valueStr = DERUTF8String.getInstance(asn1Seq.getObjectAt(1).asInstanceOf[ASN1TaggedObject].getObject).getString
+            id match {
+              case "1.3.6.1.4.1.311.20.2.3" ⇒ "upn" → valueStr
+              // Add other object id
+              case other                    ⇒ other → valueStr
+            }
+          case (1, value: String) ⇒ "rfc822Name" → value
+          case (2, value: String) ⇒ "dNSName" → value
+          case (3, value: String) ⇒ "x400Address" → value
+          case (4, value: String) ⇒ "directoryName" → value
+          case (5, value: String) ⇒ "ediPartyName" → value
+          case (6, value: String) ⇒ "uniformResourceIdentifier" → value
+          case (7, value: String) ⇒ "iPAddress" → value
+          case (8, value: String) ⇒ "registeredID" → value
+        }
+    }
   }
 
   def getFromClientCertificate(request: RequestHeader): Future[AuthContext] = {
@@ -161,10 +171,9 @@ class Authenticated(
               }
               .orElse {
                 for {
-                  csf ← certificateSANField
                   san ← Option(cert.getSubjectAlternativeNames)
                   fieldValue ← san.asScala.collectFirst {
-                    case CertificateSAN(`csf`, value) ⇒ userSrv.getFromId(request, value)
+                    case CertificateSAN(`cf`, value) ⇒ userSrv.getFromId(request, value)
                   }
                 } yield fieldValue
               }
