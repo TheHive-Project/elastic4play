@@ -10,7 +10,6 @@ import play.api.mvc.{ RequestHeader, ResponseHeader, Result, Results }
 import org.elasticsearch.client.transport.NoNodeAvailableException
 import org.elasticsearch.index.IndexNotFoundException
 import org.elasticsearch.index.query.QueryShardException
-import org.elasticsearch.transport.RemoteTransportException
 
 import org.elastic4play.JsonFormat.attributeCheckingExceptionWrites
 
