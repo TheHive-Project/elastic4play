@@ -26,8 +26,7 @@ class MultiAuthSrv(
     authModules: immutable.Set[AuthSrv],
     ec: ExecutionContext) =
     this(
-      configuration
-        .getOptional[Seq[String]]("auth.type")
+      configuration.getDeprecated[Option[Seq[String]]]("auth.provider", "auth.type")
         .getOrElse(Nil)
         .flatMap { authType ⇒
           authModules.find(_.name == authType)
