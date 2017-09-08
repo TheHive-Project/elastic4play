@@ -11,7 +11,7 @@ import play.api.{ Configuration, Logger }
 import play.api.http.HeaderNames
 import play.api.mvc._
 
-import org.elastic4play.AuthenticationError
+import org.elastic4play.{ AuthenticationError, AuthorizationError }
 import org.elastic4play.services.{ AuthContext, AuthSrv, Role, UserSrv }
 import org.elastic4play.utils.Instance
 
@@ -173,7 +173,7 @@ class Authenticated(
           block(new AuthenticatedRequest(authContext, request))
             .map(result ⇒ setSessingUser(result, authContext)(request))
         else
-          Future.failed(new Exception(s"Insufficient rights to perform this action"))
+          Future.failed(AuthorizationError(s"Insufficient rights to perform this action"))
       }
     }
   }
