@@ -37,7 +37,8 @@ class TempSrv @Inject() (
     }
   }
   private[TempSrv] def delete(directory: Path): Unit = try {
-    Files.walkFileTree(directory, deleteVisitor)
+    if (Files.exists(directory))
+      Files.walkFileTree(directory, deleteVisitor)
     ()
   }
   catch {
