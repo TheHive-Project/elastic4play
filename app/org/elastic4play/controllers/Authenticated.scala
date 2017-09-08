@@ -43,6 +43,10 @@ class Authenticated(
     maxSessionInactivity: FiniteDuration,
     sessionWarning: FiniteDuration,
     sessionUsername: String,
+    authBySessionCookie: Boolean,
+    authByKey: Boolean,
+    authByBasicAuth: Boolean,
+    authByInitialUser: Boolean,
     certificateField: Option[String],
     userSrv: UserSrv,
     authSrv: AuthSrv,
@@ -59,6 +63,10 @@ class Authenticated(
       configuration.getMillis("session.inactivity").millis,
       configuration.getMillis("session.warning").millis,
       configuration.getOptional[String]("session.username").getOrElse("username"),
+      configuration.getOptional[Boolean]("auth.method.session").getOrElse(true),
+      configuration.getOptional[Boolean]("auth.method.key").getOrElse(true),
+      configuration.getOptional[Boolean]("auth.method.basic").getOrElse(true),
+      configuration.getOptional[Boolean]("auth.method.init").getOrElse(true),
       configuration.getOptional[String]("auth.pki.certificateField"),
       userSrv,
       authSrv,
@@ -210,6 +218,32 @@ class Authenticated(
             }
         }
     }
+  val authenticationMethods =
+    (if (authBySessionCookie) Seq("session" → getFromSession _) else Nil) ++
+      (if (authByKey) Seq("key" → getFromApiKey _) else Nil) ++
+      (if (authByBasicAuth) Seq("basic" → getFromBasicAuth _) else Nil) ++
+      (if (authByInitialUser) Seq("init" → userSrv.getInitialUser _) else Nil)
+
+  def getContext(request: RequestHeader): Future[AuthContext] = {
+    authenticationMethods
+      .foldLeft[Future[Either[Seq[(String, Throwable)], AuthContext]]](Future.successful(Left(Nil))) {
+        case (acc, (authMethodName, authMethod)) ⇒ acc.flatMap {
+          case authContext if authContext.isRight ⇒ Future.successful(authContext)
+          case Left(errors) ⇒ authMethod(request)
+            .map(authContext ⇒ Right(authContext))
+            .recover { case error ⇒ Left(errors :+ (authMethodName → error)) }
+        }
+      }
+      .flatMap {
+        case Right(authContext) ⇒ Future.successful(authContext)
+        case Left(errors) ⇒
+          val errorDetails = errors
+            .map { case (authMethodName, error) ⇒ s"\t$authMethodName: ${error.getClass.getSimpleName} ${error.getMessage}" }
+            .mkString("\n")
+          logger.error(s"Authentication failure:\n$errorDetails")
+          Future.failed(AuthenticationError("Authentication failure"))
+      }
+  }
 
   /**
    * Create an action for authenticated controller
