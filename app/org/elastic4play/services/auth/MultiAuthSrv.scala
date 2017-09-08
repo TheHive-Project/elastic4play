@@ -72,4 +72,6 @@ class MultiAuthSrv(
   override def getKey(username: String)(implicit authContext: AuthContext): Future[String] =
     forAllAuthProvider(_.getKey(username))
 
+  override def removeKey(username: String)(implicit authContext: AuthContext): Future[Unit] =
+    forAllAuthProvider(_.removeKey(username))
 }
