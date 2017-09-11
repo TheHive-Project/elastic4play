@@ -1,12 +1,13 @@
 package org.elastic4play.models
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.FieldType.StringType
-import com.sksamuel.elastic4s.mappings.StringFieldDefinition
+import play.api.libs.json.{ JsString, JsValue }
+
+import com.sksamuel.elastic4s.ElasticDsl.textField
+import com.sksamuel.elastic4s.mappings.TextFieldDefinition
+import org.scalactic._
+
 import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
-import org.scalactic._
-import play.api.libs.json.{ JsString, JsValue }
 
 object TextAttributeFormat extends AttributeFormat[String]("text") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
@@ -25,5 +26,5 @@ object TextAttributeFormat extends AttributeFormat[String]("text") {
       }
   }
 
-  override def elasticType(attributeName: String): StringFieldDefinition = field(attributeName, StringType)
+  override def elasticType(attributeName: String): TextFieldDefinition = textField(attributeName)
 }

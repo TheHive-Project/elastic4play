@@ -1,19 +1,17 @@
 package org.elastic4play.controllers
 
 import java.util.Date
-
 import javax.inject.{ Inject, Singleton }
 
-import scala.language.reflectiveCalls
-import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration.{ DurationLong, FiniteDuration }
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
-import play.api.Configuration
+import play.api.{ Configuration, Logger }
 import play.api.http.HeaderNames
-import play.api.mvc.{ ActionBuilder, Request, RequestHeader, Result, Security, WrappedRequest }
+import play.api.mvc._
 
-import org.elastic4play.AuthenticationError
+import org.elastic4play.{ AuthenticationError, AuthorizationError }
 import org.elastic4play.services.{ AuthContext, AuthSrv, Role, UserSrv }
 import org.elastic4play.utils.Instance
 
@@ -24,7 +22,7 @@ class AuthenticatedRequest[A](val authContext: AuthContext, request: Request[A])
   def userId: String = authContext.userId
   def userName: String = authContext.userName
   def requestId: String = Instance.getRequestId(request)
-  def roles: Seq[Role.Type] = authContext.roles
+  def roles: Seq[Role] = authContext.roles
 }
 
 sealed trait ExpirationStatus
@@ -39,22 +37,36 @@ case object ExpirationError extends ExpirationStatus
 class Authenticated(
     maxSessionInactivity: FiniteDuration,
     sessionWarning: FiniteDuration,
+    sessionUsername: String,
+    authBySessionCookie: Boolean,
+    authByKey: Boolean,
+    authByBasicAuth: Boolean,
+    authByInitialUser: Boolean,
     userSrv: UserSrv,
     authSrv: AuthSrv,
+    defaultParser: BodyParsers.Default,
     implicit val ec: ExecutionContext) {
 
   @Inject() def this(
     configuration: Configuration,
     userSrv: UserSrv,
     authSrv: AuthSrv,
+    defaultParser: BodyParsers.Default,
     ec: ExecutionContext) =
     this(
-      configuration.getMilliseconds("session.inactivity").get.millis,
-      configuration.getMilliseconds("session.warning").get.millis,
+      configuration.getMillis("session.inactivity").millis,
+      configuration.getMillis("session.warning").millis,
+      configuration.getOptional[String]("session.username").getOrElse("username"),
+      configuration.getOptional[Boolean]("auth.method.session").getOrElse(true),
+      configuration.getOptional[Boolean]("auth.method.key").getOrElse(true),
+      configuration.getOptional[Boolean]("auth.method.basic").getOrElse(true),
+      configuration.getOptional[Boolean]("auth.method.init").getOrElse(true),
       userSrv,
       authSrv,
+      defaultParser,
       ec)
 
+  private[Authenticated] lazy val logger = Logger(getClass)
   private def now = (new Date).getTime
 
   /**
@@ -62,17 +74,17 @@ class Authenticated(
    * Cookie is signed by Play framework (it cannot be modified by user)
    */
   def setSessingUser(result: Result, authContext: AuthContext)(implicit request: RequestHeader): Result =
-    result.addingToSession(Security.username → authContext.userId, "expire" → (now + maxSessionInactivity.toMillis).toString)
+    result.addingToSession(sessionUsername → authContext.userId, "expire" → (now + maxSessionInactivity.toMillis).toString)
 
   /**
    * Retrieve authentication information form cookie
    */
   def getFromSession(request: RequestHeader): Future[AuthContext] = {
     val userId = for {
-      userId ← request.session.get(Security.username)
-      if expirationStatus(request) != ExpirationError
+      userId ← request.session.get(sessionUsername).toRight(AuthenticationError("User session not found"))
+      _ = if (expirationStatus(request) != ExpirationError) Right(()) else Left(AuthenticationError("User session has expired"))
     } yield userId
-    userId.fold(Future.failed[AuthContext](AuthenticationError("Not authenticated")))(id ⇒ userSrv.getFromId(request, id))
+    userId.fold(authError ⇒ Future.failed[AuthContext](authError), id ⇒ userSrv.getFromId(request, id))
   }
 
   def expirationStatus(request: RequestHeader): ExpirationStatus = {
@@ -93,42 +105,75 @@ class Authenticated(
    * Retrieve authentication information from API key
    */
   def getFromApiKey(request: RequestHeader): Future[AuthContext] =
-    request
-      .headers
-      .get(HeaderNames.AUTHORIZATION)
-      .collect {
-        case auth if auth.startsWith("Basic ") ⇒
-          val authWithoutBasic = auth.substring(6)
-          val decodedAuth = new String(java.util.Base64.getDecoder.decode(authWithoutBasic), "UTF-8")
-          decodedAuth.split(":")
-      }
-      .collect {
-        case Array(username, password) ⇒ authSrv.authenticate(username, password)(request)
-      }
-      .getOrElse(Future.failed[AuthContext](new Exception("TODO")))
+    for {
+      auth ← request
+        .headers
+        .get(HeaderNames.AUTHORIZATION)
+        .fold(Future.failed[String](AuthenticationError("Authentication header not found")))(Future.successful)
+      _ ← if (!auth.startsWith("Bearer ")) Future.failed(AuthenticationError("Only bearer authentication is supported")) else Future.successful(())
+      key = auth.substring(7)
+      authContext ← authSrv.authenticate(key)(request)
+    } yield authContext
 
-  /**
-   * Get user in session -orElse- get user from key parameter
-   */
-  def getContext(request: RequestHeader): Future[AuthContext] =
-    getFromSession(request)
-      .fallbackTo(getFromApiKey(request))
-      .fallbackTo(userSrv.getInitialUser(request))
-      .recoverWith { case _ ⇒ Future.failed(AuthenticationError("Not authenticated")) }
+  def getFromBasicAuth(request: RequestHeader): Future[AuthContext] =
+    for {
+      auth ← request
+        .headers
+        .get(HeaderNames.AUTHORIZATION)
+        .fold(Future.failed[String](AuthenticationError("Authentication header not found")))(Future.successful)
+      _ ← if (!auth.startsWith("Basic ")) Future.failed(AuthenticationError("Only basic authentication is supported")) else Future.successful(())
+      authWithoutBasic = auth.substring(6)
+      decodedAuth = new String(java.util.Base64.getDecoder.decode(authWithoutBasic), "UTF-8")
+      authContext ← decodedAuth.split(":") match {
+        case Array(username, password) ⇒ authSrv.authenticate(username, password)(request)
+        case _                         ⇒ Future.failed(AuthenticationError("Can't decode authentication header"))
+      }
+    } yield authContext
+
+  val authenticationMethods =
+    (if (authBySessionCookie) Seq("session" → getFromSession _) else Nil) ++
+      (if (authByKey) Seq("key" → getFromApiKey _) else Nil) ++
+      (if (authByBasicAuth) Seq("basic" → getFromBasicAuth _) else Nil) ++
+      (if (authByInitialUser) Seq("init" → userSrv.getInitialUser _) else Nil)
+
+  def getContext(request: RequestHeader): Future[AuthContext] = {
+    authenticationMethods
+      .foldLeft[Future[Either[Seq[(String, Throwable)], AuthContext]]](Future.successful(Left(Nil))) {
+        case (acc, (authMethodName, authMethod)) ⇒ acc.flatMap {
+          case authContext if authContext.isRight ⇒ Future.successful(authContext)
+          case Left(errors) ⇒ authMethod(request)
+            .map(authContext ⇒ Right(authContext))
+            .recover { case error ⇒ Left(errors :+ (authMethodName → error)) }
+        }
+      }
+      .flatMap {
+        case Right(authContext) ⇒ Future.successful(authContext)
+        case Left(errors) ⇒
+          val errorDetails = errors
+            .map { case (authMethodName, error) ⇒ s"\t$authMethodName: ${error.getClass.getSimpleName} ${error.getMessage}" }
+            .mkString("\n")
+          logger.error(s"Authentication failure:\n$errorDetails")
+          Future.failed(AuthenticationError("Authentication failure"))
+      }
+  }
 
   /**
    * Create an action for authenticated controller
    * If user has sufficient right (have required role) action is executed
    * otherwise, action returns a not authorized error
    */
-  def apply(requiredRole: Role.Type) = new ActionBuilder[({ type R[A] = AuthenticatedRequest[A] })#R] {
+  def apply(requiredRole: Role) = new ActionBuilder[AuthenticatedRequest, AnyContent] {
+    val executionContext: ExecutionContext = ec
+
+    def parser: BodyParser[AnyContent] = defaultParser
+
     def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) ⇒ Future[Result]): Future[Result] = {
       getContext(request).flatMap { authContext ⇒
         if (authContext.roles.contains(requiredRole))
           block(new AuthenticatedRequest(authContext, request))
             .map(result ⇒ setSessingUser(result, authContext)(request))
         else
-          Future.failed(new Exception(s"Insufficient rights to perform this action"))
+          Future.failed(AuthorizationError(s"Insufficient rights to perform this action"))
       }
     }
   }

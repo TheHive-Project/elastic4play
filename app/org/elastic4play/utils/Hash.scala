@@ -4,13 +4,14 @@ import java.nio.charset.Charset
 import java.nio.file.{ Path, Paths }
 import java.security.MessageDigest
 
-import akka.stream.{ IOResult, Materializer }
-import akka.stream.scaladsl.{ FileIO, Sink, Source }
-import akka.util.ByteString
+import scala.concurrent.{ ExecutionContext, Future }
+
 import play.api.Logger
 import play.api.libs.json.JsValue
 
-import scala.concurrent.{ ExecutionContext, Future }
+import akka.stream.scaladsl.{ FileIO, Sink, Source }
+import akka.stream.{ IOResult, Materializer }
+import akka.util.ByteString
 
 // TODO use play.api.libs.Codecs
 
@@ -57,7 +58,7 @@ class MultiHash(algorithms: String)(implicit mat: Materializer, ec: ExecutionCon
 }
 
 case class Hash(data: Array[Byte]) {
-  override def toString(): String = data.map(b ⇒ "%02x".format(b)).mkString
+  override def toString: String = data.map(b ⇒ "%02x".format(b)).mkString
 }
 object Hash {
   def apply(s: String): Hash = Hash {

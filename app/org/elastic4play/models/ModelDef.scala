@@ -2,12 +2,13 @@ package org.elastic4play.models
 
 import java.util.Date
 
-import org.elastic4play.InternalError
+import scala.concurrent.Future
+import scala.language.higherKinds
+
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.{ JsObject, JsString, Json }
 
-import scala.concurrent.Future
-import scala.language.higherKinds
+import org.elastic4play.InternalError
 
 trait AttributeDef {
   type A[B]

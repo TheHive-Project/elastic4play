@@ -1,15 +1,17 @@
 package org.elastic4play.services
 
+import scala.collection.JavaConverters._
+
+import play.api.libs.json._
+import play.api.{ Configuration, Logger }
+
 import com.typesafe.config.ConfigValueType._
 import com.typesafe.config.{ ConfigList, ConfigObject, ConfigValue }
+
 import org.elastic4play.models.JsonFormat._
 import org.elastic4play.services.QueryDSL._
 import org.elastic4play.utils.Hash
 import org.elastic4play.utils.JsonFormat.hashFormat
-import play.api.{ Configuration, Logger }
-import play.api.libs.json._
-
-import scala.collection.JavaConversions._
 
 object JsonFormat {
   private[JsonFormat] lazy val logger = Logger(getClass)
@@ -35,15 +37,15 @@ object JsonFormat {
 
   implicit val attachmentFormat: OFormat[Attachment] = OFormat(attachmentReads, attachmentWrites)
 
-  implicit val roleFormat: Format[Role.Type] = enumFormat(Role)
+  implicit val roleWrites: Writes[Role] = Writes[Role](role ⇒ JsString(role.name))
 
-  implicit def configWrites = OWrites { (cfg: Configuration) ⇒
+  implicit def configWrites: OWrites[Configuration] = OWrites { (cfg: Configuration) ⇒
     JsObject(cfg.subKeys.map(key ⇒ key → configValueWrites.writes(cfg.underlying.getValue(key))).toSeq)
   }
 
   implicit def configValueWrites: Writes[ConfigValue] = Writes[ConfigValue] {
     case v: ConfigObject             ⇒ configWrites.writes(Configuration(v.toConfig))
-    case v: ConfigList               ⇒ JsArray(v.toSeq.map(x ⇒ configValueWrites.writes(x)))
+    case v: ConfigList               ⇒ JsArray(v.asScala.map(x ⇒ configValueWrites.writes(x)))
     case v if v.valueType == NUMBER  ⇒ JsNumber(BigDecimal(v.unwrapped.asInstanceOf[java.lang.Number].toString))
     case v if v.valueType == BOOLEAN ⇒ JsBoolean(v.unwrapped.asInstanceOf[Boolean])
     case v if v.valueType == NULL    ⇒ JsNull
@@ -94,6 +96,14 @@ object JsonFormat {
       } yield (t, q)
   }
 
+  object JsParentId {
+    def unapply(v: JsValue): Option[(String, String)] =
+      for {
+        t ← (v \ "_type").asOpt[String]
+        i ← (v \ "_id").asOpt[String]
+      } yield (t, i)
+  }
+
   object JsField {
     def unapply(v: JsValue): Option[(String, Any)] =
       for {
@@ -126,6 +136,7 @@ object JsonFormat {
         case JsObjOne(("_lte", JsObjOne(n, JsVal(v)))) ⇒ JsSuccess(n ~<= v)
         case JsObjOne(("_between", JsRange(n, f, t)))  ⇒ JsSuccess(n ~<> (f → t))
         case JsObjOne(("_parent", JsParent(p, q)))     ⇒ JsSuccess(parent(p, q))
+        case JsObjOne(("_parent", JsParentId(p, i)))   ⇒ JsSuccess(withParent(p, i))
         case JsObjOne(("_id", JsString(id)))           ⇒ JsSuccess(withId(id))
         case JsField(field, value)                     ⇒ JsSuccess(field ~= value)
         case JsObjOne(("_child", JsParent(p, q)))      ⇒ JsSuccess(child(p, q))

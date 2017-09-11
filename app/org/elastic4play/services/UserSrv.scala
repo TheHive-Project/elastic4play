@@ -2,26 +2,22 @@ package org.elastic4play.services
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import scala.annotation.implicitNotFound
 import scala.concurrent.Future
 
 import play.api.libs.json.JsObject
 import play.api.mvc.RequestHeader
 
-import org.elastic4play.models.HiveEnumeration
+import org.elastic4play.{ AuthenticationError, AuthorizationError }
 
-object Role extends Enumeration with HiveEnumeration {
-  type Type = Value
-  val read, write, admin = Value
-}
+abstract class Role(val name: String)
 
 trait AuthContext {
   def userId: String
   def userName: String
   def requestId: String
-  def roles: Seq[Role.Type]
+  def roles: Seq[Role]
   private val baseAudit = new AtomicBoolean(true)
-  def getBaseAudit(): Boolean = baseAudit.get && baseAudit.getAndSet(false)
+  def getBaseAudit: Boolean = baseAudit.get && baseAudit.getAndSet(false)
 }
 
 trait UserSrv {
@@ -36,21 +32,23 @@ trait User {
   val attributes: JsObject
   val id: String
   def getUserName: String
-  def getRoles: Seq[Role.Type]
+  def getRoles: Seq[Role]
 }
 
 object AuthCapability extends Enumeration {
   type Type = Value
-  val changePassword, setPassword = Value
+  val changePassword, setPassword, authByKey = Value
 }
+
 trait AuthSrv {
   val name: String
-  def capabilities: Set[AuthCapability.Type]
-  def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext]
-  def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit]
-  def setPassword(username: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit]
-}
-trait AuthSrvFactory {
-  val name: String
-  def getAuthSrv: AuthSrv
+  val capabilities = Set.empty[AuthCapability.Type]
+
+  def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] = Future.failed(AuthenticationError("Operation not supported"))
+  def authenticate(key: String)(implicit request: RequestHeader): Future[AuthContext] = Future.failed(AuthenticationError("Operation not supported"))
+  def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] = Future.failed(AuthorizationError("Operation not supported"))
+  def setPassword(username: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] = Future.failed(AuthorizationError("Operation not supported"))
+  def renewKey(username: String)(implicit authContext: AuthContext): Future[String] = Future.failed(AuthorizationError("Operation not supported"))
+  def getKey(username: String)(implicit authContext: AuthContext): Future[String] = Future.failed(AuthorizationError("Operation not supported"))
+  def removeKey(username: String)(implicit authContext: AuthContext): Future[Unit] = Future.failed(AuthorizationError("Operation not supported"))
 }

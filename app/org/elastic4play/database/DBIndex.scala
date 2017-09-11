@@ -2,13 +2,13 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.concurrent.blocking
+import scala.concurrent.{ ExecutionContext, Future, blocking }
 
-import com.sksamuel.elastic4s.ElasticDsl.{ RichFuture, index, mapping, search }
-import com.sksamuel.elastic4s.IndexesAndTypes.apply
+import play.api.{ Configuration, Logger }
 
-import play.api.Configuration
+import com.sksamuel.elastic4s.ElasticDsl.{ RichFuture, clusterHealth, index, mapping, search }
+import com.sksamuel.elastic4s.indexes.CreateIndexDefinition
+
 import org.elastic4play.models.{ ChildModelDef, ModelAttributes, ModelDef }
 
 @Singleton
@@ -18,14 +18,16 @@ class DBIndex(
     nbReplicas: Int,
     implicit val ec: ExecutionContext) {
 
-  @Inject() def this(
+  @Inject def this(
     configuration: Configuration,
     db: DBConfiguration,
     ec: ExecutionContext) = this(
     db,
-    configuration.getInt("search.nbshards").getOrElse(5),
-    configuration.getInt("search.nbreplicas").getOrElse(1),
+    configuration.getOptional[Int]("search.nbshards").getOrElse(5),
+    configuration.getOptional[Int]("search.nbreplicas").getOrElse(1),
     ec)
+
+  private[DBIndex] lazy val logger = Logger(getClass)
 
   /**
    * Create a new index. Collect mapping for all attributes of all entities
@@ -36,17 +38,26 @@ class DBIndex(
   def createIndex(models: Iterable[ModelAttributes]): Future[Unit] = {
     val modelsMapping = models
       .map {
-        case model: ModelDef[_, _]            ⇒ mapping(model.name) fields model.attributes.filterNot(_.name == "_id").map(_.elasticMapping) dateDetection false numericDetection false
-        case model: ChildModelDef[_, _, _, _] ⇒ mapping(model.name) fields model.attributes.filterNot(_.name == "_id").map(_.elasticMapping) parent model.parentModel.name dateDetection false numericDetection false
+        case model: ModelDef[_, _] ⇒
+          mapping(model.name)
+            .fields(model.attributes.filterNot(_.name == "_id").map(_.elasticMapping))
+            .dateDetection(false)
+            .numericDetection(false)
+        case model: ChildModelDef[_, _, _, _] ⇒
+          mapping(model.name)
+            .fields(model.attributes.filterNot(_.name == "_id").map(_.elasticMapping))
+            .parent(model.parentModel.name)
+            .dateDetection(false)
+            .numericDetection(false)
       }
       .toSeq
-    db.execute {
-      com.sksamuel.elastic4s.ElasticDsl.create
-        .index(db.indexName)
-        .mappings(modelsMapping: _*)
-        .shards(nbShards)
-        .replicas(nbReplicas)
-    }
+    db
+      .execute {
+        CreateIndexDefinition(db.indexName)
+          .mappings(modelsMapping)
+          .shards(nbShards)
+          .replicas(nbReplicas)
+      }
       .map { _ ⇒ () }
   }
 
@@ -56,11 +67,13 @@ class DBIndex(
    * @return future of true if the index exists
    */
   def getIndexStatus: Future[Boolean] = {
-    db.execute {
-      index exists db.indexName
-    } map { indicesExistsResponse ⇒
-      indicesExistsResponse.isExists
-    }
+    db
+      .execute {
+        index.exists(db.indexName)
+      }
+      .map {
+        _.isExists
+      }
   }
 
   /**
@@ -78,11 +91,47 @@ class DBIndex(
    * @param modelName name of the document type from which the count must be done
    * @return document count
    */
-  def getSize(modelName: String): Future[Long] = db.execute {
-    search in db.indexName → modelName size 0
-  } map { searchResponse ⇒
-    searchResponse.totalHits
-  } recover {
-    case _ ⇒ 0L
+  def getSize(modelName: String): Future[Long] =
+    db
+      .execute {
+        search(db.indexName → modelName).matchAllQuery().size(0)
+      }
+      .map {
+        _.totalHits
+      }
+      .recover { case _ ⇒ 0L }
+
+  /**
+   * Get cluster status:
+   * 0: green
+   * 1: yellow
+   * 2: red
+   *
+   * @return cluster status
+   */
+  def getClusterStatus: Future[Int] = {
+    db
+      .execute {
+        clusterHealth(db.indexName)
+      }
+      .map {
+        _.getStatus.value().toInt
+      }
+      .recover { case _ ⇒ 2 }
+  }
+
+  def clusterStatus = blocking {
+    getClusterStatus.await
+  }
+
+  def getClusterStatusName: Future[String] = getClusterStatus.map {
+    case 0 ⇒ "green"
+    case 1 ⇒ "yellow"
+    case 2 ⇒ "red"
+    case _ ⇒ "unknown"
+  }
+
+  def clusterStatusName = blocking {
+    getClusterStatusName.await
   }
 }

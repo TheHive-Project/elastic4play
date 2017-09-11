@@ -2,26 +2,28 @@ package org.elastic4play.services
 
 import javax.inject.{ Inject, Provider, Singleton }
 
-import akka.NotUsed
-import akka.stream.Materializer
-import akka.stream.scaladsl.{ Sink, Source }
-import org.elastic4play.database.DBCreate
-import org.elastic4play.models.{ Attribute, EntityDef, ModelDef, AttributeFormat ⇒ F }
-import org.elastic4play.utils.{ Hasher, RichFuture }
-import play.api.Configuration
-import play.api.cache.CacheApi
-import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json.Json.toJsFieldJsValueWrapper
-import play.api.libs.json._
-
 import scala.collection.immutable
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ ExecutionContext, Future }
 
+import play.api.Configuration
+import play.api.cache.AsyncCacheApi
+import play.api.libs.json.JsValue.jsValueToJsLookup
+import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import play.api.libs.json._
+
+import akka.NotUsed
+import akka.stream.Materializer
+import akka.stream.scaladsl.{ Sink, Source }
+
+import org.elastic4play.database.DBCreate
+import org.elastic4play.models.{ Attribute, EntityDef, ModelDef, AttributeFormat ⇒ F }
+import org.elastic4play.utils.{ Hasher, RichFuture }
+
 @Singleton
 class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName) {
   model ⇒
-  @Inject def this(configuration: Configuration) = this(configuration.getString("dblist.name").get)
+  @Inject def this(configuration: Configuration) = this(configuration.get[String]("dblist.name"))
 
   val value: Attribute[String] = attribute("value", F.stringFmt, "Content of the dblist item")
   val dblist: Attribute[String] = attribute("dblist", F.stringFmt, "Name of the dblist")
@@ -65,7 +67,7 @@ class DBLists @Inject() (
     deleteSrv: Provider[DeleteSrv],
     dbCreate: DBCreate,
     dblistModel: DBListModel,
-    cache: CacheApi,
+    cache: AsyncCacheApi,
     implicit val ec: ExecutionContext,
     implicit val mat: Materializer) {
   /**
@@ -90,10 +92,12 @@ class DBLists @Inject() (
   def getItem(itemId: String): Future[DBListItemEntity] = getSrv[DBListModel, DBListItemEntity](dblistModel, itemId)
 
   def apply(name: String): DBList = new DBList {
-    def cachedItems: immutable.Seq[DBListItem] = cache.getOrElse(dblistModel.name + "_" + name, 10.seconds) {
-      val (src, total) = getItems()
-      src.runWith(Sink.seq).await
-    }
+    def cachedItems: immutable.Seq[DBListItem] = cache
+      .getOrElseUpdate(dblistModel.name + "_" + name, 10.seconds) {
+        val (src, _) = getItems()
+        src.runWith(Sink.seq)
+      }
+      .await
 
     def getItems(): (Source[DBListItem, NotUsed], Future[Long]) = {
       import org.elastic4play.services.QueryDSL._

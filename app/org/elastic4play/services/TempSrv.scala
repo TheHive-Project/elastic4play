@@ -1,18 +1,17 @@
 package org.elastic4play.services
 
 import java.io.IOException
-import java.nio.file.{ FileVisitResult, Files, Path, Paths, SimpleFileVisitor }
+import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
-
 import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import akka.stream.Materializer
-
 import play.api.Logger
 import play.api.inject.ApplicationLifecycle
 import play.api.mvc.{ Filter, RequestHeader, Result }
+
+import akka.stream.Materializer
 
 import org.elastic4play.utils.Instance
 
@@ -21,7 +20,7 @@ class TempSrv @Inject() (
     lifecycle: ApplicationLifecycle,
     implicit val ec: ExecutionContext) {
 
-  lazy val log = Logger(getClass)
+  private[TempSrv] lazy val logger = Logger(getClass)
 
   private[TempSrv] val tempDir = Files.createTempDirectory(Paths.get(System.getProperty("java.io.tmpdir")), "").resolve("play-request")
   lifecycle.addStopHook { () ⇒ Future { delete(tempDir) } }
@@ -38,11 +37,12 @@ class TempSrv @Inject() (
     }
   }
   private[TempSrv] def delete(directory: Path): Unit = try {
-    Files.walkFileTree(directory, deleteVisitor)
+    if (Files.exists(directory))
+      Files.walkFileTree(directory, deleteVisitor)
     ()
   }
   catch {
-    case t: Throwable ⇒ log.warn(s"Fail to remove temporary files ($directory) : $t")
+    case t: Throwable ⇒ logger.warn(s"Fail to remove temporary files ($directory) : $t")
   }
 
   def newTemporaryFile(prefix: String, suffix: String)(implicit authContext: AuthContext): Path = {

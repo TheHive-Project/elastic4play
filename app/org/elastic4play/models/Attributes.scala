@@ -1,15 +1,14 @@
 package org.elastic4play.models
 
-import com.sksamuel.elastic4s.mappings.TypedFieldDefinition
-import com.sksamuel.elastic4s.mappings.attributes.AttributeIndex
-import org.elastic4play.controllers.InputValue
-import org.elastic4play.services.DBLists
-import org.elastic4play.{ AttributeError, InvalidFormatAttributeError, MissingAttributeError, UpdateReadOnlyAttributeError }
-import org.scalactic._
 import play.api.Logger
 import play.api.libs.json.{ Format, JsArray, JsNull, JsValue }
 
-import scala.reflect.ClassTag
+import com.sksamuel.elastic4s.mappings.{ BasicFieldDefinition, FieldDefinition }
+import org.scalactic._
+
+import org.elastic4play.controllers.InputValue
+import org.elastic4play.services.DBLists
+import org.elastic4play.{ AttributeError, InvalidFormatAttributeError, MissingAttributeError, UpdateReadOnlyAttributeError }
 
 abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Format[T]) {
   def checkJson(subNames: Seq[String], value: JsValue): JsValue Or Every[AttributeError]
@@ -24,7 +23,7 @@ abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Forma
 
   def fromInputValue(subNames: Seq[String], value: InputValue): T Or Every[AttributeError]
 
-  def elasticType(attributeName: String): TypedFieldDefinition
+  def elasticType(attributeName: String): FieldDefinition
 
   protected def formatError(value: InputValue) = Bad(One(InvalidFormatAttributeError("", name, value)))
 }
@@ -42,7 +41,7 @@ object AttributeFormat {
   val hashFmt = HashAttributeFormat
   val binaryFmt = BinaryAttributeFormat
 
-  def enumFmt[T <: Enumeration](e: T)(implicit tag: ClassTag[T], format: Format[T#Value]): EnumerationAttributeFormat[T] = EnumerationAttributeFormat[T](e)
+  def enumFmt[T <: Enumeration](e: T)(implicit format: Format[T#Value]): EnumerationAttributeFormat[T] = EnumerationAttributeFormat[T](e)
 
   def listEnumFmt(enumerationName: String)(dblists: DBLists): ListEnumerationAttributeFormat = ListEnumerationAttributeFormat(enumerationName)(dblists)
 
@@ -81,17 +80,17 @@ case class Attribute[T](
   }
   lazy val isUser: Boolean = options.contains(AttributeOption.user)
 
-  def elasticMapping: TypedFieldDefinition = format.elasticType(name) match {
-    case a: AttributeIndex if isSensitive ⇒ a.index("no")
-    case a                                ⇒ a
+  def elasticMapping: FieldDefinition = format.elasticType(name) match {
+    case a: BasicFieldDefinition if isSensitive ⇒ a.index("no")
+    case a                                      ⇒ a
   }
 
   def validateForCreation(value: Option[JsValue]): Option[JsValue] Or Every[AttributeError] = {
     val result = value match {
-      case Some(JsNull) if !isRequired       ⇒ Good(value)
-      case Some(JsArray(Nil)) if !isRequired ⇒ Good(value)
-      case None if !isRequired               ⇒ Good(value)
-      case Some(JsNull) | Some(JsArray(Nil)) | None ⇒
+      case Some(JsNull) if !isRequired         ⇒ Good(value)
+      case Some(JsArray(Seq())) if !isRequired ⇒ Good(value)
+      case None if !isRequired                 ⇒ Good(value)
+      case Some(JsNull) | Some(JsArray(Seq())) | None ⇒
         if (defaultValueJson.isDefined)
           Good(defaultValueJson)
         else
@@ -108,9 +107,9 @@ case class Attribute[T](
 
   def validateForUpdate(subNames: Seq[String], value: JsValue): JsValue Or Every[AttributeError] = {
     val result = value match {
-      case _ if isReadonly                     ⇒ Bad(One(UpdateReadOnlyAttributeError(name)))
-      case JsNull | JsArray(Nil) if isRequired ⇒ Bad(One(MissingAttributeError(name)))
-      case JsNull | JsArray(Nil)               ⇒ Good(value)
+      case _ if isReadonly                       ⇒ Bad(One(UpdateReadOnlyAttributeError(name)))
+      case JsNull | JsArray(Seq()) if isRequired ⇒ Bad(One(MissingAttributeError(name)))
+      case JsNull | JsArray(Seq())               ⇒ Good(value)
       case v ⇒
         format.checkJsonForUpdate(subNames, v).badMap(_.map {
           case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = name)

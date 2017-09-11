@@ -11,13 +11,15 @@ licenses += "AGPL-V3" -> url("https://www.gnu.org/licenses/agpl-3.0.html")
 lazy val elastic4play = (project in file("."))
   .enablePlugins(PlayScala)
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.3"
 
 libraryDependencies ++= Seq(
-  cache,
-  "com.sksamuel.elastic4s" %% "elastic4s-core" % "2.3.0",
-  "com.sksamuel.elastic4s" %% "elastic4s-streams" % "2.3.0",
-  "com.typesafe.akka" %% "akka-stream-testkit" % "2.4.4" % Test,
+  cacheApi,
+  "com.sksamuel.elastic4s" %% "elastic4s-core" % "5.4.11",
+  "com.sksamuel.elastic4s" %% "elastic4s-streams" % "5.4.11",
+  "com.sksamuel.elastic4s" %% "elastic4s-tcp" % "5.4.11",
+  "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.4" % Test,
+  "org.scalactic" %% "scalactic" % "3.0.1",
   specs2 % Test
 )
 
@@ -41,10 +43,8 @@ scalacOptions in ThisBuild ++= Seq(
   "-Ywarn-dead-code"
 )
 
-
-import scalariform.formatter.preferences._
-import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
+import scalariform.formatter.preferences._
 
 SbtScalariform.defaultScalariformSettings
 

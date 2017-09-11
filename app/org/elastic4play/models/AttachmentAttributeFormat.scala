@@ -1,16 +1,17 @@
 package org.elastic4play.models
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.FieldType.{ LongType, NestedType, StringType }
+import play.api.Logger
+import play.api.libs.json.{ JsValue, Json }
+
+import com.sksamuel.elastic4s.ElasticDsl.{ keywordField, longField, nestedField, textField }
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
+import org.scalactic._
+
+import org.elastic4play.controllers.JsonFormat._
 import org.elastic4play.controllers.{ AttachmentInputValue, FileInputValue, InputValue, JsonInputValue }
 import org.elastic4play.services.Attachment
 import org.elastic4play.services.JsonFormat.attachmentFormat
-import org.elastic4play.controllers.JsonFormat._
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
-import org.scalactic._
-import play.api.Logger
-import play.api.libs.json.{ JsValue, Json }
 
 object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment") {
   private[AttachmentAttributeFormat] lazy val logger = Logger(getClass)
@@ -50,10 +51,10 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
     result
   }
 
-  override def elasticType(attributeName: String): NestedFieldDefinition = field(attributeName, NestedType) as (
-    field("name", StringType) index "not_analyzed",
-    field("hashes", StringType) index "not_analyzed",
-    field("size", LongType),
-    field("contentType", StringType),
-    field("id", StringType))
+  override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName).fields(
+    keywordField("name"),
+    keywordField("hashes"),
+    longField("size"),
+    textField("contentType"),
+    textField("id"))
 }

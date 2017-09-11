@@ -2,11 +2,10 @@ package org.elastic4play.services
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ ExecutionContext, Future }
 
 import org.elastic4play.database.DBGet
-import org.elastic4play.models.{ AbstractModelDef, Attribute, EntityDef }
-import scala.concurrent.Future
+import org.elastic4play.models.{ AbstractModelDef, EntityDef }
 
 @Singleton
 class GetSrv @Inject() (

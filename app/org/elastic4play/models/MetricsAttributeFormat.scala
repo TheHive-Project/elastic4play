@@ -1,13 +1,14 @@
 package org.elastic4play.models
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.FieldType.{ LongType, ObjectType }
-import com.sksamuel.elastic4s.mappings.ObjectFieldDefinition
+import play.api.libs.json.{ JsNull, JsNumber, JsObject, JsValue }
+
+import com.sksamuel.elastic4s.ElasticDsl.{ longField, nestedField }
+import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
+import org.scalactic.Accumulation._
+import org.scalactic._
+
 import org.elastic4play.AttributeError
 import org.elastic4play.controllers.{ InputValue, JsonInputValue }
-import org.scalactic._
-import org.scalactic.Accumulation._
-import play.api.libs.json.{ JsNull, JsNumber, JsObject, JsValue }
 
 object MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = fromInputValue(subNames, JsonInputValue(value))
@@ -31,5 +32,5 @@ object MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
     }
   }
 
-  override def elasticType(attributeName: String): ObjectFieldDefinition = field(attributeName, ObjectType).as(field("_default_", LongType))
+  override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName).fields(Seq(longField("_default_")))
 }

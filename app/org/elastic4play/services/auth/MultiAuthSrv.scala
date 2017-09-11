@@ -2,42 +2,18 @@ package org.elastic4play.services.auth
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.annotation.implicitNotFound
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Try }
+
+import play.api.mvc.RequestHeader
+import play.api.{ Configuration, Logger }
+
 import org.elastic4play.AuthenticationError
 import org.elastic4play.services.AuthCapability.Type
-import org.elastic4play.services.{ AuthContext, AuthSrv, AuthSrvFactory }
-import play.api.{ Configuration, Logger }
-import play.api.mvc.RequestHeader
+import org.elastic4play.services.{ AuthContext, AuthSrv }
 
 object MultiAuthSrv {
-  lazy val log = Logger(classOf[MultiAuthSrv])
-  def getAuthProviders(
-    authTypes: Seq[String],
-    authModules: immutable.Set[AuthSrv],
-    authFactoryModules: immutable.Set[AuthSrvFactory]): Seq[AuthSrv] = {
-
-    authTypes.flatMap { authType ⇒
-      authFactoryModules
-        .find(_.name == authType)
-        .flatMap { authFactory ⇒
-          Try(authFactory.getAuthSrv)
-            .recoverWith {
-              case error ⇒
-                log.error(s"Initialization of authentication module $authType has failed", error)
-                Failure(error)
-            }
-            .toOption
-        }
-        .orElse(authModules.find(_.name == authType))
-        .orElse {
-          log.error(s"Authentication module $authType not found")
-          None
-        }
-    }
-  }
+  private[MultiAuthSrv] lazy val logger = Logger(getClass)
 }
 
 @Singleton
@@ -45,36 +21,57 @@ class MultiAuthSrv(
     val authProviders: Seq[AuthSrv],
     implicit val ec: ExecutionContext) extends AuthSrv {
 
-  lazy val log = Logger(getClass)
-
   @Inject() def this(
     configuration: Configuration,
     authModules: immutable.Set[AuthSrv],
-    authFactoryModules: immutable.Set[AuthSrvFactory],
     ec: ExecutionContext) =
     this(
-      MultiAuthSrv.getAuthProviders(
-        configuration.getStringSeq("auth.type").getOrElse(Seq("local")),
-        authModules,
-        authFactoryModules),
+      configuration.getDeprecated[Option[Seq[String]]]("auth.provider", "auth.type")
+        .getOrElse(Nil)
+        .flatMap { authType ⇒
+          authModules.find(_.name == authType)
+            .orElse {
+              MultiAuthSrv.logger.error(s"Authentication module $authType not found")
+              None
+            }
+        },
       ec)
 
   val name = "multi"
-  def capabilities: Set[Type] = authProviders.flatMap(_.capabilities).toSet
+  override val capabilities: Set[Type] = authProviders.flatMap(_.capabilities).toSet
 
   private[auth] def forAllAuthProvider[A](body: AuthSrv ⇒ Future[A]) = {
     authProviders.foldLeft(Future.failed[A](new Exception("no authentication provider found"))) {
-      (f, a) ⇒ f.recoverWith { case _ ⇒ body(a) }
+      (f, a) ⇒
+        f.recoverWith {
+          case _ ⇒
+            val r = body(a)
+            r.failed.foreach(error ⇒ MultiAuthSrv.logger.debug(s"${a.name} ${error.getClass.getSimpleName} ${error.getMessage}"))
+            r
+        }
     }
   }
 
-  def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] =
+  override def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] =
     forAllAuthProvider(_.authenticate(username, password))
       .recoverWith { case _ ⇒ Future.failed(AuthenticationError("Authentication failure")) }
 
-  def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
+  override def authenticate(key: String)(implicit request: RequestHeader): Future[AuthContext] =
+    forAllAuthProvider(_.authenticate(key))
+      .recoverWith { case _ ⇒ Future.failed(AuthenticationError("Authentication failure")) }
+
+  override def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
     forAllAuthProvider(_.changePassword(username, oldPassword, newPassword))
 
-  def setPassword(username: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
+  override def setPassword(username: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
     forAllAuthProvider(_.setPassword(username, newPassword))
+
+  override def renewKey(username: String)(implicit authContext: AuthContext): Future[String] =
+    forAllAuthProvider(_.renewKey(username))
+
+  override def getKey(username: String)(implicit authContext: AuthContext): Future[String] =
+    forAllAuthProvider(_.getKey(username))
+
+  override def removeKey(username: String)(implicit authContext: AuthContext): Future[Unit] =
+    forAllAuthProvider(_.removeKey(username))
 }

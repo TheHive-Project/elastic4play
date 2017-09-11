@@ -1,16 +1,15 @@
 package org.elastic4play.models
 
-import com.sksamuel.elastic4s.ElasticDsl.field
-import com.sksamuel.elastic4s.mappings.FieldType.StringType
-import com.sksamuel.elastic4s.mappings.StringFieldDefinition
-import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
-import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
-import org.scalactic._
 import play.api.libs.json.{ Format, JsString, JsValue }
 
-import scala.reflect.ClassTag
+import com.sksamuel.elastic4s.ElasticDsl.keywordField
+import com.sksamuel.elastic4s.mappings.KeywordFieldDefinition
+import org.scalactic._
 
-case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit tag: ClassTag[T], format: Format[T#Value])
+import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
+import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
+
+case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit format: Format[T#Value])
     extends AttributeFormat[T#Value](s"enumeration") {
 
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
@@ -44,5 +43,5 @@ case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit tag: C
       }
   }
 
-  override def elasticType(attributeName: String): StringFieldDefinition = field(attributeName, StringType) index "not_analyzed"
+  override def elasticType(attributeName: String): KeywordFieldDefinition = keywordField(attributeName)
 }

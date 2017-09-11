@@ -1,11 +1,13 @@
 package org.elastic4play.models
 
-import com.sksamuel.elastic4s.mappings.TypedFieldDefinition
-import org.elastic4play.AttributeError
-import org.elastic4play.controllers.{ JsonInputValue, NullInputValue, InputValue }
 import play.api.libs.json.{ JsNull, JsValue }
-import org.elastic4play.models.JsonFormat.optionFormat
+
+import com.sksamuel.elastic4s.mappings.FieldDefinition
 import org.scalactic._
+
+import org.elastic4play.AttributeError
+import org.elastic4play.controllers.{ InputValue, JsonInputValue, NullInputValue }
+import org.elastic4play.models.JsonFormat.optionFormat
 
 case class OptionalAttributeFormat[T](attributeFormat: AttributeFormat[T]) extends AttributeFormat[Option[T]]("optional-" + attributeFormat.name)(optionFormat(attributeFormat.jsFormat)) {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = value match {
@@ -23,5 +25,5 @@ case class OptionalAttributeFormat[T](attributeFormat: AttributeFormat[T]) exten
     case x              ⇒ attributeFormat.fromInputValue(subNames, x).map(v ⇒ Some(v))
   }
 
-  override def elasticType(attributeName: String): TypedFieldDefinition = attributeFormat.elasticType(attributeName)
+  override def elasticType(attributeName: String): FieldDefinition = attributeFormat.elasticType(attributeName)
 }
