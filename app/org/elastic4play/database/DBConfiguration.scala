@@ -11,9 +11,10 @@ import play.api.{ Configuration, Logger }
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{ Sink, Source }
-import com.sksamuel.elastic4s.ElasticDsl.{ ClearScrollDefinitionExecutable, CreateIndexDefinitionExecutable, DeleteByIdDefinitionExecutable, GetDefinitionExecutable, IndexDefinitionExecutable, IndexExistsDefinitionExecutable, ScrollExecutable, SearchDefinitionExecutable, UpdateDefinitionExecutable }
+import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.admin.IndexExistsDefinition
 import com.sksamuel.elastic4s.bulk.RichBulkItemResponse
+import com.sksamuel.elastic4s.cluster.ClusterHealthDefinition
 import com.sksamuel.elastic4s.delete.DeleteByIdDefinition
 import com.sksamuel.elastic4s.get.{ GetDefinition, RichGetResponse }
 import com.sksamuel.elastic4s.index.RichIndexResponse
@@ -23,6 +24,7 @@ import com.sksamuel.elastic4s.streams.ReactiveElastic.ReactiveElastic
 import com.sksamuel.elastic4s.streams.{ RequestBuilder, ResponseListener }
 import com.sksamuel.elastic4s.update.{ RichUpdateResponse, UpdateDefinition }
 import com.sksamuel.elastic4s.{ ElasticsearchClientUri, TcpClient }
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse
 import org.elasticsearch.action.delete.DeleteResponse
@@ -90,6 +92,8 @@ class DBConfiguration(
   def execute(getDefinition: GetDefinition): Future[RichGetResponse] = client.execute(getDefinition)
   @Timed("database.clear_scroll")
   def execute(clearScrollDefinition: ClearScrollDefinition): Future[ClearScrollResult] = client.execute(clearScrollDefinition)
+  @Timed("database.cluster_health")
+  def execute(clusterHealthDefinition: ClusterHealthDefinition): Future[ClusterHealthResponse] = client.execute(clusterHealthDefinition)
 
   /**
    * Creates a Source (akka stream) from the result of the search

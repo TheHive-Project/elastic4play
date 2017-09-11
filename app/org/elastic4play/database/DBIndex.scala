@@ -6,7 +6,7 @@ import scala.concurrent.{ ExecutionContext, Future, blocking }
 
 import play.api.{ Configuration, Logger }
 
-import com.sksamuel.elastic4s.ElasticDsl.{ RichFuture, index, mapping, search }
+import com.sksamuel.elastic4s.ElasticDsl.{ RichFuture, clusterHealth, index, mapping, search }
 import com.sksamuel.elastic4s.indexes.CreateIndexDefinition
 
 import org.elastic4play.models.{ ChildModelDef, ModelAttributes, ModelDef }
@@ -28,8 +28,10 @@ class DBIndex(
     ec)
 
   private[DBIndex] lazy val logger = Logger(getClass)
+
   /**
    * Create a new index. Collect mapping for all attributes of all entities
+   *
    * @param models list of all ModelAttributes to used in order to build index mapping
    * @return a future which is completed when index creation is finished
    */
@@ -49,12 +51,13 @@ class DBIndex(
             .numericDetection(false)
       }
       .toSeq
-    db.execute {
-      CreateIndexDefinition(db.indexName)
-        .mappings(modelsMapping)
-        .shards(nbShards)
-        .replicas(nbReplicas)
-    }
+    db
+      .execute {
+        CreateIndexDefinition(db.indexName)
+          .mappings(modelsMapping)
+          .shards(nbShards)
+          .replicas(nbReplicas)
+      }
       .map { _ ⇒ () }
   }
 
@@ -64,11 +67,13 @@ class DBIndex(
    * @return future of true if the index exists
    */
   def getIndexStatus: Future[Boolean] = {
-    db.execute {
-      index exists db.indexName
-    } map { indicesExistsResponse ⇒
-      indicesExistsResponse.isExists
-    }
+    db
+      .execute {
+        index.exists(db.indexName)
+      }
+      .map {
+        _.isExists
+      }
   }
 
   /**
@@ -86,11 +91,47 @@ class DBIndex(
    * @param modelName name of the document type from which the count must be done
    * @return document count
    */
-  def getSize(modelName: String): Future[Long] = db.execute {
-    search(db.indexName → modelName).matchAllQuery().size(0)
-  } map { searchResponse ⇒
-    searchResponse.totalHits
-  } recover {
-    case _ ⇒ 0L
+  def getSize(modelName: String): Future[Long] =
+    db
+      .execute {
+        search(db.indexName → modelName).matchAllQuery().size(0)
+      }
+      .map {
+        _.totalHits
+      }
+      .recover { case _ ⇒ 0L }
+
+  /**
+   * Get cluster status:
+   * 0: green
+   * 1: yellow
+   * 2: red
+   *
+   * @return cluster status
+   */
+  def getClusterStatus: Future[Int] = {
+    db
+      .execute {
+        clusterHealth(db.indexName)
+      }
+      .map {
+        _.getStatus.value().toInt
+      }
+      .recover { case _ ⇒ 2 }
+  }
+
+  def clusterStatus = blocking {
+    getClusterStatus.await
+  }
+
+  def getClusterStatusName: Future[String] = getClusterStatus.map {
+    case 0 ⇒ "green"
+    case 1 ⇒ "yellow"
+    case 2 ⇒ "red"
+    case _ ⇒ "unknown"
+  }
+
+  def clusterStatusName = blocking {
+    getClusterStatusName.await
   }
 }
