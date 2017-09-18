@@ -26,5 +26,5 @@ object TextAttributeFormat extends AttributeFormat[String]("text") {
       }
   }
 
-  override def elasticType(attributeName: String): TextFieldDefinition = textField(attributeName)
+  override def elasticType(attributeName: String): TextFieldDefinition = textField(attributeName).fielddata(true)
 }
