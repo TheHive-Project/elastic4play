@@ -7,6 +7,7 @@ import com.sksamuel.elastic4s.mappings.KeywordFieldDefinition
 import org.scalactic._
 
 import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
+import org.elastic4play.services.DBLists
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
 
 case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit format: Format[T#Value])
@@ -44,4 +45,12 @@ case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit format
   }
 
   override def elasticType(attributeName: String): KeywordFieldDefinition = keywordField(attributeName)
+
+  override def definition(dblists: DBLists, attribute: Attribute[T#Value]): Seq[AttributeDefinition] =
+    Seq(AttributeDefinition(
+      attribute.name,
+      name,
+      attribute.description,
+      enum.values.map(v ⇒ JsString(v.toString)).toSeq,
+      Nil))
 }

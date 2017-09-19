@@ -10,6 +10,8 @@ import org.elastic4play.controllers.InputValue
 import org.elastic4play.services.DBLists
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError, MissingAttributeError, UpdateReadOnlyAttributeError }
 
+case class AttributeDefinition(name: String, `type`: String, description: String, values: Seq[JsValue], labels: Seq[String])
+
 abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Format[T]) {
   def checkJson(subNames: Seq[String], value: JsValue): JsValue Or Every[AttributeError]
 
@@ -26,6 +28,14 @@ abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Forma
   def elasticType(attributeName: String): FieldDefinition
 
   protected def formatError(value: InputValue) = Bad(One(InvalidFormatAttributeError("", name, value)))
+
+  def definition(dblists: DBLists, attribute: Attribute[T]): Seq[AttributeDefinition] =
+    Seq(AttributeDefinition(
+      attribute.name,
+      name,
+      attribute.description,
+      Nil,
+      Nil))
 }
 
 object AttributeFormat {

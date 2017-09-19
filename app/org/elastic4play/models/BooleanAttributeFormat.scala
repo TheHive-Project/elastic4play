@@ -9,7 +9,7 @@ import org.scalactic._
 import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
 
-object BooleanAttributeFormat extends AttributeFormat[Boolean]("boolean") {
+class BooleanAttributeFormat extends AttributeFormat[Boolean]("boolean") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
     case _: JsBoolean if subNames.isEmpty ⇒ Good(value)
     case _                                ⇒ formatError(JsonInputValue(value))
@@ -33,3 +33,5 @@ object BooleanAttributeFormat extends AttributeFormat[Boolean]("boolean") {
 
   override def elasticType(attributeName: String): BasicFieldDefinition = booleanField(attributeName)
 }
+
+object BooleanAttributeFormat extends BooleanAttributeFormat

@@ -11,7 +11,7 @@ import org.elastic4play.services.DBLists
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
 
 case class ListEnumerationAttributeFormat(enumerationName: String)(dblists: DBLists) extends AttributeFormat[String](s"enumeration") {
-  def items: Set[String] = dblists("list_" + enumerationName).cachedItems.map(_.mapTo[String]).toSet //getItems[String].map(_.map(_._2).toSet)
+  def items: Set[String] = dblists("list_" + enumerationName).cachedItems.map(_.mapTo[String]).toSet
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
     case JsString(v) if subNames.isEmpty && items.contains(v) ⇒ Good(value)
     case _                                                    ⇒ formatError(JsonInputValue(value))
@@ -29,4 +29,12 @@ case class ListEnumerationAttributeFormat(enumerationName: String)(dblists: DBLi
   }
 
   override def elasticType(attributeName: String): KeywordFieldDefinition = keywordField(attributeName)
+
+  override def definition(dblists: DBLists, attribute: Attribute[String]): Seq[AttributeDefinition] =
+    Seq(AttributeDefinition(
+      attribute.name,
+      name,
+      attribute.description,
+      items.map(JsString.apply).toSeq,
+      Nil))
 }

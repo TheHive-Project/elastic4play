@@ -1,6 +1,6 @@
 package org.elastic4play.models
 
-import play.api.libs.json.{ JsNull, JsNumber, JsObject, JsValue }
+import play.api.libs.json._
 
 import com.sksamuel.elastic4s.ElasticDsl.{ longField, nestedField }
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
@@ -9,8 +9,9 @@ import org.scalactic._
 
 import org.elastic4play.AttributeError
 import org.elastic4play.controllers.{ InputValue, JsonInputValue }
+import org.elastic4play.services.DBLists
 
-object MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
+class MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = fromInputValue(subNames, JsonInputValue(value))
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] = {
@@ -33,4 +34,21 @@ object MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
   }
 
   override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName).fields(Seq(longField("_default_")))
+
+  override def definition(dblists: DBLists, attribute: Attribute[JsValue]): Seq[AttributeDefinition] = {
+    dblists("case_metrics").cachedItems.flatMap { item ⇒
+      val itemObj = item.mapTo[JsObject]
+      for {
+        fieldName ← (itemObj \ "name").asOpt[String]
+        title ← (itemObj \ "title").asOpt[String]
+      } yield AttributeDefinition(
+        s"${attribute.name}.$fieldName",
+        "number",
+        s"metric: $title",
+        Nil,
+        Nil)
+    }
+  }
 }
+
+object MetricsAttributeFormat extends MetricsAttributeFormat
