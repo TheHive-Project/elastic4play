@@ -82,7 +82,7 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
       } yield AttributeDefinition(
         s"${attribute.name}.$fieldName",
         tpe,
-        s"custom field: $description",
+        description,
         options,
         Nil)
     }

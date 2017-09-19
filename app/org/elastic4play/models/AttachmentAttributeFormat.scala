@@ -61,11 +61,11 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
   override def definition(dblists: DBLists, attribute: Attribute[Attachment]): Seq[AttributeDefinition] =
     Seq(
       AttributeDefinition(
-      s"${attribute.name}.name",
-      "string",
-      s"file name of ${attribute.description}",
-      Nil,
-      Nil),
+        s"${attribute.name}.name",
+        "string",
+        s"file name of ${attribute.description}",
+        Nil,
+        Nil),
       AttributeDefinition(
         s"${attribute.name}.hash",
         "hash",

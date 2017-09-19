@@ -40,11 +40,11 @@ class MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
       val itemObj = item.mapTo[JsObject]
       for {
         fieldName ← (itemObj \ "name").asOpt[String]
-        title ← (itemObj \ "title").asOpt[String]
+        description ← (itemObj \ "description").asOpt[String]
       } yield AttributeDefinition(
         s"${attribute.name}.$fieldName",
         "number",
-        s"metric: $title",
+        description,
         Nil,
         Nil)
     }
