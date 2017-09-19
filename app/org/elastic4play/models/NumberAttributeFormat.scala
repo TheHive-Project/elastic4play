@@ -9,7 +9,7 @@ import org.scalactic._
 import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
 
-object NumberAttributeFormat extends AttributeFormat[Long]("number") {
+class NumberAttributeFormat extends AttributeFormat[Long]("number") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
     case _: JsNumber if subNames.isEmpty ⇒ Good(value)
     case _                               ⇒ formatError(JsonInputValue(value))
@@ -32,4 +32,7 @@ object NumberAttributeFormat extends AttributeFormat[Long]("number") {
   }
 
   override def elasticType(attributeName: String): BasicFieldDefinition = longField(attributeName)
+
 }
+
+object NumberAttributeFormat extends NumberAttributeFormat

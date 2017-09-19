@@ -10,6 +10,7 @@ import org.scalactic._
 
 import org.elastic4play.controllers.JsonFormat.inputValueFormat
 import org.elastic4play.controllers.{ InputValue, JsonInputValue }
+import org.elastic4play.services.DBLists
 import org.elastic4play.{ AttributeError, UnknownAttributeError }
 
 case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends AttributeFormat[JsObject]("nested") {
@@ -81,4 +82,13 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
   }
 
   override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName).fields(subAttributes.map(_.elasticMapping))
+
+  override def definition(dblists: DBLists, attribute: Attribute[JsObject]): Seq[AttributeDefinition] =
+    subAttributes
+      .flatMap {
+        case subAttribute: Attribute[tpe] ⇒ subAttribute.format.definition(dblists, subAttribute)
+      }
+      .map { attributeDefinition ⇒
+        attributeDefinition.copy(name = s"${attribute.name}.${attributeDefinition.name}")
+      }
 }

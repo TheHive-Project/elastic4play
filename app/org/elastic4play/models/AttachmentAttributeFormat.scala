@@ -9,7 +9,7 @@ import org.scalactic._
 
 import org.elastic4play.controllers.JsonFormat._
 import org.elastic4play.controllers.{ AttachmentInputValue, FileInputValue, InputValue, JsonInputValue }
-import org.elastic4play.services.Attachment
+import org.elastic4play.services.{ Attachment, DBLists }
 import org.elastic4play.services.JsonFormat.attachmentFormat
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
 
@@ -57,4 +57,31 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
     longField("size"),
     textField("contentType"),
     textField("id"))
+
+  override def definition(dblists: DBLists, attribute: Attribute[Attachment]): Seq[AttributeDefinition] =
+    Seq(
+      AttributeDefinition(
+      s"${attribute.name}.name",
+      "string",
+      s"file name of ${attribute.description}",
+      Nil,
+      Nil),
+      AttributeDefinition(
+        s"${attribute.name}.hash",
+        "hash",
+        s"hash of ${attribute.description}",
+        Nil,
+        Nil),
+      AttributeDefinition(
+        s"${attribute.name}.size",
+        "number",
+        s"file size of ${attribute.description}",
+        Nil,
+        Nil),
+      AttributeDefinition(
+        s"${attribute.name}.contentType",
+        "string",
+        s"content type of ${attribute.description}",
+        Nil,
+        Nil))
 }
