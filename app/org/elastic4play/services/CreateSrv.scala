@@ -57,7 +57,6 @@ class CreateSrv @Inject() (
   private[services] def addMetaFields(attrs: JsObject)(implicit authContext: AuthContext): JsObject =
     attrs ++
       Json.obj(
-        "user" → authContext.userId,
         "createdBy" → authContext.userId,
         "createdAt" → Json.toJson(new Date))
 

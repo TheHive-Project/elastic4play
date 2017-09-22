@@ -60,7 +60,7 @@ object AttributeFormat {
 
 object AttributeOption extends Enumeration with HiveEnumeration {
   type Type = Value
-  val readonly, unaudited, model, form, sensitive, user = Value
+  val readonly, unaudited, model, form, sensitive = Value
 }
 
 case class Attribute[T](
@@ -88,7 +88,6 @@ case class Attribute[T](
     case _: MultiAttributeFormat[_]    ⇒ false
     case _                             ⇒ true
   }
-  lazy val isUser: Boolean = options.contains(AttributeOption.user)
 
   def elasticMapping: FieldDefinition = format.elasticType(name) match {
     case a: BasicFieldDefinition if isSensitive ⇒ a.index("no")
