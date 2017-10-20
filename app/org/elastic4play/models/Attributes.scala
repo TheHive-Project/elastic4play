@@ -42,6 +42,7 @@ object AttributeFormat {
   val dateFmt = DateAttributeFormat
   val textFmt = TextAttributeFormat
   val stringFmt = StringAttributeFormat
+  val userFmt = UserAttributeFormat
   val booleanFmt = BooleanAttributeFormat
   val numberFmt = NumberAttributeFormat
   val attachmentFmt = AttachmentAttributeFormat

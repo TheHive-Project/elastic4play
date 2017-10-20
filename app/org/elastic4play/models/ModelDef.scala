@@ -51,9 +51,9 @@ abstract class ModelAttributes(val name: String) extends AttributeDef {
     attr
   }
 
-  val createdBy = attribute("createdBy", AttributeFormat.stringFmt, "user who created this entity", None, AttributeOption.model, AttributeOption.readonly)
+  val createdBy = attribute("createdBy", AttributeFormat.userFmt, "user who created this entity", None, AttributeOption.model, AttributeOption.readonly)
   val createdAt = attribute("createdAt", AttributeFormat.dateFmt, "user who created this entity", new Date, AttributeOption.model, AttributeOption.readonly)
-  val updatedBy = optionalAttribute("updatedBy", AttributeFormat.stringFmt, "user who created this entity", None, AttributeOption.model)
+  val updatedBy = optionalAttribute("updatedBy", AttributeFormat.userFmt, "user who created this entity", None, AttributeOption.model)
   val updatedAt = optionalAttribute("updatedAt", AttributeFormat.dateFmt, "user who created this entity", AttributeOption.model)
 }
 
