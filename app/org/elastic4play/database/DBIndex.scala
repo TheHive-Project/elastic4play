@@ -120,18 +120,18 @@ class DBIndex(
       .recover { case _ ⇒ 2 }
   }
 
-  def clusterStatus = blocking {
+  def clusterStatus: Int = blocking {
     getClusterStatus.await
   }
 
   def getClusterStatusName: Future[String] = getClusterStatus.map {
-    case 0 ⇒ "green"
-    case 1 ⇒ "yellow"
-    case 2 ⇒ "red"
-    case _ ⇒ "unknown"
+    case 0 ⇒ "OK"
+    case 1 ⇒ "WARNING"
+    case 2 ⇒ "ERROR"
+    case _ ⇒ "UNKNOWN"
   }
 
-  def clusterStatusName = blocking {
+  def clusterStatusName: String = blocking {
     getClusterStatusName.await
   }
 }
