@@ -99,6 +99,10 @@ class BaseEntity(val model: BaseModelDef, val attributes: JsObject) {
   val id = (attributes \ "_id").as[String]
   val routing = (attributes \ "_routing").as[String]
   lazy val parentId = (attributes \ "_parent").asOpt[String]
+  def createdBy = (attributes \ "createdBy").as[String]
+  def createdAt = (attributes \ "createdAt").as[Date]
+  def updatedBy = (attributes \ "updatedBy").as[String]
+  def updatedAt = (attributes \ "updatedAt").as[Date]
 
   @inline
   private final def removeProtectedAttributes(attrs: JsObject) = JsObject {

@@ -1,7 +1,48 @@
 # Change Log
 
-## [1.2.0](https://github.com/CERT-BDF/elastic4play/tree/1.2.0) (2017-06-30)
+## [1.3.2](https://github.com/CERT-BDF/elastic4play/tree/1.3.2)
 
+[Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.3.1...1.3.2) (2017-10-24)
+
+**Fixed bugs:**
+
+- Aggregation on sub-field doesn't work [\#35](https://github.com/CERT-BDF/elastic4play/issues/35)
+
+## [1.3.1](https://github.com/CERT-BDF/elastic4play/tree/1.3.1) (2017-09-18)
+[Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.3.0...1.3.1)
+
+**Fixed bugs:**
+
+- Text attribute can't be aggregated nor sorted [\#31](https://github.com/CERT-BDF/elastic4play/issues/31)
+
+## [1.3.0](https://github.com/CERT-BDF/elastic4play/tree/1.3.0) (2017-09-11)
+[Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.2.1...1.3.0)
+
+**Implemented enhancements:**
+
+- Add method to query ElasticSearch cluster health [\#30](https://github.com/CERT-BDF/elastic4play/issues/30)
+- Rename authentication type by authentication provider [\#29](https://github.com/CERT-BDF/elastic4play/issues/29)
+- Add configuration to disable authentication methods [\#28](https://github.com/CERT-BDF/elastic4play/issues/28)
+- Add API key authentication type [\#25](https://github.com/CERT-BDF/elastic4play/issues/25)
+- Remove defined user roles [\#24](https://github.com/CERT-BDF/elastic4play/issues/24)
+- Add support of ElasticSearch 5 [\#11](https://github.com/CERT-BDF/elastic4play/issues/11)
+
+**Fixed bugs:**
+
+- Handle search query error [\#27](https://github.com/CERT-BDF/elastic4play/issues/27)
+
+**Closed issues:**
+
+- Update Play to 2.6 and Scala to 2.12 [\#23](https://github.com/CERT-BDF/elastic4play/issues/23)
+
+## [1.2.1](https://github.com/CERT-BDF/elastic4play/tree/1.2.1) (2017-08-14)
+[Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.2.0...1.2.1)
+
+**Fixed bugs:**
+
+- Typo on database check [\#22](https://github.com/CERT-BDF/elastic4play/issues/22)
+
+## [1.2.0](https://github.com/CERT-BDF/elastic4play/tree/1.2.0) (2017-06-30)
 [Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.1.5...1.2.0)
 
 **Implemented enhancements:**
