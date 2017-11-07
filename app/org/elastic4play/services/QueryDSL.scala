@@ -7,16 +7,25 @@ import org.apache.lucene.search.join.ScoreMode
 import org.elastic4play.models.BaseEntity
 
 object QueryDSL {
-  def selectAvg(field: String) = new SelectAvg(field)
-  def selectMin(field: String) = new SelectMin(field)
-  def selectMax(field: String) = new SelectMax(field)
-  def selectSum(field: String) = new SelectSum(field)
-  val selectCount: SelectCount.type = SelectCount
-  def selectTop(size: Int, sortBy: Seq[String]) = new SelectTop(size, sortBy)
-  def groupByTime(fields: Seq[String], interval: String, selectables: Agg*) = new GroupByTime(fields, interval, selectables)
-  def groupByField(field: String, selectables: Agg*) = new GroupByField(field, None, Nil, selectables)
-  def groupByField(field: String, size: Int, sortBy: Seq[String], selectables: Agg*) = new GroupByField(field, Some(size), sortBy, selectables)
-  def groupByCaterogy(categories: Map[String, QueryDef], selectables: Agg*) = new GroupByCategory(categories, selectables)
+  def selectAvg(aggregationName: Option[String], field: String, query: Option[QueryDef]): SelectAvg = new SelectAvg(aggregationName.getOrElse(s"avg_$field"), field, query)
+  def selectAvg(field: String): SelectAvg = selectAvg(None, field, None)
+  def selectMin(aggregationName: Option[String], field: String, query: Option[QueryDef]): SelectMin = new SelectMin(aggregationName.getOrElse(s"min_$field"), field, query)
+  def selectMin(field: String): SelectMin = selectMin(None, field, None)
+  def selectMax(aggregationName: Option[String], field: String, query: Option[QueryDef]): SelectMax = new SelectMax(aggregationName.getOrElse(s"max_$field"), field, query)
+  def selectMax(field: String): SelectMax = selectMax(None, field, None)
+  def selectSum(aggregationName: Option[String], field: String, query: Option[QueryDef]): SelectSum = new SelectSum(aggregationName.getOrElse(s"sum_$field"), field, query)
+  def selectSum(field: String): SelectSum = selectSum(None, field, None)
+  def selectCount(aggregationName: Option[String], query: Option[QueryDef]): SelectCount = new SelectCount(aggregationName.getOrElse("count"), query)
+  val selectCount: SelectCount = selectCount(None, None)
+  def selectTop(aggregationName: Option[String], size: Int, sortBy: Seq[String]): SelectTop = new SelectTop(aggregationName.getOrElse("top"), size, sortBy)
+  def selectTop(size: Int, sortBy: Seq[String]): SelectTop = selectTop(None, size, sortBy)
+  def groupByTime(aggregationName: Option[String], fields: Seq[String], interval: String, selectables: Agg*): GroupByTime = new GroupByTime(aggregationName.getOrElse("datehistogram"), fields, interval, selectables)
+  def groupByTime(fields: Seq[String], interval: String, selectables: Agg*): GroupByTime = groupByTime(None, fields, interval, selectables: _*)
+  def groupByField(aggregationName: Option[String], field: String, size: Int, sortBy: Seq[String], selectables: Agg*): GroupByField = new GroupByField(aggregationName.getOrElse("term"), field, Some(size), sortBy, selectables)
+  def groupByField(aggregationName: Option[String], field: String, selectables: Agg*): GroupByField = new GroupByField(aggregationName.getOrElse("term"), field, None, Nil, selectables)
+  def groupByField(field: String, selectables: Agg*): GroupByField = groupByField(None, field, selectables: _*)
+
+  def groupByCaterogy(aggregationName: Option[String], categories: Map[String, QueryDef], selectables: Agg*) = new GroupByCategory(aggregationName.getOrElse("categories"), categories, selectables)
 
   private def nestedField(field: String, q: (String) ⇒ QueryDefinition) = {
     val names = field.split("\\.")
