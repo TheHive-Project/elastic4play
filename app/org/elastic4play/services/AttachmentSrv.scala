@@ -35,7 +35,7 @@ trait AttachmentAttributes { _: AttributeDef ⇒
 }
 
 @Singleton
-class AttachmentModel(datastoreName: String) extends ModelDef[AttachmentModel, AttachmentChunk](datastoreName) with AttachmentAttributes {
+class AttachmentModel(datastoreName: String) extends ModelDef[AttachmentModel, AttachmentChunk](datastoreName, "Attachment", "/datastore") with AttachmentAttributes {
   @Inject() def this(configuration: Configuration) = this(configuration.get[String]("datastore.name"))
 }
 class AttachmentChunk(model: AttachmentModel, attributes: JsObject) extends EntityDef[AttachmentModel, AttachmentChunk](model, attributes) with AttachmentAttributes

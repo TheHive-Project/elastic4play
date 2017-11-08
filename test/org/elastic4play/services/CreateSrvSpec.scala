@@ -20,7 +20,7 @@ import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, M
 @RunWith(classOf[JUnitRunner])
 class CreateSrvSpec extends PlaySpecification with Mockito {
 
-  class TestModel extends ModelDef[TestModel, TestEntity]("testModel") {
+  class TestModel extends ModelDef[TestModel, TestEntity]("testModel", "TestModel", "/test") {
     val textAttribute: Attribute[String] = attribute("textAttribute", F.textFmt, "textAttribute")
     val stringAttribute: Attribute[String] = attribute("stringAttribute", F.stringFmt, "stringAttribute")
     val dateAttribute: Attribute[Date] = attribute("dateAttribute", F.dateFmt, "dateAttribute")

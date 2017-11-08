@@ -21,7 +21,7 @@ import org.elastic4play.models.{ Attribute, EntityDef, ModelDef, AttributeFormat
 import org.elastic4play.utils.{ Hasher, RichFuture }
 
 @Singleton
-class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName) {
+class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName, "DBList", "/list") {
   model ⇒
   @Inject def this(configuration: Configuration) = this(configuration.get[String]("dblist.name"))
 

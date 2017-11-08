@@ -57,7 +57,7 @@ abstract class ModelAttributes(val name: String) extends AttributeDef {
   val updatedAt = optionalAttribute("updatedAt", AttributeFormat.dateFmt, "user who created this entity", AttributeOption.model)
 }
 
-abstract class BaseModelDef(name: String) extends ModelAttributes(name) {
+abstract class BaseModelDef(name: String, val label: String, val path: String) extends ModelAttributes(name) {
   def apply(attributes: JsObject): BaseEntity
   def removeAttribute: JsObject = throw InternalError(s"$name can't be removed")
 
@@ -132,13 +132,13 @@ abstract class EntityDef[M <: BaseModelDef, E <: BaseEntity](model: M, attribute
   }
 }
 
-abstract class AbstractModelDef[M <: AbstractModelDef[M, E], E <: BaseEntity](name: String) extends BaseModelDef(name) {
+abstract class AbstractModelDef[M <: AbstractModelDef[M, E], E <: BaseEntity](name: String, label: String, path: String) extends BaseModelDef(name, label, path) {
   override def apply(attributes: JsObject): E
 }
 
-abstract class ModelDef[M <: ModelDef[M, E], E <: BaseEntity](name: String)(implicit e: Manifest[E]) extends AbstractModelDef[M, E](name) { self: M ⇒
+abstract class ModelDef[M <: ModelDef[M, E], E <: BaseEntity](name: String, label: String, path: String)(implicit e: Manifest[E]) extends AbstractModelDef[M, E](name, label, path) { self: M ⇒
   override def apply(attributes: JsObject): E = e.runtimeClass.getConstructor(getClass, classOf[JsObject]).newInstance(self, attributes).asInstanceOf[E]
 }
-abstract class ChildModelDef[M <: ChildModelDef[M, E, PM, PE], E <: BaseEntity, PM <: BaseModelDef, PE <: BaseEntity](val parentModel: PM, name: String)(implicit e: Manifest[E]) extends AbstractModelDef[M, E](name) { self: M ⇒
+abstract class ChildModelDef[M <: ChildModelDef[M, E, PM, PE], E <: BaseEntity, PM <: BaseModelDef, PE <: BaseEntity](val parentModel: PM, name: String, label: String, path: String)(implicit e: Manifest[E]) extends AbstractModelDef[M, E](name, label, path) { self: M ⇒
   override def apply(attributes: JsObject): E = e.runtimeClass.getConstructor(getClass, classOf[JsObject]).newInstance(self, attributes).asInstanceOf[E]
 }
