@@ -37,6 +37,7 @@ object QueryDSL {
   implicit class SearchField(field: String) extends BuildableTermsQueryImplicits {
     private def convertValue(value: Any): Any = value match {
       case _: Enumeration#Value ⇒ value.toString
+      case bd: BigDecimal       ⇒ bd.toDouble
       case _                    ⇒ value
     }
     def ~=(value: Any) = QueryDef(nestedField(field, termQuery(_, convertValue(value))))
