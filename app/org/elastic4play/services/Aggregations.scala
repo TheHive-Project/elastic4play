@@ -60,13 +60,13 @@ abstract class FieldAgg(val fieldName: String, aggregationName: String) extends 
   }
 
   def getAggregation(fieldName: String, aggregations: RichAggregations, query: Option[QueryDef]): RichAggregations = {
-    val filteredAggResult = Agg.filteredResult(aggregations, query)
-    if (fieldName.startsWith("computed")) filteredAggResult
+    val agg = if (fieldName.startsWith("computed")) aggregations
     else {
-      fieldName.split("\\.").init.foldLeft(filteredAggResult) { (agg, _) ⇒
+      fieldName.split("\\.").init.foldLeft(aggregations) { (agg, _) ⇒
         RichAggregations(agg.getAs[Nested](aggregationName).getAggregations)
       }
     }
+    Agg.filteredResult(agg, query)
   }
 
   def apply(model: BaseModelDef): Seq[AggregationDefinition] = {
