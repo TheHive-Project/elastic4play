@@ -32,7 +32,7 @@ abstract class Agg(val aggregationName: String) {
   def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject
 }
 
-object Agg {
+trait AggQuery { _: Agg ⇒
   def filteredAgg(agg: AggregationDefinition, query: Option[QueryDef]): AggregationDefinition = {
     query match {
       case None    ⇒ agg
@@ -40,11 +40,11 @@ object Agg {
     }
   }
   def filteredResult(aggregations: RichAggregations, query: Option[QueryDef]): RichAggregations = {
-    query.fold(aggregations)(_ ⇒ RichAggregations(aggregations.aggregations.iterator().next().asInstanceOf[Filter].getAggregations))
+    query.fold(aggregations)(_ ⇒ RichAggregations(aggregations.aggregations.get[Filter](aggregationName).getAggregations))
   }
 }
 
-abstract class FieldAgg(val fieldName: String, aggregationName: String) extends Agg(aggregationName) {
+abstract class FieldAgg(val fieldName: String, aggregationName: String) extends Agg(aggregationName) with AggQuery {
   def script(s: String): AggregationDefinition
 
   def field(f: String): AggregationDefinition
@@ -65,7 +65,7 @@ abstract class FieldAgg(val fieldName: String, aggregationName: String) extends 
         RichAggregations(agg.getAs[Nested](aggregationName).getAggregations)
       }
     }
-    Agg.filteredResult(agg, query)
+    filteredResult(agg, query)
   }
 
   def apply(model: BaseModelDef): Seq[AggregationDefinition] = {
@@ -85,10 +85,10 @@ abstract class FieldAgg(val fieldName: String, aggregationName: String) extends 
   }
 }
 
-class SelectAvg(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName) {
-  def script(s: String): AggregationDefinition = Agg.filteredAgg(avgAggregation(aggregationName).script(s), query)
+class SelectAvg(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName) with AggQuery {
+  def script(s: String): AggregationDefinition = filteredAgg(avgAggregation(aggregationName).script(s), query)
 
-  def field(f: String): AggregationDefinition = Agg.filteredAgg(avgAggregation(aggregationName).field(f), query)
+  def field(f: String): AggregationDefinition = filteredAgg(avgAggregation(aggregationName).field(f), query)
 
   def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
     val avg = getAggregation(fieldName, aggregations, query).getAs[Avg](aggregationName)
@@ -97,10 +97,10 @@ class SelectAvg(aggregationName: String, fieldName: String, query: Option[QueryD
   }
 }
 
-class SelectMin(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName) {
-  def script(s: String): AggregationDefinition = Agg.filteredAgg(minAggregation(aggregationName).script(s), query)
+class SelectMin(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName) with AggQuery {
+  def script(s: String): AggregationDefinition = filteredAgg(minAggregation(aggregationName).script(s), query)
 
-  def field(f: String): AggregationDefinition = Agg.filteredAgg(minAggregation(aggregationName).field(f), query)
+  def field(f: String): AggregationDefinition = filteredAgg(minAggregation(aggregationName).field(f), query)
 
   def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
     val min = getAggregation(fieldName, aggregations, query).getAs[Min](aggregationName)
@@ -109,10 +109,10 @@ class SelectMin(aggregationName: String, fieldName: String, query: Option[QueryD
   }
 }
 
-class SelectMax(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName) {
-  def script(s: String): AggregationDefinition = Agg.filteredAgg(maxAggregation(aggregationName).script(s), query)
+class SelectMax(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName) with AggQuery {
+  def script(s: String): AggregationDefinition = filteredAgg(maxAggregation(aggregationName).script(s), query)
 
-  def field(f: String): AggregationDefinition = Agg.filteredAgg(maxAggregation(aggregationName).field(f), query)
+  def field(f: String): AggregationDefinition = filteredAgg(maxAggregation(aggregationName).field(f), query)
 
   def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
     val max = getAggregation(fieldName, aggregations, query).getAs[Max](aggregationName)
@@ -121,10 +121,10 @@ class SelectMax(aggregationName: String, fieldName: String, query: Option[QueryD
   }
 }
 
-class SelectSum(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName) {
-  def script(s: String): AggregationDefinition = Agg.filteredAgg(sumAggregation(aggregationName).script(s), query)
+class SelectSum(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName) with AggQuery {
+  def script(s: String): AggregationDefinition = filteredAgg(sumAggregation(aggregationName).script(s), query)
 
-  def field(f: String): AggregationDefinition = Agg.filteredAgg(sumAggregation(aggregationName).field(f), query)
+  def field(f: String): AggregationDefinition = filteredAgg(sumAggregation(aggregationName).field(f), query)
 
   def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
     val sum = getAggregation(fieldName, aggregations, query).getAs[Sum](aggregationName)
@@ -142,11 +142,11 @@ class SelectCount(aggregationName: String, query: Option[QueryDef]) extends Agg(
   }
 }
 
-class SelectTop(aggregationName: String, size: Int, sortBy: Seq[String], query: Option[QueryDef] = None) extends Agg(aggregationName) {
-  def apply(model: BaseModelDef) = Seq(Agg.filteredAgg(topHitsAggregation(aggregationName).size(size).sortBy(DBUtils.sortDefinition(sortBy)), query))
+class SelectTop(aggregationName: String, size: Int, sortBy: Seq[String], query: Option[QueryDef] = None) extends Agg(aggregationName) with AggQuery {
+  def apply(model: BaseModelDef) = Seq(filteredAgg(topHitsAggregation(aggregationName).size(size).sortBy(DBUtils.sortDefinition(sortBy)), query))
 
   def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
-    val top = Agg.filteredResult(aggregations, query)
+    val top = filteredResult(aggregations, query)
       .getAs[TopHits](aggregationName)
     JsObject(Seq("top" → JsArray(top.getHits.getHits.map(h ⇒ DBUtils.hit2json(RichSearchHit(h))))))
   }
