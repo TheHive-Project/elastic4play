@@ -25,7 +25,6 @@ import org.joda.time.DateTime
 import org.elastic4play.BadRequestError
 import org.elastic4play.database.DBUtils
 import org.elastic4play.models.BaseModelDef
-import org.elastic4play.utils.Date.RichJoda
 
 abstract class Agg(val aggregationName: String) {
   def apply(model: BaseModelDef): Seq[AggregationDefinition]
@@ -189,7 +188,7 @@ class GroupByTime(aggregationName: String, fields: Seq[String], interval: String
           .reduceOption(_ ++ _)
           .getOrElse(JsObject(Nil))
         // date -> obj(key{avg, min} -> value)
-        bucket.getKey.asInstanceOf[DateTime].toIso → results
+        bucket.getKey.asInstanceOf[DateTime].getMillis.toString → results
       }.toMap
     }.toMap
     val keys = aggs.values.flatMap(_.keys).toSet
