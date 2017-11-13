@@ -70,9 +70,10 @@ class DBLists @Inject() (
     cache: AsyncCacheApi,
     implicit val ec: ExecutionContext,
     implicit val mat: Materializer) {
+
   /**
-   * Returns list of all dblist name
-   */
+    * Returns list of all dblist name
+    */
   def listAll: Future[collection.Set[String]] = {
     import org.elastic4play.services.QueryDSL._
     findSrv(dblistModel, any, groupByField("dblist", selectCount)).map(_.keys)

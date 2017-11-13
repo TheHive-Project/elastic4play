@@ -26,11 +26,11 @@ case class RequestProcessStart(request: RequestHeader) extends EventMessage
 case class RequestProcessEnd(request: RequestHeader, result: Try[Result]) extends EventMessage
 
 case class AuditOperation(
-  entity: BaseEntity,
-  action: AuditableAction.Type,
-  details: JsObject,
-  authContext: AuthContext,
-  date: Date = new Date()) extends EventMessage
+    entity: BaseEntity,
+    action: AuditableAction.Type,
+    details: JsObject,
+    authContext: AuthContext,
+    date: Date = new Date()) extends EventMessage
 
 @Singleton
 class EventSrv extends ActorEventBus with SubchannelClassification {

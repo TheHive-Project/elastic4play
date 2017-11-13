@@ -14,8 +14,8 @@ import org.elasticsearch.index.query.QueryShardException
 import org.elastic4play.JsonFormat.attributeCheckingExceptionWrites
 
 /**
- * This class handles errors. It traverses all causes of exception to find known error and shows the appropriate message
- */
+  * This class handles errors. It traverses all causes of exception to find known error and shows the appropriate message
+  */
 class ErrorHandler extends HttpErrorHandler {
 
   private[ErrorHandler] lazy val logger = Logger(getClass)

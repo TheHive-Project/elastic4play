@@ -71,6 +71,7 @@ case class Attribute[T](
     options: Seq[AttributeOption.Type],
     defaultValue: Option[() ⇒ T],
     description: String) {
+
   private[Attribute] lazy val logger = Logger(getClass)
 
   def defaultValueJson: Option[JsValue] = defaultValue.map(d ⇒ format.jsFormat.writes(d()))

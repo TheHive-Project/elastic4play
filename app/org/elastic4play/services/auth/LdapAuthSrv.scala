@@ -111,9 +111,9 @@ class LdapAuthSrv(
     implicit val ec: ExecutionContext) extends AuthSrv {
 
   @Inject() def this(
-    configuration: Configuration,
-    userSrv: UserSrv,
-    ec: ExecutionContext) = this(
+      configuration: Configuration,
+      userSrv: UserSrv,
+      ec: ExecutionContext) = this(
     LdapConnection(configuration),
     userSrv,
     ec)

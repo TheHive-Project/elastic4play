@@ -52,12 +52,12 @@ class AttachmentSrv(
     implicit val mat: Materializer) {
 
   @Inject() def this(
-    configuration: Configuration,
-    dbCreate: DBCreate,
-    getSrv: GetSrv,
-    attachmentModel: AttachmentModel,
-    ec: ExecutionContext,
-    mat: Materializer) =
+      configuration: Configuration,
+      dbCreate: DBCreate,
+      getSrv: GetSrv,
+      attachmentModel: AttachmentModel,
+      ec: ExecutionContext,
+      mat: Materializer) =
     this(
       configuration.get[String]("datastore.hash.main"),
       configuration.get[Seq[String]]("datastore.hash.extra"),
@@ -72,8 +72,8 @@ class AttachmentSrv(
   val extraHashers = Hasher(mainHash +: extraHashes: _*)
 
   /**
-   * Handles attachments : send to datastore and build an object with hash and filename
-   */
+    * Handles attachments : send to datastore and build an object with hash and filename
+    */
   def apply(model: BaseModelDef)(attributes: JsObject): Future[JsObject] = {
     // find all declared attribute as attachment in submitted data
     model.attachmentAttributes.foldLeft(Future.successful(attributes)) {

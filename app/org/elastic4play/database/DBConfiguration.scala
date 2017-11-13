@@ -33,10 +33,10 @@ import org.elasticsearch.common.settings.Settings
 import org.elastic4play.Timed
 
 /**
- * This class is a wrapper of ElasticSearch client from Elastic4s
- * It builds the client using configuration (ElasticSearch addresses, cluster and index name)
- * It add timed annotation in order to measure storage metrics
- */
+  * This class is a wrapper of ElasticSearch client from Elastic4s
+  * It builds the client using configuration (ElasticSearch addresses, cluster and index name)
+  * It add timed annotation in order to measure storage metrics
+  */
 @Singleton
 class DBConfiguration(
     searchHost: Seq[String],
@@ -48,11 +48,11 @@ class DBConfiguration(
     implicit val actorSystem: ActorSystem) {
 
   @Inject() def this(
-    configuration: Configuration,
-    lifecycle: ApplicationLifecycle,
-    @Named("databaseVersion") version: Int,
-    ec: ExecutionContext,
-    actorSystem: ActorSystem) = {
+      configuration: Configuration,
+      lifecycle: ApplicationLifecycle,
+      @Named("databaseVersion") version: Int,
+      ec: ExecutionContext,
+      actorSystem: ActorSystem) = {
     this(
       configuration.get[Seq[String]]("search.host"),
       configuration.get[String]("search.cluster"),
@@ -66,8 +66,8 @@ class DBConfiguration(
   private[DBConfiguration] lazy val logger = Logger(getClass)
 
   /**
-   * Underlying ElasticSearch client
-   */
+    * Underlying ElasticSearch client
+    */
   private[database] val client = TcpClient.transport(
     Settings.builder().put("cluster.name", searchCluster).build(),
     ElasticsearchClientUri(searchHost.map(h ⇒ s"elasticsearch://$h").mkString(",")))
@@ -96,8 +96,8 @@ class DBConfiguration(
   def execute(clusterHealthDefinition: ClusterHealthDefinition): Future[ClusterHealthResponse] = client.execute(clusterHealthDefinition)
 
   /**
-   * Creates a Source (akka stream) from the result of the search
-   */
+    * Creates a Source (akka stream) from the result of the search
+    */
   def source(searchDefinition: SearchDefinition): Source[RichSearchHit, NotUsed] = Source.fromPublisher(client.publisher(searchDefinition))
 
   private lazy val sinkListener = new ResponseListener {
@@ -108,8 +108,8 @@ class DBConfiguration(
   }
 
   /**
-   * Create a Sink (akka stream) that create entity in ElasticSearch
-   */
+    * Create a Sink (akka stream) that create entity in ElasticSearch
+    */
   def sink[T](implicit builder: RequestBuilder[T]): Sink[T, Future[Unit]] = {
     val end = Promise[Unit]
     def complete(): Unit = {
@@ -126,12 +126,12 @@ class DBConfiguration(
   }
 
   /**
-   * Name of the index, suffixed by the current version
-   */
+    * Name of the index, suffixed by the current version
+    */
   val indexName: String = baseIndexName + "_" + version
 
   /**
-   * return a new instance of DBConfiguration that points to the previous version of the index schema
-   */
+    * return a new instance of DBConfiguration that points to the previous version of the index schema
+    */
   def previousVersion: DBConfiguration = new DBConfiguration(searchHost, searchCluster, baseIndexName, lifecycle, version - 1, ec, actorSystem)
 }
