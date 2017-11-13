@@ -30,8 +30,8 @@ class UpdateSrv @Inject() (
     implicit val ec: ExecutionContext) {
 
   /**
-   * Check if entity attributes are valid. Format is not checked as it has been already checked.
-   */
+    * Check if entity attributes are valid. Format is not checked as it has been already checked.
+    */
   private[services] def checkAttributes(attrs: JsObject, model: BaseModelDef): Future[JsObject] = {
     attrs.fields
       .map {

@@ -103,9 +103,9 @@ class ADAuthSrv(
     implicit val ec: ExecutionContext) extends AuthSrv {
 
   @Inject() def this(
-    configuration: Configuration,
-    userSrv: UserSrv,
-    ec: ExecutionContext) = this(
+      configuration: Configuration,
+      userSrv: UserSrv,
+      ec: ExecutionContext) = this(
     ADConnection(configuration),
     userSrv,
     ec)

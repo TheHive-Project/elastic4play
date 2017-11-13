@@ -11,7 +11,7 @@ import org.elastic4play.services.DBLists
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
 
 case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit format: Format[T#Value])
-    extends AttributeFormat[T#Value](s"enumeration") {
+  extends AttributeFormat[T#Value](s"enumeration") {
 
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
     case JsString(v) if subNames.isEmpty ⇒ try {

@@ -22,15 +22,15 @@ import org.elastic4play.services.Attachment
 import org.elastic4play.utils.Hash
 
 /**
- * Define a data value from HTTP request. It can be simple string, json, file or null (maybe xml in future)
- */
+  * Define a data value from HTTP request. It can be simple string, json, file or null (maybe xml in future)
+  */
 sealed trait InputValue {
   def jsonValue: JsValue
 }
 
 /**
- * Define a data value from HTTP request as simple string
- */
+  * Define a data value from HTTP request as simple string
+  */
 case class StringInputValue(data: Seq[String]) extends InputValue {
   def jsonValue: JsValue = Json.toJson(data)
 }
@@ -39,22 +39,22 @@ object StringInputValue {
 }
 
 /**
- * Define a data value from HTTP request as json value
- */
+  * Define a data value from HTTP request as json value
+  */
 case class JsonInputValue(data: JsValue) extends InputValue {
   def jsonValue: JsValue = data
 }
 
 /**
- * Define a data value from HTTP request as file (filename, path to temporary file and content type). Other data are lost
- */
+  * Define a data value from HTTP request as file (filename, path to temporary file and content type). Other data are lost
+  */
 case class FileInputValue(name: String, filepath: Path, contentType: String) extends InputValue {
   def jsonValue: JsObject = Json.obj("name" → name, "filepath" → filepath, "contentType" → contentType)
 }
 
 /**
- * Define an attachment that is already in datastore. This type can't be from HTTP request.
- */
+  * Define an attachment that is already in datastore. This type can't be from HTTP request.
+  */
 case class AttachmentInputValue(name: String, hashes: Seq[Hash], size: Long, contentType: String, id: String) extends InputValue {
   def jsonValue: JsObject = Json.obj(
     "name" → name,
@@ -69,26 +69,26 @@ object AttachmentInputValue {
 }
 
 /**
- * Define a data value from HTTP request as null (empty value)
- */
+  * Define a data value from HTTP request as null (empty value)
+  */
 object NullInputValue extends InputValue {
   def jsonValue: JsValue = JsNull
 }
 
 /**
- * Contain data values from HTTP request
- */
+  * Contain data values from HTTP request
+  */
 class Fields(private val fields: Map[String, InputValue]) {
   /**
-   * Get InputValue
-   */
+    * Get InputValue
+    */
   def get(name: String): Option[InputValue] = {
     fields.get(name)
   }
 
   /**
-   * Get data value as String. Returns None if field doesn't exist or format is not a string
-   */
+    * Get data value as String. Returns None if field doesn't exist or format is not a string
+    */
   def getString(name: String): Option[String] = {
     fields.get(name) collect {
       case StringInputValue(Seq(s))    ⇒ s
@@ -97,8 +97,8 @@ class Fields(private val fields: Map[String, InputValue]) {
   }
 
   /**
-   * Get data value as list of String. Returns None if field doesn't exist or format is not a list of string
-   */
+    * Get data value as list of String. Returns None if field doesn't exist or format is not a list of string
+    */
   def getStrings(name: String): Option[Seq[String]] = fields.get(name) flatMap {
     case StringInputValue(ss) ⇒ Some(ss)
     case JsonInputValue(JsArray(js)) ⇒ js.foldLeft[Option[Seq[String]]](Some(Nil)) {
@@ -109,8 +109,8 @@ class Fields(private val fields: Map[String, InputValue]) {
   }
 
   /**
-   * Get data value as list of String. Returns None if field doesn't exist or format is not a list of string
-   */
+    * Get data value as list of String. Returns None if field doesn't exist or format is not a list of string
+    */
   def getStrings(name: String, separator: String): Option[Seq[String]] = fields.get(name) flatMap {
     case StringInputValue(ss) ⇒ Some(ss.flatMap(_.split(separator)).filterNot(_.isEmpty))
     case JsonInputValue(JsArray(js)) ⇒ js.foldLeft[Option[Seq[String]]](Some(Nil)) {
@@ -121,8 +121,8 @@ class Fields(private val fields: Map[String, InputValue]) {
   }
 
   /**
-   * Get data value as Long. Returns None if field doesn't exist or format is not a Long
-   */
+    * Get data value as Long. Returns None if field doesn't exist or format is not a Long
+    */
   def getLong(name: String): Option[Long] = fields.get(name) flatMap {
     case StringInputValue(Seq(s))    ⇒ Try(s.toLong).toOption
     case JsonInputValue(JsNumber(b)) ⇒ Some(b.longValue)
@@ -135,8 +135,8 @@ class Fields(private val fields: Map[String, InputValue]) {
     case _                            ⇒ None
   }
   /**
-   * Get data value as json. Returns None if field doesn't exist or can't be converted to json
-   */
+    * Get data value as json. Returns None if field doesn't exist or can't be converted to json
+    */
   def getValue(name: String): Option[JsValue] = fields.get(name) collect {
     case JsonInputValue(js)       ⇒ js
     case StringInputValue(Seq(s)) ⇒ JsString(s)
@@ -149,43 +149,43 @@ class Fields(private val fields: Map[String, InputValue]) {
     case _                           ⇒ Nil
   }
   /**
-   * Extract all fields, name and value
-   */
+    * Extract all fields, name and value
+    */
   def map[A](f: ((String, InputValue)) ⇒ A): immutable.Iterable[A] = fields.map(f)
 
   /**
-   * Extract all field values
-   */
+    * Extract all field values
+    */
   def mapValues(f: (InputValue) ⇒ InputValue) = new Fields(fields.mapValues(f))
 
   /**
-   * Returns a copy of this class with a new field (or replacing existing field)
-   */
+    * Returns a copy of this class with a new field (or replacing existing field)
+    */
   def set(name: String, value: InputValue): Fields = new Fields(fields + (name → value))
 
   /**
-   * Returns a copy of this class with a new field (or replacing existing field)
-   */
+    * Returns a copy of this class with a new field (or replacing existing field)
+    */
   def set(name: String, value: String): Fields = set(name, StringInputValue(Seq(value)))
 
   /**
-   * Returns a copy of this class with a new field (or replacing existing field)
-   */
+    * Returns a copy of this class with a new field (or replacing existing field)
+    */
   def set(name: String, value: JsValue): Fields = set(name, JsonInputValue(value))
 
   /**
-   * Returns a copy of this class with a new field if value is not None otherwise returns this
-   */
+    * Returns a copy of this class with a new field if value is not None otherwise returns this
+    */
   def set(name: String, value: Option[JsValue]): Fields = value.fold(this)(v ⇒ set(name, v))
 
   /**
-   * Return a copy of this class without the specified field
-   */
+    * Return a copy of this class without the specified field
+    */
   def unset(name: String): Fields = new Fields(fields - name)
 
   /**
-   * Returns true if the specified field name is present
-   */
+    * Returns true if the specified field name is present
+    */
   def contains(name: String): Boolean = fields.contains(name)
 
   def isEmpty: Boolean = fields.isEmpty
@@ -204,8 +204,8 @@ object Fields {
   val empty: Fields = new Fields(Map.empty[String, InputValue])
 
   /**
-   * Create an instance of Fields from a JSON object
-   */
+    * Create an instance of Fields from a JSON object
+    */
   def apply(obj: JsObject): Fields = {
     val fields = obj.value.mapValues(v ⇒ JsonInputValue(v))
     new Fields(fields.toMap)

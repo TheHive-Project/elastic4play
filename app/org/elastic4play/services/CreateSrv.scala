@@ -30,8 +30,8 @@ class CreateSrv @Inject() (
     implicit val ec: ExecutionContext) {
 
   /**
-   * Check if entity attributes are valid. Format is not checked as it has been already checked.
-   */
+    * Check if entity attributes are valid. Format is not checked as it has been already checked.
+    */
   private[services] def checkAttributes(attrs: JsObject, model: BaseModelDef) = {
     (attrs.keys ++ model.modelAttributes.keySet)
       .map { name ⇒ (name, (attrs \ name).asOpt[JsValue], model.modelAttributes.get(name)) }

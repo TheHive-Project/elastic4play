@@ -71,6 +71,7 @@ class TempFilter @Inject() (
     tempSrv: TempSrv,
     implicit val ec: ExecutionContext,
     implicit val mat: Materializer) extends Filter {
+
   def apply(nextFilter: RequestHeader ⇒ Future[Result])(requestHeader: RequestHeader): Future[Result] = {
     nextFilter(requestHeader)
       .andThen { case _ ⇒ tempSrv.releaseTemporaryFiles(requestHeader) }

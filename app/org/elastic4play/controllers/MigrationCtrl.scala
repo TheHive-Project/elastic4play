@@ -10,8 +10,8 @@ import org.elastic4play.Timed
 import org.elastic4play.services.MigrationSrv
 
 /**
- * Migration controller : start migration process
- */
+  * Migration controller : start migration process
+  */
 @Singleton
 class MigrationCtrl @Inject() (
     migrationSrv: MigrationSrv,

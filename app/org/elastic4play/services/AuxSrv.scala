@@ -22,6 +22,7 @@ class AuxSrv @Inject() (
     modelSrv: ModelSrv,
     implicit val ec: ExecutionContext,
     implicit val mat: Materializer) {
+
   import org.elastic4play.services.QueryDSL._
   private[AuxSrv] lazy val logger = Logger(getClass)
 

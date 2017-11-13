@@ -16,8 +16,8 @@ import org.elastic4play.services.{ AuthContext, AuthSrv, Role, UserSrv }
 import org.elastic4play.utils.Instance
 
 /**
- * A request with authentication information
- */
+  * A request with authentication information
+  */
 class AuthenticatedRequest[A](val authContext: AuthContext, request: Request[A]) extends WrappedRequest[A](request) with AuthContext {
   def userId: String = authContext.userId
   def userName: String = authContext.userName
@@ -31,8 +31,8 @@ case class ExpirationWarning(duration: FiniteDuration) extends ExpirationStatus
 case object ExpirationError extends ExpirationStatus
 
 /**
- * Check and manager user security (authentication and authorization)
- */
+  * Check and manager user security (authentication and authorization)
+  */
 @Singleton
 class Authenticated(
     maxSessionInactivity: FiniteDuration,
@@ -48,11 +48,11 @@ class Authenticated(
     implicit val ec: ExecutionContext) {
 
   @Inject() def this(
-    configuration: Configuration,
-    userSrv: UserSrv,
-    authSrv: AuthSrv,
-    defaultParser: BodyParsers.Default,
-    ec: ExecutionContext) =
+      configuration: Configuration,
+      userSrv: UserSrv,
+      authSrv: AuthSrv,
+      defaultParser: BodyParsers.Default,
+      ec: ExecutionContext) =
     this(
       configuration.getMillis("session.inactivity").millis,
       configuration.getMillis("session.warning").millis,
@@ -70,15 +70,15 @@ class Authenticated(
   private def now = (new Date).getTime
 
   /**
-   * Insert or update session cookie containing user name and session expiration timestamp
-   * Cookie is signed by Play framework (it cannot be modified by user)
-   */
+    * Insert or update session cookie containing user name and session expiration timestamp
+    * Cookie is signed by Play framework (it cannot be modified by user)
+    */
   def setSessingUser(result: Result, authContext: AuthContext)(implicit request: RequestHeader): Result =
     result.addingToSession(sessionUsername → authContext.userId, "expire" → (now + maxSessionInactivity.toMillis).toString)
 
   /**
-   * Retrieve authentication information form cookie
-   */
+    * Retrieve authentication information form cookie
+    */
   def getFromSession(request: RequestHeader): Future[AuthContext] = {
     val userId = for {
       userId ← request.session.get(sessionUsername).toRight(AuthenticationError("User session not found"))
@@ -102,8 +102,8 @@ class Authenticated(
   }
 
   /**
-   * Retrieve authentication information from API key
-   */
+    * Retrieve authentication information from API key
+    */
   def getFromApiKey(request: RequestHeader): Future[AuthContext] =
     for {
       auth ← request
@@ -158,10 +158,10 @@ class Authenticated(
   }
 
   /**
-   * Create an action for authenticated controller
-   * If user has sufficient right (have required role) action is executed
-   * otherwise, action returns a not authorized error
-   */
+    * Create an action for authenticated controller
+    * If user has sufficient right (have required role) action is executed
+    * otherwise, action returns a not authorized error
+    */
   def apply(requiredRole: Role) = new ActionBuilder[AuthenticatedRequest, AnyContent] {
     val executionContext: ExecutionContext = ec
 

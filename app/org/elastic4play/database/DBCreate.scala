@@ -20,9 +20,9 @@ import org.elastic4play.models.BaseEntity
 import org.elastic4play.{ ConflictError, CreateError, InternalError }
 
 /**
- * Service lass responsible for entity creation
- * This service doesn't check any attribute conformity (according to model)
- */
+  * Service lass responsible for entity creation
+  * This service doesn't check any attribute conformity (according to model)
+  */
 @Singleton
 class DBCreate @Inject() (
     db: DBConfiguration,
@@ -31,25 +31,25 @@ class DBCreate @Inject() (
   private[DBCreate] lazy val logger = Logger(getClass)
 
   /**
-   * Create an entity of type "modelName" with attributes
-   *
-   * @param modelName name of the model of the creating entity
-   * @param attributes JSON object containing attributes of the creating entity. Attributes can contain _id, _parent and _routing.
-   * @return created entity attributes with _id and _routing (and _parent if entity is a child)
-   */
+    * Create an entity of type "modelName" with attributes
+    *
+    * @param modelName name of the model of the creating entity
+    * @param attributes JSON object containing attributes of the creating entity. Attributes can contain _id, _parent and _routing.
+    * @return created entity attributes with _id and _routing (and _parent if entity is a child)
+    */
   def apply(modelName: String, attributes: JsObject): Future[JsObject] = {
     apply(modelName, None, attributes)
   }
 
   /**
-   * Create an entity of type modelName with attributes and optionally a parent
-   *
-   * @param modelName name of the model of the creating entity
-   * @param parent parent of the creating entity (if model is ChildModelDef
-   * @param attributes JSON object containing attributes of the creating entity.
-   * Attributes can contain _id, _parent and _routing. Routing and parent informations are extracted from parent parameter (if present)
-   * @return created entity attributes with _id and _routing (and _parent if entity is a child)
-   */
+    * Create an entity of type modelName with attributes and optionally a parent
+    *
+    * @param modelName name of the model of the creating entity
+    * @param parent parent of the creating entity (if model is ChildModelDef
+    * @param attributes JSON object containing attributes of the creating entity.
+    * Attributes can contain _id, _parent and _routing. Routing and parent informations are extracted from parent parameter (if present)
+    * @return created entity attributes with _id and _routing (and _parent if entity is a child)
+    */
   def apply(modelName: String, parent: Option[BaseEntity], attributes: JsObject): Future[JsObject] = {
     val id = (attributes \ "_id").asOpt[String]
     val parentId = parent.map(_.id)
@@ -84,32 +84,32 @@ class DBCreate @Inject() (
   }
 
   /**
-   * add id information in index definition
-   */
+    * add id information in index definition
+    */
   private def addId(id: Option[String]): IndexDefinition ⇒ IndexDefinition = id match {
     case Some(i) ⇒ _ id i createOnly true
     case None    ⇒ identity
   }
   /**
-   * add parent information in index definition
-   */
+    * add parent information in index definition
+    */
   private def addParent(parent: Option[String]): IndexDefinition ⇒ IndexDefinition = parent match {
     case Some(p) ⇒ _ parent p
     case None    ⇒ identity
   }
 
   /**
-   * add routing information in index definition
-   */
+    * add routing information in index definition
+    */
   private def addRouting(routing: Option[String]): IndexDefinition ⇒ IndexDefinition = routing match {
     case Some(r) ⇒ _ routing r
     case None    ⇒ identity
   }
 
   /**
-   * Class used to build index definition based on model name and attributes
-   * This class is used by sink (ElasticSearch reactive stream)
-   */
+    * Class used to build index definition based on model name and attributes
+    * This class is used by sink (ElasticSearch reactive stream)
+    */
   private class AttributeRequestBuilder() extends RequestBuilder[JsObject] {
     override def request(attributes: JsObject): IndexDefinition = {
       val docSource = JsObject(attributes.fields.filterNot(_._1.startsWith("_"))).toString
@@ -124,7 +124,7 @@ class DBCreate @Inject() (
   }
 
   /**
-   * build a akka stream sink that create entities
-   */
+    * build a akka stream sink that create entities
+    */
   def sink(): Sink[JsObject, Future[Unit]] = db.sink(new AttributeRequestBuilder())
 }

@@ -22,9 +22,9 @@ class MultiAuthSrv(
     implicit val ec: ExecutionContext) extends AuthSrv {
 
   @Inject() def this(
-    configuration: Configuration,
-    authModules: immutable.Set[AuthSrv],
-    ec: ExecutionContext) =
+      configuration: Configuration,
+      authModules: immutable.Set[AuthSrv],
+      ec: ExecutionContext) =
     this(
       configuration.getDeprecated[Option[Seq[String]]]("auth.provider", "auth.type")
         .getOrElse(Nil)

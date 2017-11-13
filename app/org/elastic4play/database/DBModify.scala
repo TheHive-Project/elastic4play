@@ -20,8 +20,8 @@ class DBModify @Inject() (
   private[DBModify] lazy val logger = Logger(getClass)
 
   /**
-   * Convert JSON value to java native value
-   */
+    * Convert JSON value to java native value
+    */
   private[database] def jsonToAny(json: JsValue): Any = {
     import scala.collection.JavaConverters._
     json match {
@@ -35,14 +35,14 @@ class DBModify @Inject() (
   }
 
   /**
-   * Build the parameters needed to update ElasticSearch document
-   * Parameters contains update script, parameters for the script
-   * As null is a valid value to set, in order to remove an attribute an empty array must be used.
-   * @param entity entity to update
-   * @param updateAttributes contains attributes to update. JSON object contains key (attribute name) and value.
-   *   Sub attribute can be updated using dot notation ("attr.subattribute").
-   * @return ElasticSearch update script
-   */
+    * Build the parameters needed to update ElasticSearch document
+    * Parameters contains update script, parameters for the script
+    * As null is a valid value to set, in order to remove an attribute an empty array must be used.
+    * @param entity entity to update
+    * @param updateAttributes contains attributes to update. JSON object contains key (attribute name) and value.
+    *   Sub attribute can be updated using dot notation ("attr.subattribute").
+    * @return ElasticSearch update script
+    */
   private[database] def buildScript(entity: BaseEntity, updateAttributes: JsObject): ScriptDefinition = {
     import scala.collection.JavaConverters._
 
@@ -65,12 +65,12 @@ class DBModify @Inject() (
   }
 
   /**
-   * Update entity with new attributes contained in JSON object
-   * @param entity entity to update
-   * @param updateAttributes contains attributes to update. JSON object contains key (attribute name) and value.
-   *   Sub attribute can be updated using dot notation ("attr.subattribute").
-   * @return new version of the entity
-   */
+    * Update entity with new attributes contained in JSON object
+    * @param entity entity to update
+    * @param updateAttributes contains attributes to update. JSON object contains key (attribute name) and value.
+    *   Sub attribute can be updated using dot notation ("attr.subattribute").
+    * @return new version of the entity
+    */
   def apply(entity: BaseEntity, updateAttributes: JsObject): Future[BaseEntity] = {
     db
       .execute {
