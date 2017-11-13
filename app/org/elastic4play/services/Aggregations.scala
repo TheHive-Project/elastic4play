@@ -37,15 +37,6 @@ abstract class FieldAgg(val fieldName: String, aggregationName: String, query: O
 
   def field(f: String): AggregationDefinition
 
-  def nested(fieldName: String, aggregations: Seq[AggregationDefinition]): Seq[AggregationDefinition] = {
-    if (fieldName.startsWith("computed")) aggregations
-    else {
-      fieldName.split("\\.").init.foldLeft(aggregations) { (agg, f) ⇒
-        Seq(nestedAggregation(aggregationName, f).subaggs(agg))
-      }
-    }
-  }
-
   def getAggregation(fieldName: String, aggregations: RichAggregations, query: Option[QueryDef]): RichAggregations = {
 
     val agg = query match {
@@ -73,7 +64,9 @@ abstract class FieldAgg(val fieldName: String, aggregationName: String, query: O
           throw BadRequestError(s"Field $fieldName is unknown in ${model.name}")
         }
         // TODO check attribute type
-        nested(fieldName, Seq(field(fieldName)))
+        Seq(fieldName.split("\\.").init.foldLeft(field(fieldName)) { (agg, f) ⇒
+          nestedAggregation(aggregationName, f).subaggs(agg)
+        })
     }
     query match {
       case None    ⇒ aggs
