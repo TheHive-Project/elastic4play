@@ -46,7 +46,7 @@ abstract class FieldAgg(val fieldName: String, aggregationName: String, query: O
 
     if (fieldName.startsWith("computed")) agg
     else {
-      fieldName.split("\\.").init.foldLeft(aggregations) { (a, _) ⇒
+      fieldName.split("\\.").init.foldLeft(agg) { (a, _) ⇒
         RichAggregations(a.getAs[Nested](aggregationName).getAggregations)
       }
     }
@@ -159,7 +159,7 @@ class GroupByCategory(aggregationName: String, categories: Map[String, QueryDef]
         val subAggResults = filters.getBucketByKey(cat).getAggregations
         cat → subAggs.map(_.processResult(model, RichAggregations(subAggResults)))
           .reduceOption(_ ++ _)
-          .getOrElse(JsObject(Nil))
+          .getOrElse(JsObject.empty)
       }
     }
   }
@@ -179,7 +179,7 @@ class GroupByTime(aggregationName: String, fields: Seq[String], interval: String
         val results = subAggs
           .map(_.processResult(model, RichAggregations(bucket.getAggregations)))
           .reduceOption(_ ++ _)
-          .getOrElse(JsObject(Nil))
+          .getOrElse(JsObject.empty)
         // date -> obj(key{avg, min} -> value)
         bucket.getKey.asInstanceOf[DateTime].getMillis.toString → results
       }.toMap
@@ -189,7 +189,7 @@ class GroupByTime(aggregationName: String, fields: Seq[String], interval: String
       keys.map { date ⇒
         date → JsObject(aggs.map {
           case (df, values) ⇒
-            df → values.getOrElse(date, JsObject(Nil))
+            df → values.getOrElse(date, JsObject.empty)
         })
       }.toMap
     }
@@ -224,7 +224,7 @@ class GroupByField(aggregationName: String, field: String, size: Option[Int], so
         val results = subAggs
           .map(_.processResult(model, RichAggregations(bucket.getAggregations)))
           .reduceOption(_ ++ _)
-          .getOrElse(JsObject(Nil))
+          .getOrElse(JsObject.empty)
         bucket.getKeyAsString → results
       }.toMap
     }

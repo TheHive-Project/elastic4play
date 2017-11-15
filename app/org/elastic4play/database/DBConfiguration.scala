@@ -112,16 +112,16 @@ class DBConfiguration(
     */
   def sink[T](implicit builder: RequestBuilder[T]): Sink[T, Future[Unit]] = {
     val end = Promise[Unit]
-    def complete(): Unit = {
+    val complete = () ⇒ {
       if (!end.isCompleted)
         end.success(())
       ()
     }
-    def failure(t: Throwable): Unit = {
+    val failure = (t: Throwable) ⇒ {
       end.failure(t)
       ()
     }
-    Sink.fromSubscriber(client.subscriber[T](failureWait = 1.second, maxAttempts = 10, listener = sinkListener, completionFn = complete _, errorFn = failure _))
+    Sink.fromSubscriber(client.subscriber[T](failureWait = 1.second, maxAttempts = 10, listener = sinkListener, completionFn = complete, errorFn = failure))
       .mapMaterializedValue { _ ⇒ end.future }
   }
 

@@ -29,7 +29,7 @@ object DBUtils {
   def hit2json( /*fields: Option[Seq[Attribute[_]]], */ hit: RichSearchHit): JsObject = {
     val fieldsValue = hit.fields
     val id = JsString(hit.id)
-    Option(hit.sourceAsString).filterNot(_ == "").fold(JsObject(Nil))(s ⇒ Json.parse(s).as[JsObject]) +
+    Option(hit.sourceAsString).filterNot(_ == "").fold(JsObject.empty)(s ⇒ Json.parse(s).as[JsObject]) +
       ("_type" → JsString(hit.`type`)) +
       ("_routing" → fieldsValue.get("_routing").map(r ⇒ JsString(r.java.getValue[String])).getOrElse(id)) +
       ("_parent" → fieldsValue.get("_parent").map(r ⇒ JsString(r.java.getValue[String])).getOrElse(JsNull)) +

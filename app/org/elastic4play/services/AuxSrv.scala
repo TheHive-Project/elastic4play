@@ -53,7 +53,7 @@ class AuxSrv @Inject() (
           .runWith(Sink.headOption)
           .map(_.getOrElse {
             logger.warn(s"Child entity (${childModel.name} ${entity.id}) has no parent !")
-            JsObject(Nil)
+            JsObject.empty
           })
       case _ if removeUnaudited ⇒ Future.successful(removeUnauditedAttributes(entity))
       case _                    ⇒ Future.successful(Json.toJson(entity).as[JsObject])
@@ -73,7 +73,7 @@ class AuxSrv @Inject() (
 
   def apply(modelName: String, entityId: String, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = {
     if (entityId == "")
-      return Future.successful(JsObject(Nil))
+      return Future.successful(JsObject.empty)
     modelSrv(modelName)
       .map { model ⇒
         val (src, _) = findSrv(model, "_id" ~= entityId, Some("0-1"), Nil)
@@ -81,7 +81,7 @@ class AuxSrv @Inject() (
           .runWith(Sink.headOption)
           .map(_.getOrElse {
             logger.warn(s"Entity $modelName $entityId not found")
-            JsObject(Nil)
+            JsObject.empty
           })
       }
       .getOrElse(Future.failed(InternalError(s"Model $modelName not found")))
