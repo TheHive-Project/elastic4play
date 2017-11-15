@@ -89,7 +89,7 @@ abstract class BaseModelDef(name: String, val label: String, val path: String) e
   /* this hook, executed on update can be override by subclass in order to transform entity attributes */
   def updateHook(entity: BaseEntity, updateAttrs: JsObject): Future[JsObject] = Future.successful(updateAttrs)
 
-  def getStats(entity: BaseEntity): Future[JsObject] = Future.successful(JsObject(Nil))
+  def getStats(entity: BaseEntity): Future[JsObject] = Future.successful(JsObject.empty)
 
   val computedMetrics = Map.empty[String, String]
 }

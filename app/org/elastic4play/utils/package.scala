@@ -49,7 +49,7 @@ package object utils {
       obj.fields
         .map(kv ⇒ JsObject(Seq(f.tupled(kv))))
         .reduceOption(_ deepMerge _)
-        .getOrElse(JsObject(Nil))
+        .getOrElse(JsObject.empty)
 
     def collectValues(pf: PartialFunction[JsValue, JsValue]) = JsObject(obj.fields.collect {
       case (key, value) if pf.isDefinedAt(value) ⇒ key → pf(value)

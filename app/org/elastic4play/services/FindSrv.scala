@@ -58,7 +58,7 @@ class FindSrv @Inject() (
         aggs
           .map(_.processResult(model, searchResponse.aggregations))
           .reduceOption(_ ++ _)
-          .getOrElse(JsObject(Nil))
+          .getOrElse(JsObject.empty)
       }
   }
 }
