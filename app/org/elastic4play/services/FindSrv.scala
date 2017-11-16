@@ -41,19 +41,19 @@ class FindSrv @Inject() (
   }
 
   def apply(model: BaseModelDef, queryDef: QueryDef, range: Option[String], sortBy: Seq[String]): (Source[BaseEntity, NotUsed], Future[Long]) = {
-    val (src, total) = dbfind(range, sortBy)(indexName ⇒ search(indexName → model.name).query(queryDef.query))
+    val (src, total) = dbfind(range, sortBy)(indexName ⇒ search(indexName → model.modelName).query(queryDef.query))
     val entities = src.map(attrs ⇒ model(attrs))
     (entities, total)
   }
 
   def apply[M <: AbstractModelDef[M, E], E <: BaseEntity](model: M, queryDef: QueryDef, range: Option[String], sortBy: Seq[String]): (Source[E, NotUsed], Future[Long]) = {
-    val (src, total) = dbfind(range, sortBy)(indexName ⇒ search(indexName → model.name).query(queryDef.query))
+    val (src, total) = dbfind(range, sortBy)(indexName ⇒ search(indexName → model.modelName).query(queryDef.query))
     val entities = src.map(attrs ⇒ model(attrs))
     (entities, total)
   }
 
   def apply(model: BaseModelDef, queryDef: QueryDef, aggs: Agg*): Future[JsObject] = {
-    dbfind(indexName ⇒ search(indexName → model.name).query(queryDef.query).aggregations(aggs.flatMap(_.apply(model))).size(0))
+    dbfind(indexName ⇒ search(indexName → model.modelName).query(queryDef.query).aggregations(aggs.flatMap(_.apply(model))).size(0))
       .map { searchResponse ⇒
         aggs
           .map(_.processResult(model, searchResponse.aggregations))

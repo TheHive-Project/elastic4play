@@ -75,7 +75,7 @@ class DBModify @Inject() (
     db
       .execute {
         update(entity.id)
-          .in(db.indexName → entity.model.name)
+          .in(db.indexName → entity.model.modelName)
           .routing(entity.routing)
           .script(buildScript(entity, updateAttributes))
           .fetchSource(true)
@@ -84,7 +84,7 @@ class DBModify @Inject() (
       }
       .map { updateResponse ⇒
         entity.model(Json.parse(updateResponse.get.sourceAsString).as[JsObject] +
-          ("_type" → JsString(entity.model.name)) +
+          ("_type" → JsString(entity.model.modelName)) +
           ("_id" → JsString(entity.id)) +
           ("_routing" → JsString(entity.routing)) +
           ("_parent" → entity.parentId.fold[JsValue](JsNull)(JsString)))

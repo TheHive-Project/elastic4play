@@ -31,7 +31,7 @@ abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Forma
 
   def definition(dblists: DBLists, attribute: Attribute[T]): Seq[AttributeDefinition] =
     Seq(AttributeDefinition(
-      attribute.name,
+      attribute.attributeName,
       name,
       attribute.description,
       Nil,
@@ -66,7 +66,7 @@ object AttributeOption extends Enumeration with HiveEnumeration {
 
 case class Attribute[T](
     modelName: String,
-    name: String,
+    attributeName: String,
     format: AttributeFormat[T],
     options: Seq[AttributeOption.Type],
     defaultValue: Option[() ⇒ T],
@@ -91,7 +91,7 @@ case class Attribute[T](
     case _                             ⇒ true
   }
 
-  def elasticMapping: FieldDefinition = format.elasticType(name) match {
+  def elasticMapping: FieldDefinition = format.elasticType(attributeName) match {
     case a: BasicFieldDefinition if isSensitive ⇒ a.index("no")
     case a                                      ⇒ a
   }
@@ -105,29 +105,29 @@ case class Attribute[T](
         if (defaultValueJson.isDefined)
           Good(defaultValueJson)
         else
-          Bad(One(MissingAttributeError(name)))
+          Bad(One(MissingAttributeError(attributeName)))
       case Some(v) ⇒
         format.checkJsonForCreation(Nil, v).transform(g ⇒ Good(Some(g)), x ⇒ Bad(x.map {
-          case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = name)
+          case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = attributeName)
           case other                             ⇒ other
         }))
     }
-    logger.debug(s"$modelName.$name(${format.name}).validateForCreation($value) => $result")
+    logger.debug(s"$modelName.$attributeName(${format.name}).validateForCreation($value) => $result")
     result
   }
 
   def validateForUpdate(subNames: Seq[String], value: JsValue): JsValue Or Every[AttributeError] = {
     val result = value match {
-      case _ if isReadonly                       ⇒ Bad(One(UpdateReadOnlyAttributeError(name)))
-      case JsNull | JsArray(Seq()) if isRequired ⇒ Bad(One(MissingAttributeError(name)))
+      case _ if isReadonly                       ⇒ Bad(One(UpdateReadOnlyAttributeError(attributeName)))
+      case JsNull | JsArray(Seq()) if isRequired ⇒ Bad(One(MissingAttributeError(attributeName)))
       case JsNull | JsArray(Seq())               ⇒ Good(value)
       case v ⇒
         format.checkJsonForUpdate(subNames, v).badMap(_.map {
-          case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = name)
+          case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = attributeName)
           case other                             ⇒ other
         })
     }
-    logger.debug(s"$modelName.$name(${format.name}).validateForUpdate($value) => $result")
+    logger.debug(s"$modelName.$attributeName(${format.name}).validateForUpdate($value) => $result")
     result
   }
 }

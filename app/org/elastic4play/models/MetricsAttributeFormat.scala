@@ -42,7 +42,7 @@ class MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
         fieldName ← (itemObj \ "name").asOpt[String]
         description ← (itemObj \ "description").asOpt[String]
       } yield AttributeDefinition(
-        s"${attribute.name}.$fieldName",
+        s"${attribute.attributeName}.$fieldName",
         "number",
         description,
         Nil,

@@ -57,11 +57,11 @@ abstract class FieldAgg(val fieldName: String, aggregationName: String, query: O
       case Array("computed", c) ⇒
         val s = model.computedMetrics.getOrElse(
           c,
-          throw BadRequestError(s"Field $fieldName is unknown in ${model.name}"))
+          throw BadRequestError(s"Field $fieldName is unknown in ${model.modelName}"))
         Seq(script(s))
       case array ⇒
-        if (array(0) != "" && !model.attributes.exists(_.name == array(0))) {
-          throw BadRequestError(s"Field $fieldName is unknown in ${model.name}")
+        if (array(0) != "" && !model.attributes.exists(_.attributeName == array(0))) {
+          throw BadRequestError(s"Field $fieldName is unknown in ${model.modelName}")
         }
         // TODO check attribute type
         Seq(fieldName.split("\\.").init.foldLeft(field(fieldName)) { (agg, f) ⇒

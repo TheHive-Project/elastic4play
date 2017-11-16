@@ -32,7 +32,7 @@ case class ListEnumerationAttributeFormat(enumerationName: String)(dblists: DBLi
 
   override def definition(dblists: DBLists, attribute: Attribute[String]): Seq[AttributeDefinition] =
     Seq(AttributeDefinition(
-      attribute.name,
+      attribute.attributeName,
       name,
       attribute.description,
       items.map(JsString.apply).toSeq,

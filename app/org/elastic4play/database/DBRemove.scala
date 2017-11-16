@@ -18,7 +18,7 @@ class DBRemove @Inject() (
   def apply(model: BaseModelDef, entity: BaseEntity): Future[Boolean] = {
     db.execute {
       delete(entity.id)
-        .from(db.indexName / model.name)
+        .from(db.indexName / model.modelName)
         .routing(entity.routing)
         .refresh(RefreshPolicy.WAIT_UNTIL)
     }

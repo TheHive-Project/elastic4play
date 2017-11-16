@@ -13,6 +13,6 @@ class GetSrv @Inject() (
     implicit val ec: ExecutionContext) {
 
   def apply[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, id: String): Future[E] = {
-    dbGet(model.name, id).map(attrs ⇒ model(attrs))
+    dbGet(model.modelName, id).map(attrs ⇒ model(attrs))
   }
 }

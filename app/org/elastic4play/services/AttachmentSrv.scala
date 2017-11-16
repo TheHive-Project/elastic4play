@@ -93,11 +93,11 @@ class AttachmentSrv(
             .getOrElse {
               (a \ name).asOpt[JsValue] match {
                 case Some(v) if v != JsNull && v != JsArray(Nil) ⇒
-                  Future.failed(AttributeCheckingError(model.name, Seq(
+                  Future.failed(AttributeCheckingError(model.modelName, Seq(
                     InvalidFormatAttributeError(name, "attachment", (a \ name).asOpt[FileInputValue].getOrElse(JsonInputValue((a \ name).as[JsValue]))))))
                 case _ ⇒
                   if (isRequired)
-                    Future.failed(AttributeCheckingError(model.name, Seq(MissingAttributeError(name))))
+                    Future.failed(AttributeCheckingError(model.modelName, Seq(MissingAttributeError(name))))
                   else
                     Future.successful(a)
               }
@@ -118,7 +118,7 @@ class AttachmentSrv(
             .mapAsync(5) {
               case (buffer, index) ⇒
                 val data = java.util.Base64.getEncoder.encodeToString(buffer)
-                dbCreate(attachmentModel.name, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
+                dbCreate(attachmentModel.modelName, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
             }
             .runWith(Sink.ignore)
         }
@@ -137,7 +137,7 @@ class AttachmentSrv(
             .mapAsync(5) {
               case (buffer, index) ⇒
                 val data = java.util.Base64.getEncoder.encodeToString(buffer.toArray)
-                dbCreate(attachmentModel.name, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
+                dbCreate(attachmentModel.modelName, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
             }
             .runWith(Sink.ignore)
         }

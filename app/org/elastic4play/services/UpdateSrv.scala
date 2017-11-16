@@ -43,7 +43,7 @@ class UpdateSrv @Inject() (
         case (name, _, value, None)           ⇒ Bad(One(UnknownAttributeError(name, value)))
         case (name, names, value, Some(attr)) ⇒ attr.validateForUpdate(names.tail, value).map(name → _)
       }
-      .fold(attrs ⇒ Future.successful(JsObject(attrs)), errors ⇒ Future.failed(AttributeCheckingError(model.name, errors)))
+      .fold(attrs ⇒ Future.successful(JsObject(attrs)), errors ⇒ Future.failed(AttributeCheckingError(model.modelName, errors)))
   }
 
   private[services] def doUpdate[E <: BaseEntity](entity: E, attributes: JsObject)(implicit authContext: AuthContext): Future[E] = {

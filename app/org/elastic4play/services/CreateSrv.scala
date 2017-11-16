@@ -44,7 +44,7 @@ class CreateSrv @Inject() (
       })
       .fold(
         attrs ⇒ Future.successful(JsObject(attrs.toSeq)),
-        errors ⇒ Future.failed(AttributeCheckingError(model.name, errors)))
+        errors ⇒ Future.failed(AttributeCheckingError(model.modelName, errors)))
   }
   private[services] def processAttributes(model: BaseModelDef, parent: Option[BaseEntity], attributes: JsObject)(implicit authContext: AuthContext): Future[JsObject] = {
     for {
@@ -107,7 +107,7 @@ class CreateSrv @Inject() (
     for {
       attrs ← fieldsSrv.parse(fields, model).toFuture
       attributesWithAttachment ← processAttributes(model, parent, attrs)
-      entityAttr ← dbCreate(model.name, parent, attributesWithAttachment)
+      entityAttr ← dbCreate(model.modelName, parent, attributesWithAttachment)
     } yield entityAttr
   }
 }

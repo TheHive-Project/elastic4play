@@ -48,7 +48,7 @@ case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit format
 
   override def definition(dblists: DBLists, attribute: Attribute[T#Value]): Seq[AttributeDefinition] =
     Seq(AttributeDefinition(
-      attribute.name,
+      attribute.attributeName,
       name,
       attribute.description,
       enum.values.map(v ⇒ JsString(v.toString)).toSeq,

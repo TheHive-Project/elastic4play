@@ -39,14 +39,14 @@ class DBIndex(
     val modelsMapping = models
       .map {
         case model: ModelDef[_, _] ⇒
-          mapping(model.name)
-            .fields(model.attributes.filterNot(_.name == "_id").map(_.elasticMapping))
+          mapping(model.modelName)
+            .fields(model.attributes.filterNot(_.attributeName == "_id").map(_.elasticMapping))
             .dateDetection(false)
             .numericDetection(false)
         case model: ChildModelDef[_, _, _, _] ⇒
-          mapping(model.name)
-            .fields(model.attributes.filterNot(_.name == "_id").map(_.elasticMapping))
-            .parent(model.parentModel.name)
+          mapping(model.modelName)
+            .fields(model.attributes.filterNot(_.attributeName == "_id").map(_.elasticMapping))
+            .parent(model.parentModel.modelName)
             .dateDetection(false)
             .numericDetection(false)
       }
