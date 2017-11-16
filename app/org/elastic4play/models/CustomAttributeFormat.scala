@@ -80,7 +80,7 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
         description ← (itemObj \ "description").asOpt[String]
         options ← (itemObj \ "options").asOpt[Seq[JsString]]
       } yield AttributeDefinition(
-        s"${attribute.name}.$fieldName",
+        s"${attribute.attributeName}.$fieldName",
         tpe,
         description,
         options,

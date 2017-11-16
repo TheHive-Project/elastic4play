@@ -22,7 +22,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
     val result = value match {
       case obj: JsObject if subNames.isEmpty ⇒
         subAttributes.validatedBy { attr ⇒
-          attr.validateForCreation((value \ attr.name).asOpt[JsValue])
+          attr.validateForCreation((value \ attr.attributeName).asOpt[JsValue])
         }
           .map { _ ⇒ obj }
       case _ ⇒ formatError(JsonInputValue(value))
@@ -37,7 +37,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
         obj.fields.validatedBy {
           case (_name, v) ⇒
             subAttributes
-              .find(_.name == _name)
+              .find(_.attributeName == _name)
               .map(_.validateForUpdate(subNames, v))
               .getOrElse(Bad(One(UnknownAttributeError(_name, v))))
         }
@@ -51,7 +51,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
       .headOption
       .map { subName ⇒
         subAttributes
-          .find(_.name == subName)
+          .find(_.attributeName == subName)
           .map { subAttribute ⇒
             value.jsonValue match {
               case jsvalue @ (JsNull | JsArray(Seq())) ⇒ Good(JsObject(Seq(subName → jsvalue)))
@@ -69,7 +69,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
               .validatedBy {
                 case (_, jsvalue) if jsvalue == JsNull || jsvalue == JsArray(Nil) ⇒ Good(jsvalue)
                 case (_name, jsvalue) ⇒
-                  subAttributes.find(_.name == _name)
+                  subAttributes.find(_.attributeName == _name)
                     .map(_.format.fromInputValue(Nil, JsonInputValue(jsvalue)))
                     .getOrElse(Bad(One(UnknownAttributeError(_name, Json.toJson(value)))))
               }
@@ -89,6 +89,6 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
         case subAttribute: Attribute[tpe] ⇒ subAttribute.format.definition(dblists, subAttribute)
       }
       .map { attributeDefinition ⇒
-        attributeDefinition.copy(name = s"${attribute.name}.${attributeDefinition.name}")
+        attributeDefinition.copy(name = s"${attribute.attributeName}.${attributeDefinition.name}")
       }
 }

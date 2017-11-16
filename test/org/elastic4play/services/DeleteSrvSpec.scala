@@ -71,7 +71,7 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
       val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, ec)
 
       val id = "42"
-      val error = NotFoundError(s"${model.name} $id not found")
+      val error = NotFoundError(s"${model.modelName} $id not found")
       getSrv[TestModel, TestEntity](model, id) returns Future.failed(error)
       deleteSrv.realDelete[TestModel, TestEntity](model, id).await must throwA[NotFoundError]
     }
