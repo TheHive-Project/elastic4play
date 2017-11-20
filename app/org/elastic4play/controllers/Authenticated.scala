@@ -193,7 +193,7 @@ class Authenticated(
       }
   }
 
-  val authenticationMethods =
+  val authenticationMethods: Seq[(String, RequestHeader ⇒ Future[AuthContext])] =
     (if (authBySessionCookie) Seq("session" → getFromSession _) else Nil) ++
       (if (authByPki) Seq("pki" → getFromClientCertificate _) else Nil) ++
       (if (authByKey) Seq("key" → getFromApiKey _) else Nil) ++
@@ -226,19 +226,20 @@ class Authenticated(
     * If user has sufficient right (have required role) action is executed
     * otherwise, action returns a not authorized error
     */
-  def apply(requiredRole: Role) = new ActionBuilder[AuthenticatedRequest, AnyContent] {
-    val executionContext: ExecutionContext = ec
+  def apply(requiredRole: Role): ActionBuilder[AuthenticatedRequest, AnyContent] =
+    new ActionBuilder[AuthenticatedRequest, AnyContent] {
+      val executionContext: ExecutionContext = ec
 
-    def parser: BodyParser[AnyContent] = defaultParser
+      def parser: BodyParser[AnyContent] = defaultParser
 
-    def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) ⇒ Future[Result]): Future[Result] = {
-      getContext(request).flatMap { authContext ⇒
-        if (authContext.roles.contains(requiredRole))
-          block(new AuthenticatedRequest(authContext, request))
-            .map(result ⇒ setSessingUser(result, authContext)(request))
-        else
-          Future.failed(AuthorizationError(s"Insufficient rights to perform this action"))
+      def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) ⇒ Future[Result]): Future[Result] = {
+        getContext(request).flatMap { authContext ⇒
+          if (authContext.roles.contains(requiredRole))
+            block(new AuthenticatedRequest(authContext, request))
+              .map(result ⇒ setSessingUser(result, authContext)(request))
+          else
+            Future.failed(AuthorizationError(s"Insufficient rights to perform this action"))
+        }
       }
     }
-  }
 }
