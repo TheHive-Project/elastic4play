@@ -196,29 +196,41 @@ class GroupByTime(aggregationName: String, fields: Seq[String], interval: String
   }
 }
 
-class GroupByField(aggregationName: String, field: String, size: Option[Int], sortBy: Seq[String], subAggs: Seq[Agg]) extends Agg(aggregationName) {
-  def apply(model: BaseModelDef): Seq[TermsAggregationDefinition] = {
-    Seq(termsAggregation(s"${aggregationName}_$field").field(field).subAggregations(subAggs.flatMap(_.apply(model))))
-      .map { agg ⇒ size.fold(agg)(s ⇒ agg.size(s)) }
-      .map {
-        case agg if sortBy.isEmpty ⇒ agg
-        case agg ⇒
-          val sortDefinition = sortBy
-            .flatMap {
-              case "_count" | "+_count"   ⇒ Seq(Order.count(true))
-              case "-_count"              ⇒ Seq(Order.count(false))
-              case "_term" | "+_term"     ⇒ Seq(Order.term(true))
-              case "-_term"               ⇒ Seq(Order.term(false))
-              case f if f.startsWith("+") ⇒ Seq(Order.aggregation(f.drop(1), true))
-              case f if f.startsWith("-") ⇒ Seq(Order.aggregation(f.drop(1), false))
-              case f if f.length() > 0    ⇒ Seq(Order.aggregation(f, true))
-            }
-          agg.order(Order.compound(sortDefinition.asJava))
+class GroupByField(aggregationName: String, fieldName: String, size: Option[Int], sortBy: Seq[String], subAggs: Seq[Agg]) extends Agg(aggregationName) {
+  private def setSize(agg: TermsAggregationDefinition): TermsAggregationDefinition = {
+    size.fold(agg)(s ⇒ agg.size(s))
+  }
+
+  private def setOrder(agg: TermsAggregationDefinition): TermsAggregationDefinition = {
+    val sortDefinition = sortBy
+      .flatMap {
+        case "_count" | "+_count"   ⇒ Seq(Order.count(true))
+        case "-_count"              ⇒ Seq(Order.count(false))
+        case "_term" | "+_term"     ⇒ Seq(Order.term(true))
+        case "-_term"               ⇒ Seq(Order.term(false))
+        case f if f.startsWith("+") ⇒ Seq(Order.aggregation(f.drop(1), true))
+        case f if f.startsWith("-") ⇒ Seq(Order.aggregation(f.drop(1), false))
+        case f if f.length() > 0    ⇒ Seq(Order.aggregation(f, true))
+        case _                      ⇒ Nil
       }
+    if (sortDefinition.nonEmpty)
+      agg.order(Order.compound(sortDefinition.asJava))
+    else
+      agg
+  }
+
+  def apply(model: BaseModelDef): Seq[AggregationDefinition] = {
+    val agg = setSize(setOrder(termsAggregation(s"${aggregationName}_$fieldName").field(fieldName).subAggregations(subAggs.flatMap(_.apply(model)))))
+    Seq(fieldName.split("\\.").init.foldLeft[AggregationDefinition](agg) { (agg, f) ⇒
+      nestedAggregation(aggregationName, f).subaggs(agg)
+    })
   }
 
   def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
-    val buckets = aggregations.getAs[Terms](s"${aggregationName}_$field").getBuckets
+    val buckets = fieldName.split("\\.").init.foldLeft(aggregations) { (a, _) ⇒
+      RichAggregations(a.getAs[Nested](aggregationName).getAggregations)
+    }
+      .getAs[Terms](s"${aggregationName}_$fieldName").getBuckets
     JsObject {
       buckets.asScala.map { bucket ⇒
         val results = subAggs

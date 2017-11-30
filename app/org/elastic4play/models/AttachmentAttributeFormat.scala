@@ -3,7 +3,7 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json.{ JsValue, Json }
 
-import com.sksamuel.elastic4s.ElasticDsl.{ keywordField, longField, nestedField, textField }
+import com.sksamuel.elastic4s.ElasticDsl.{ keywordField, longField, nestedField }
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
 import org.scalactic._
 
@@ -55,8 +55,8 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
     keywordField("name"),
     keywordField("hashes"),
     longField("size"),
-    textField("contentType"),
-    textField("id"))
+    keywordField("contentType"),
+    keywordField("id"))
 
   override def definition(dblists: DBLists, attribute: Attribute[Attachment]): Seq[AttributeDefinition] =
     Seq(

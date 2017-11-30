@@ -67,11 +67,11 @@ case class ADConnection(
     }
   }
 
-  def authenticate(username: String, password: String)(implicit request: RequestHeader): Try[Unit] = {
+  def authenticate(username: String, password: String): Try[Unit] = {
     connect(domainName + "\\" + username, password)(_ ⇒ Success(()))
   }
 
-  def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Try[Unit] = {
+  def changePassword(username: String, oldPassword: String, newPassword: String): Try[Unit] = {
     val unicodeOldPassword = ("\"" + oldPassword + "\"").getBytes("UTF-16LE")
     val unicodeNewPassword = ("\"" + newPassword + "\"").getBytes("UTF-16LE")
     connect(domainName + "\\" + username, oldPassword) { ctx ⇒
