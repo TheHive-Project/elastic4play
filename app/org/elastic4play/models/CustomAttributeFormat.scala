@@ -3,8 +3,8 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.{ booleanField, dateField, keywordField, longField, objectField }
-import com.sksamuel.elastic4s.mappings.ObjectFieldDefinition
+import com.sksamuel.elastic4s.ElasticDsl.{ booleanField, dateField, keywordField, longField, nestedField }
+import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
 import org.scalactic._
 
 import org.elastic4play.AttributeError
@@ -62,9 +62,9 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
     }
   }
 
-  override def elasticType(attributeName: String): ObjectFieldDefinition =
-    objectField(attributeName).fields(Seq(
-      objectField("_default_").fields(
+  override def elasticType(attributeName: String): NestedFieldDefinition =
+    nestedField(attributeName).fields(Seq(
+      nestedField("_default_").fields(
         longField("number"),
         keywordField("string"),
         dateField("date").format("epoch_millis||basic_date_time_no_millis"),
@@ -80,7 +80,7 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
         description ← (itemObj \ "description").asOpt[String]
         options ← (itemObj \ "options").asOpt[Seq[JsString]]
       } yield AttributeDefinition(
-        s"${attribute.attributeName}.$fieldName",
+        s"${attribute.attributeName}.$fieldName.$tpe",
         tpe,
         description,
         options,
