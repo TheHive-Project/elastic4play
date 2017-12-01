@@ -3,6 +3,7 @@ package org.elastic4play.models
 import play.api.libs.json.{ JsArray, JsValue }
 
 import com.sksamuel.elastic4s.mappings.FieldDefinition
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
 import org.scalactic.Accumulation._
 import org.scalactic._
 
@@ -40,6 +41,8 @@ case class MultiAttributeFormat[T](attributeFormat: AttributeFormat[T]) extends 
   }
 
   override def elasticType(attributeName: String): FieldDefinition = attributeFormat.elasticType(attributeName)
+
+  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateDefinition] = attributeFormat.elasticTemplate(attributePath)
 
   override def definition(dblists: DBLists, attribute: Attribute[Seq[T]]): Seq[AttributeDefinition] =
     attributeFormat.definition(dblists, attribute.asInstanceOf[Attribute[T]])

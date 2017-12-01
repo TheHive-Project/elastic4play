@@ -28,10 +28,15 @@ object QueryDSL {
   def groupByCaterogy(aggregationName: Option[String], categories: Map[String, QueryDef], selectables: Agg*) = new GroupByCategory(aggregationName.getOrElse("categories"), categories, selectables)
 
   private def nestedField(field: String, q: (String) ⇒ QueryDefinition) = {
-    val names = field.split("\\.")
-    names.init.foldRight(q(field)) {
-      case (subName, queryDef) ⇒ nestedQuery(subName).query(queryDef).scoreMode(ScoreMode.None)
-    }
+    field
+      .split("\\.")
+      .init
+      .inits
+      .toSeq
+      .init
+      .foldLeft(q(field)) {
+        case (queryDef, subName) ⇒ nestedQuery(subName.mkString(".")).query(queryDef).scoreMode(ScoreMode.None)
+      }
   }
 
   implicit class SearchField(field: String) extends BuildableTermsQueryImplicits {

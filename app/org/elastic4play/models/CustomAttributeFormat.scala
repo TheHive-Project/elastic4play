@@ -5,6 +5,8 @@ import play.api.libs.json._
 
 import com.sksamuel.elastic4s.ElasticDsl.{ booleanField, dateField, keywordField, longField, nestedField }
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
+import com.sksamuel.elastic4s.ElasticDsl._
 import org.scalactic._
 
 import org.elastic4play.AttributeError
@@ -63,13 +65,17 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
   }
 
   override def elasticType(attributeName: String): NestedFieldDefinition =
-    nestedField(attributeName).fields(Seq(
-      nestedField("_default_").fields(
+    nestedField(attributeName)
+
+  override def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateDefinition] =
+    dynamicTemplate(attributePath.mkString("_"))
+      .mapping(dynamicNestedField().fields(
         longField("number"),
         keywordField("string"),
         dateField("date").format("epoch_millis||basic_date_time_no_millis"),
         booleanField("boolean"),
-        longField("order"))))
+        longField("order")))
+      .pathMatch(attributePath.mkString(".") + ".*") :: Nil
 
   override def definition(dblists: DBLists, attribute: Attribute[JsValue]): Seq[AttributeDefinition] = {
     dblists("custom_fields").cachedItems.flatMap { item ⇒

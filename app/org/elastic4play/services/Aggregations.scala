@@ -64,9 +64,16 @@ abstract class FieldAgg(val fieldName: String, aggregationName: String, query: O
           throw BadRequestError(s"Field $fieldName is unknown in ${model.modelName}")
         }
         // TODO check attribute type
-        Seq(fieldName.split("\\.").init.foldLeft(field(fieldName)) { (agg, f) ⇒
-          nestedAggregation(aggregationName, f).subaggs(agg)
-        })
+        Seq(fieldName
+          .split("\\.")
+          .toSeq
+          .init
+          .inits
+          .toSeq
+          .init
+          .foldLeft[AggregationDefinition](field(fieldName)) { (agg, f) ⇒
+            nestedAggregation(aggregationName, f.mkString(".")).subaggs(agg)
+          })
     }
     query match {
       case None    ⇒ aggs
@@ -221,9 +228,16 @@ class GroupByField(aggregationName: String, fieldName: String, size: Option[Int]
 
   def apply(model: BaseModelDef): Seq[AggregationDefinition] = {
     val agg = setSize(setOrder(termsAggregation(s"${aggregationName}_$fieldName").field(fieldName).subAggregations(subAggs.flatMap(_.apply(model)))))
-    Seq(fieldName.split("\\.").init.foldLeft[AggregationDefinition](agg) { (agg, f) ⇒
-      nestedAggregation(aggregationName, f).subaggs(agg)
-    })
+    Seq(fieldName
+      .split("\\.")
+      .toSeq
+      .init
+      .inits
+      .toSeq
+      .init
+      .foldLeft[AggregationDefinition](agg) { (agg, f) ⇒
+        nestedAggregation(aggregationName, f.mkString(".")).subaggs(agg)
+      })
   }
 
   def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {

@@ -117,8 +117,9 @@ object JsonFormat {
     def unapply(v: JsValue): Option[(String, Seq[String])] =
       for {
         f ← (v \ "_field").asOpt[String]
-        values ← (v \ "_values").asOpt[Seq[String]]
-      } yield f → values
+        jsValues ← (v \ "_values").asOpt[Seq[JsValue]]
+        values = jsValues.flatMap(JsVal.unapply)
+      } yield f → values.map(_.toString)
   }
 
   object JsAgg {
