@@ -19,7 +19,7 @@ import org.elastic4play.utils.RichFuture
 @RunWith(classOf[JUnitRunner])
 class DeleteSrvSpec extends PlaySpecification with Mockito {
 
-  class TestModel extends ModelDef[TestModel, TestEntity]("testModel") {
+  class TestModel extends ModelDef[TestModel, TestEntity]("testModel", "TestModel", "/test") {
     val textAttribute = attribute("textAttribute", F.textFmt, "textAttribute")
     val stringAttribute = attribute("stringAttribute", F.stringFmt, "stringAttribute")
     val dateAttribute = attribute("dateAttribute", F.dateFmt, "dateAttribute")
@@ -71,7 +71,7 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
       val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, ec)
 
       val id = "42"
-      val error = NotFoundError(s"${model.name} $id not found")
+      val error = NotFoundError(s"${model.modelName} $id not found")
       getSrv[TestModel, TestEntity](model, id) returns Future.failed(error)
       deleteSrv.realDelete[TestModel, TestEntity](model, id).await must throwA[NotFoundError]
     }

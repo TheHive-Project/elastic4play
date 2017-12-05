@@ -11,15 +11,16 @@ licenses += "AGPL-V3" -> url("https://www.gnu.org/licenses/agpl-3.0.html")
 lazy val elastic4play = (project in file("."))
   .enablePlugins(PlayScala)
 
-scalaVersion := "2.12.3"
+scalaVersion := "2.12.4"
 
 libraryDependencies ++= Seq(
   cacheApi,
   "com.sksamuel.elastic4s" %% "elastic4s-core" % "5.6.0",
   "com.sksamuel.elastic4s" %% "elastic4s-streams" % "5.6.0",
   "com.sksamuel.elastic4s" %% "elastic4s-tcp" % "5.6.0",
-  "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.4" % Test,
-  "org.scalactic" %% "scalactic" % "3.0.1",
+  "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.6" % Test,
+  "org.scalactic" %% "scalactic" % "3.0.4",
+  "org.bouncycastle" % "bcprov-jdk15on" % "1.58",
   specs2 % Test
 )
 
@@ -42,38 +43,3 @@ scalacOptions in ThisBuild ++= Seq(
   "-Ywarn-inaccessible",
   "-Ywarn-dead-code"
 )
-
-import com.typesafe.sbt.SbtScalariform.ScalariformKeys
-import scalariform.formatter.preferences._
-
-SbtScalariform.defaultScalariformSettings
-
-ScalariformKeys.preferences := ScalariformKeys.preferences.value
-  .setPreference(AlignParameters, false)
-//  .setPreference(FirstParameterOnNewline, Force)
-  .setPreference(AlignArguments, true)
-//  .setPreference(FirstArgumentOnNewline, true)
-  .setPreference(AlignSingleLineCaseStatements, true)
-  .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 60)
-  .setPreference(CompactControlReadability, true)
-  .setPreference(CompactStringConcatenation, false)
-  .setPreference(DoubleIndentClassDeclaration, true)
-//  .setPreference(DoubleIndentMethodDeclaration, true)
-  .setPreference(FormatXml, true)
-  .setPreference(IndentLocalDefs, false)
-  .setPreference(IndentPackageBlocks, false)
-  .setPreference(IndentSpaces, 2)
-  .setPreference(IndentWithTabs, false)
-  .setPreference(MultilineScaladocCommentsStartOnFirstLine, false)
-//  .setPreference(NewlineAtEndOfFile, true)
-  .setPreference(PlaceScaladocAsterisksBeneathSecondAsterisk, false)
-  .setPreference(PreserveSpaceBeforeArguments, false)
-//  .setPreference(PreserveDanglingCloseParenthesis, false)
-  .setPreference(DanglingCloseParenthesis, Prevent)
-  .setPreference(RewriteArrowSymbols, true)
-  .setPreference(SpaceBeforeColon, false)
-//  .setPreference(SpaceBeforeContextColon, false)
-  .setPreference(SpaceInsideBrackets, false)
-  .setPreference(SpaceInsideParentheses, false)
-  .setPreference(SpacesWithinPatternBinders, true)
-  .setPreference(SpacesAroundMultiImports, true)

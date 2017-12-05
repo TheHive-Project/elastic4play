@@ -19,8 +19,8 @@ import com.sksamuel.elastic4s.searches.{ RichSearchHit, RichSearchResponse, Sear
 import org.elastic4play.SearchError
 
 /**
- * Service class responsible for entity search
- */
+  * Service class responsible for entity search
+  */
 @Singleton
 class DBFind(
     pageSize: Int,
@@ -30,10 +30,10 @@ class DBFind(
     implicit val mat: Materializer) {
 
   @Inject def this(
-    configuration: Configuration,
-    db: DBConfiguration,
-    ec: ExecutionContext,
-    mat: Materializer) =
+      configuration: Configuration,
+      db: DBConfiguration,
+      ec: ExecutionContext,
+      mat: Materializer) =
     this(
       configuration.get[Int]("search.pagesize"),
       configuration.getMillis("search.keepalive").millis,
@@ -45,15 +45,15 @@ class DBFind(
   private[DBFind] lazy val logger = Logger(getClass)
 
   /**
-   * return a new instance of DBFind but using another DBConfiguration
-   */
+    * return a new instance of DBFind but using another DBConfiguration
+    */
   def switchTo(otherDB: DBConfiguration) = new DBFind(pageSize, keepAlive, otherDB, ec, mat)
 
   /**
-   * Extract offset and limit from optional range
-   * Range has the following format : "start-end"
-   * If format is invalid of range is None, this function returns (0, 10)
-   */
+    * Extract offset and limit from optional range
+    * Range has the following format : "start-end"
+    * If format is invalid of range is None, this function returns (0, 10)
+    */
   private[database] def getOffsetAndLimitFromRange(range: Option[String]): (Int, Int) = {
     range match {
       case None        ⇒ (0, 10)
@@ -70,16 +70,16 @@ class DBFind(
   }
 
   /**
-   * Execute the search definition using scroll
-   */
+    * Execute the search definition using scroll
+    */
   private[database] def searchWithScroll(searchDefinition: SearchDefinition, offset: Int, limit: Int): (Source[RichSearchHit, NotUsed], Future[Long]) = {
     val searchWithScroll = new SearchWithScroll(db, searchDefinition, keepAliveStr, offset, limit)
     (Source.fromGraph(searchWithScroll), searchWithScroll.totalHits)
   }
 
   /**
-   * Execute the search definition
-   */
+    * Execute the search definition
+    */
   private[database] def searchWithoutScroll(searchDefinition: SearchDefinition, offset: Int, limit: Int): (Source[RichSearchHit, NotUsed], Future[Long]) = {
     val resp = db.execute(searchDefinition.start(offset).limit(limit))
     val total = resp.map(_.totalHits)
@@ -90,9 +90,9 @@ class DBFind(
   }
 
   /**
-   * Transform search hit into JsObject
-   * This function parses hit source add _type, _routing, _parent and _id attributes
-   */
+    * Transform search hit into JsObject
+    * This function parses hit source add _type, _routing, _parent and _id attributes
+    */
   private[database] def hit2json(hit: RichSearchHit) = {
     val id = JsString(hit.id)
     Json.parse(hit.sourceAsString).as[JsObject] +
@@ -103,14 +103,14 @@ class DBFind(
   }
 
   /**
-   * Search entities in ElasticSearch
-   *
-   * @param range  first and last entities to retrieve, for example "23-42" (default value is "0-10")
-   * @param sortBy define order of the entities by specifying field names used in sort. Fields can be prefixed by
-   *               "-" for descendant or "+" for ascendant sort (ascendant by default).
-   * @param query  a function that build a SearchDefinition using the index name
-   * @return Source (akka stream) of JsObject. The source is materialized as future of long that contains the total number of entities.
-   */
+    * Search entities in ElasticSearch
+    *
+    * @param range  first and last entities to retrieve, for example "23-42" (default value is "0-10")
+    * @param sortBy define order of the entities by specifying field names used in sort. Fields can be prefixed by
+    *               "-" for descendant or "+" for ascendant sort (ascendant by default).
+    * @param query  a function that build a SearchDefinition using the index name
+    * @return Source (akka stream) of JsObject. The source is materialized as future of long that contains the total number of entities.
+    */
   def apply(range: Option[String], sortBy: Seq[String])(query: (String) ⇒ SearchDefinition): (Source[JsObject, NotUsed], Future[Long]) = {
     val (offset, limit) = getOffsetAndLimitFromRange(range)
     val sortDef = DBUtils.sortDefinition(sortBy)
@@ -128,9 +128,9 @@ class DBFind(
   }
 
   /**
-   * Execute the search definition
-   * This function is used to run aggregations
-   */
+    * Execute the search definition
+    * This function is used to run aggregations
+    */
   def apply(query: (String) ⇒ SearchDefinition): Future[RichSearchResponse] = {
     val searchDefinition = query(db.indexName)
     logger.debug(s"search in ${searchDefinition.indexesTypes.indexes.mkString(",")} / ${searchDefinition.indexesTypes.types.mkString(",")} ${SearchBuilderFn(db.client.java, searchDefinition)}")
@@ -149,6 +149,7 @@ class SearchWithScroll(
     keepAliveStr: String,
     offset: Int,
     max: Int)(implicit ec: ExecutionContext) extends GraphStage[SourceShape[RichSearchHit]] {
+
   private[SearchWithScroll] lazy val logger = Logger(getClass)
   val out: Outlet[RichSearchHit] = Outlet[RichSearchHit]("searchHits")
   val shape: SourceShape[RichSearchHit] = SourceShape.of(out)

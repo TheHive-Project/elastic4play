@@ -3,13 +3,13 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json.{ JsValue, Json }
 
-import com.sksamuel.elastic4s.ElasticDsl.{ keywordField, longField, nestedField, textField }
+import com.sksamuel.elastic4s.ElasticDsl.{ keywordField, longField, nestedField }
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
 import org.scalactic._
 
 import org.elastic4play.controllers.JsonFormat._
 import org.elastic4play.controllers.{ AttachmentInputValue, FileInputValue, InputValue, JsonInputValue }
-import org.elastic4play.services.Attachment
+import org.elastic4play.services.{ Attachment, DBLists }
 import org.elastic4play.services.JsonFormat.attachmentFormat
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
 
@@ -55,6 +55,33 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
     keywordField("name"),
     keywordField("hashes"),
     longField("size"),
-    textField("contentType"),
-    textField("id"))
+    keywordField("contentType"),
+    keywordField("id"))
+
+  override def definition(dblists: DBLists, attribute: Attribute[Attachment]): Seq[AttributeDefinition] =
+    Seq(
+      AttributeDefinition(
+        s"${attribute.attributeName}.name",
+        "string",
+        s"file name of ${attribute.description}",
+        Nil,
+        Nil),
+      AttributeDefinition(
+        s"${attribute.attributeName}.hash",
+        "hash",
+        s"hash of ${attribute.description}",
+        Nil,
+        Nil),
+      AttributeDefinition(
+        s"${attribute.attributeName}.size",
+        "number",
+        s"file size of ${attribute.description}",
+        Nil,
+        Nil),
+      AttributeDefinition(
+        s"${attribute.attributeName}.contentType",
+        "string",
+        s"content type of ${attribute.description}",
+        Nil,
+        Nil))
 }

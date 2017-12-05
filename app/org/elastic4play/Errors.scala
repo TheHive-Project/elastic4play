@@ -22,9 +22,9 @@ case class AuthorizationError(message: String) extends Exception(message)
 case class MultiError(message: String, exceptions: Seq[Exception]) extends Exception(message + exceptions.map(_.getMessage).mkString(" :\n\t- ", "\n\t- ", ""))
 
 case class AttributeCheckingError(
-  tableName: String,
-  errors: Seq[AttributeError] = Nil)
-    extends Exception(errors.mkString("[", "][", "]")) {
+    tableName: String,
+    errors: Seq[AttributeError] = Nil)
+  extends Exception(errors.mkString("[", "][", "]")) {
   override def toString: String = errors.mkString("[", "][", "]")
 }
 

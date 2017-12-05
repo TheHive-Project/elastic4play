@@ -13,7 +13,7 @@ import org.scalactic._
 import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
 
-object DateAttributeFormat extends AttributeFormat[Date]("date") {
+class DateAttributeFormat extends AttributeFormat[Date]("date") {
   def parse(d: String): Option[Date] = {
     Try {
       val datePattern = "yyyyMMdd'T'HHmmssZ"
@@ -46,3 +46,5 @@ object DateAttributeFormat extends AttributeFormat[Date]("date") {
 
   override def elasticType(attributeName: String): BasicFieldDefinition = dateField(attributeName).format("epoch_millis||basic_date_time_no_millis")
 }
+
+object DateAttributeFormat extends DateAttributeFormat

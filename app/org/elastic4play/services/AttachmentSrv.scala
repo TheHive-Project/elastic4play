@@ -35,7 +35,7 @@ trait AttachmentAttributes { _: AttributeDef ⇒
 }
 
 @Singleton
-class AttachmentModel(datastoreName: String) extends ModelDef[AttachmentModel, AttachmentChunk](datastoreName) with AttachmentAttributes {
+class AttachmentModel(datastoreName: String) extends ModelDef[AttachmentModel, AttachmentChunk](datastoreName, "Attachment", "/datastore") with AttachmentAttributes {
   @Inject() def this(configuration: Configuration) = this(configuration.get[String]("datastore.name"))
 }
 class AttachmentChunk(model: AttachmentModel, attributes: JsObject) extends EntityDef[AttachmentModel, AttachmentChunk](model, attributes) with AttachmentAttributes
@@ -52,12 +52,12 @@ class AttachmentSrv(
     implicit val mat: Materializer) {
 
   @Inject() def this(
-    configuration: Configuration,
-    dbCreate: DBCreate,
-    getSrv: GetSrv,
-    attachmentModel: AttachmentModel,
-    ec: ExecutionContext,
-    mat: Materializer) =
+      configuration: Configuration,
+      dbCreate: DBCreate,
+      getSrv: GetSrv,
+      attachmentModel: AttachmentModel,
+      ec: ExecutionContext,
+      mat: Materializer) =
     this(
       configuration.get[String]("datastore.hash.main"),
       configuration.get[Seq[String]]("datastore.hash.extra"),
@@ -72,8 +72,8 @@ class AttachmentSrv(
   val extraHashers = Hasher(mainHash +: extraHashes: _*)
 
   /**
-   * Handles attachments : send to datastore and build an object with hash and filename
-   */
+    * Handles attachments : send to datastore and build an object with hash and filename
+    */
   def apply(model: BaseModelDef)(attributes: JsObject): Future[JsObject] = {
     // find all declared attribute as attachment in submitted data
     model.attachmentAttributes.foldLeft(Future.successful(attributes)) {
@@ -93,11 +93,11 @@ class AttachmentSrv(
             .getOrElse {
               (a \ name).asOpt[JsValue] match {
                 case Some(v) if v != JsNull && v != JsArray(Nil) ⇒
-                  Future.failed(AttributeCheckingError(model.name, Seq(
+                  Future.failed(AttributeCheckingError(model.modelName, Seq(
                     InvalidFormatAttributeError(name, "attachment", (a \ name).asOpt[FileInputValue].getOrElse(JsonInputValue((a \ name).as[JsValue]))))))
                 case _ ⇒
                   if (isRequired)
-                    Future.failed(AttributeCheckingError(model.name, Seq(MissingAttributeError(name))))
+                    Future.failed(AttributeCheckingError(model.modelName, Seq(MissingAttributeError(name))))
                   else
                     Future.successful(a)
               }
@@ -118,7 +118,7 @@ class AttachmentSrv(
             .mapAsync(5) {
               case (buffer, index) ⇒
                 val data = java.util.Base64.getEncoder.encodeToString(buffer)
-                dbCreate(attachmentModel.name, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
+                dbCreate(attachmentModel.modelName, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
             }
             .runWith(Sink.ignore)
         }
@@ -137,7 +137,7 @@ class AttachmentSrv(
             .mapAsync(5) {
               case (buffer, index) ⇒
                 val data = java.util.Base64.getEncoder.encodeToString(buffer.toArray)
-                dbCreate(attachmentModel.name, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
+                dbCreate(attachmentModel.modelName, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
             }
             .runWith(Sink.ignore)
         }

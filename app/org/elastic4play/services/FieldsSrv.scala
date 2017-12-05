@@ -22,11 +22,11 @@ class FieldsSrv {
       }
       .validatedBy {
         case (name, _, value, Some(_)) if value.jsonValue == JsNull || value.jsonValue == JsArray(Nil) ⇒ Good(name → value.jsonValue)
-        case (name, names, value, Some(attr)) ⇒ attr.format.inputValueToJson(names.tail, value).transform(v ⇒ Good(name → v), es ⇒ Bad(es.map(e ⇒ e.withName(model.name + "." + name))))
-        case (_, names, value, None) ⇒ Bad(One(UnknownAttributeError(model.name + "." + names.mkString("."), Json.toJson(value))))
+        case (name, names, value, Some(attr)) ⇒ attr.format.inputValueToJson(names.tail, value).transform(v ⇒ Good(name → v), es ⇒ Bad(es.map(e ⇒ e.withName(model.modelName + "." + name))))
+        case (_, names, value, None) ⇒ Bad(One(UnknownAttributeError(model.modelName + "." + names.mkString("."), Json.toJson(value))))
       }
       .transform(
         attrs ⇒ Good(JsObject(attrs.toSeq)),
-        errors ⇒ Bad(AttributeCheckingError(model.name, errors.toSeq)))
+        errors ⇒ Bad(AttributeCheckingError(model.modelName, errors.toSeq)))
   }
 }

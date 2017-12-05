@@ -5,11 +5,13 @@ import play.api.libs.json._
 
 import com.sksamuel.elastic4s.ElasticDsl.nestedField
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
 import org.scalactic.Accumulation._
 import org.scalactic._
 
 import org.elastic4play.controllers.JsonFormat.inputValueFormat
 import org.elastic4play.controllers.{ InputValue, JsonInputValue }
+import org.elastic4play.services.DBLists
 import org.elastic4play.{ AttributeError, UnknownAttributeError }
 
 case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends AttributeFormat[JsObject]("nested") {
@@ -21,7 +23,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
     val result = value match {
       case obj: JsObject if subNames.isEmpty ⇒
         subAttributes.validatedBy { attr ⇒
-          attr.validateForCreation((value \ attr.name).asOpt[JsValue])
+          attr.validateForCreation((value \ attr.attributeName).asOpt[JsValue])
         }
           .map { _ ⇒ obj }
       case _ ⇒ formatError(JsonInputValue(value))
@@ -36,7 +38,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
         obj.fields.validatedBy {
           case (_name, v) ⇒
             subAttributes
-              .find(_.name == _name)
+              .find(_.attributeName == _name)
               .map(_.validateForUpdate(subNames, v))
               .getOrElse(Bad(One(UnknownAttributeError(_name, v))))
         }
@@ -50,7 +52,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
       .headOption
       .map { subName ⇒
         subAttributes
-          .find(_.name == subName)
+          .find(_.attributeName == subName)
           .map { subAttribute ⇒
             value.jsonValue match {
               case jsvalue @ (JsNull | JsArray(Seq())) ⇒ Good(JsObject(Seq(subName → jsvalue)))
@@ -68,7 +70,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
               .validatedBy {
                 case (_, jsvalue) if jsvalue == JsNull || jsvalue == JsArray(Nil) ⇒ Good(jsvalue)
                 case (_name, jsvalue) ⇒
-                  subAttributes.find(_.name == _name)
+                  subAttributes.find(_.attributeName == _name)
                     .map(_.format.fromInputValue(Nil, JsonInputValue(jsvalue)))
                     .getOrElse(Bad(One(UnknownAttributeError(_name, Json.toJson(value)))))
               }
@@ -81,4 +83,16 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
   }
 
   override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName).fields(subAttributes.map(_.elasticMapping))
+
+  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateDefinition] =
+    subAttributes.flatMap(_.elasticTemplate(attributePath))
+
+  override def definition(dblists: DBLists, attribute: Attribute[JsObject]): Seq[AttributeDefinition] =
+    subAttributes
+      .flatMap {
+        case subAttribute: Attribute[tpe] ⇒ subAttribute.format.definition(dblists, subAttribute)
+      }
+      .map { attributeDefinition ⇒
+        attributeDefinition.copy(name = s"${attribute.attributeName}.${attributeDefinition.name}")
+      }
 }

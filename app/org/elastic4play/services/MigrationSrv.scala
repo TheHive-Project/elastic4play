@@ -145,7 +145,7 @@ class MigrationSrv @Inject() (
         .flatMap {
           case (version, mig) ⇒
             Future.sequence(
-              ("sequence" +: models.map(_.name).sorted)
+              ("sequence" +: models.map(_.modelName).sorted)
                 .distinct
                 .map(t ⇒ migrateTable(mig, t).recover {
                   case error ⇒ logger.error(s"Migration of table $t failed :", error)

@@ -30,8 +30,8 @@ class CreateSrv @Inject() (
     implicit val ec: ExecutionContext) {
 
   /**
-   * Check if entity attributes are valid. Format is not checked as it has been already checked.
-   */
+    * Check if entity attributes are valid. Format is not checked as it has been already checked.
+    */
   private[services] def checkAttributes(attrs: JsObject, model: BaseModelDef) = {
     (attrs.keys ++ model.modelAttributes.keySet)
       .map { name ⇒ (name, (attrs \ name).asOpt[JsValue], model.modelAttributes.get(name)) }
@@ -44,7 +44,7 @@ class CreateSrv @Inject() (
       })
       .fold(
         attrs ⇒ Future.successful(JsObject(attrs.toSeq)),
-        errors ⇒ Future.failed(AttributeCheckingError(model.name, errors)))
+        errors ⇒ Future.failed(AttributeCheckingError(model.modelName, errors)))
   }
   private[services] def processAttributes(model: BaseModelDef, parent: Option[BaseEntity], attributes: JsObject)(implicit authContext: AuthContext): Future[JsObject] = {
     for {
@@ -57,7 +57,6 @@ class CreateSrv @Inject() (
   private[services] def addMetaFields(attrs: JsObject)(implicit authContext: AuthContext): JsObject =
     attrs ++
       Json.obj(
-        "user" → authContext.userId,
         "createdBy" → authContext.userId,
         "createdAt" → Json.toJson(new Date))
 
@@ -108,7 +107,7 @@ class CreateSrv @Inject() (
     for {
       attrs ← fieldsSrv.parse(fields, model).toFuture
       attributesWithAttachment ← processAttributes(model, parent, attrs)
-      entityAttr ← dbCreate(model.name, parent, attributesWithAttachment)
+      entityAttr ← dbCreate(model.modelName, parent, attributesWithAttachment)
     } yield entityAttr
   }
 }

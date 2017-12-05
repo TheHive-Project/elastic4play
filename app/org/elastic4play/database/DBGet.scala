@@ -16,11 +16,11 @@ class DBGet @Inject() (
     implicit val ec: ExecutionContext) {
 
   /**
-   * Retrieve entities from ElasticSearch
-   * @param modelName the name of the model (ie. document type)
-   * @param id identifier of the entity to retrieve
-   * @return the entity
-   */
+    * Retrieve entities from ElasticSearch
+    * @param modelName the name of the model (ie. document type)
+    * @param id identifier of the entity to retrieve
+    * @return the entity
+    */
 
   def apply(modelName: String, id: String): Future[JsObject] = {
     db

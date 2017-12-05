@@ -9,7 +9,7 @@ import org.scalactic._
 import org.elastic4play.controllers.{ InputValue, JsonInputValue }
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
 
-object StringAttributeFormat extends AttributeFormat[String]("string") {
+class StringAttributeFormat extends AttributeFormat[String]("string") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
     case _: JsString if subNames.isEmpty ⇒ Good(value)
     case _                               ⇒ formatError(JsonInputValue(value))
@@ -22,3 +22,5 @@ object StringAttributeFormat extends AttributeFormat[String]("string") {
 
   override def elasticType(attributeName: String): KeywordFieldDefinition = keywordField(attributeName)
 }
+
+object StringAttributeFormat extends StringAttributeFormat

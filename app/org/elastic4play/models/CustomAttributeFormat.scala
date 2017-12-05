@@ -3,14 +3,17 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.{ booleanField, dateField, longField, objectField, keywordField }
-import com.sksamuel.elastic4s.mappings.ObjectFieldDefinition
+import com.sksamuel.elastic4s.ElasticDsl.{ booleanField, dateField, keywordField, longField, nestedField }
+import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
+import com.sksamuel.elastic4s.ElasticDsl._
 import org.scalactic._
 
 import org.elastic4play.AttributeError
 import org.elastic4play.controllers.{ InputValue, JsonInputValue }
+import org.elastic4play.services.DBLists
 
-object CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
+class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
   private[CustomAttributeFormat] lazy val logger = Logger(getClass)
 
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = fromInputValue(subNames, JsonInputValue(value))
@@ -61,12 +64,35 @@ object CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
     }
   }
 
-  override def elasticType(attributeName: String): ObjectFieldDefinition =
-    objectField(attributeName).fields(Seq(
-      objectField("_default_").fields(
+  override def elasticType(attributeName: String): NestedFieldDefinition =
+    nestedField(attributeName)
+
+  override def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateDefinition] =
+    dynamicTemplate(attributePath.mkString("_"))
+      .mapping(dynamicNestedField().fields(
         longField("number"),
         keywordField("string"),
         dateField("date").format("epoch_millis||basic_date_time_no_millis"),
         booleanField("boolean"),
-        longField("order"))))
+        longField("order")))
+      .pathMatch(attributePath.mkString(".") + ".*") :: Nil
+
+  override def definition(dblists: DBLists, attribute: Attribute[JsValue]): Seq[AttributeDefinition] = {
+    dblists("custom_fields").cachedItems.flatMap { item ⇒
+      val itemObj = item.mapTo[JsObject]
+      for {
+        fieldName ← (itemObj \ "reference").asOpt[String]
+        tpe ← (itemObj \ "type").asOpt[String]
+        description ← (itemObj \ "description").asOpt[String]
+        options ← (itemObj \ "options").asOpt[Seq[JsString]]
+      } yield AttributeDefinition(
+        s"${attribute.attributeName}.$fieldName.$tpe",
+        tpe,
+        description,
+        options,
+        Nil)
+    }
+  }
 }
+
+object CustomAttributeFormat extends CustomAttributeFormat

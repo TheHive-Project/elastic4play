@@ -11,7 +11,7 @@ import org.scalactic._
 import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
 import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
 
-object UUIDAttributeFormat extends AttributeFormat[UUID]("uuid") {
+class UUIDAttributeFormat extends AttributeFormat[UUID]("uuid") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
     case JsString(v) if subNames.isEmpty ⇒ try {
       UUID.fromString(v); Good(value)
@@ -45,3 +45,5 @@ object UUIDAttributeFormat extends AttributeFormat[UUID]("uuid") {
 
   override def elasticType(attributeName: String): KeywordFieldDefinition = keywordField(attributeName)
 }
+
+object UUIDAttributeFormat extends UUIDAttributeFormat

@@ -5,7 +5,7 @@ import play.api.libs.json._
 object JsonFormat {
   implicit val baseModelEntityWrites: Writes[BaseEntity] = Writes((entity: BaseEntity) ⇒ entity.toJson)
 
-  implicit def multiFormat[T](implicit jsFormat: Format[T]) = Format(Reads.seq(jsFormat), Writes.seq(jsFormat))
+  implicit def multiFormat[T](implicit jsFormat: Format[T]): Format[Seq[T]] = Format(Reads.seq(jsFormat), Writes.seq(jsFormat))
 
   private def optionReads[T](implicit jsReads: Reads[T]) = Reads[Option[T]] {
     case JsNull ⇒ JsSuccess(None)
@@ -36,4 +36,5 @@ object JsonFormat {
   private val binaryWrites = Writes.apply { bin: Array[Byte] ⇒ JsString(java.util.Base64.getEncoder.encodeToString(bin)) }
   val binaryFormats: Format[Array[Byte]] = Format(binaryReads, binaryWrites)
 
+  implicit val attributeDefinitionWrites: OWrites[AttributeDefinition] = Json.writes[AttributeDefinition]
 }

@@ -117,8 +117,25 @@ object JsonFormat {
     def unapply(v: JsValue): Option[(String, Seq[String])] =
       for {
         f ← (v \ "_field").asOpt[String]
-        values ← (v \ "_values").asOpt[Seq[String]]
-      } yield f → values
+        jsValues ← (v \ "_values").asOpt[Seq[JsValue]]
+        values = jsValues.flatMap(JsVal.unapply)
+      } yield f → values.map(_.toString)
+  }
+
+  object JsAgg {
+    def unapply(v: JsValue): Option[(String, Option[String], JsValue)] =
+      for {
+        agg ← (v \ "_agg").asOpt[String]
+        aggName = (v \ "_name").asOpt[String]
+      } yield (agg, aggName, v)
+  }
+
+  object JsAggFieldQuery {
+    def unapply(v: JsValue): Option[(String, Option[QueryDef])] =
+      for {
+        field ← (v \ "_field").asOpt[String]
+        query = (v \ "_query").asOpt[QueryDef]
+      } yield (field, query)
   }
 
   implicit val queryReads: Reads[QueryDef] = {
@@ -151,27 +168,31 @@ object JsonFormat {
   }
 
   implicit val aggReads: Reads[Agg] = Reads { (json: JsValue) ⇒
-    (json \ "_agg").as[String] match {
-      case "avg"   ⇒ JsSuccess(selectAvg((json \ "_field").as[String]))
-      case "min"   ⇒ JsSuccess(selectMin((json \ "_field").as[String]))
-      case "max"   ⇒ JsSuccess(selectMax((json \ "_field").as[String]))
-      case "sum"   ⇒ JsSuccess(selectSum((json \ "_field").as[String]))
-      case "count" ⇒ JsSuccess(selectCount)
-      case "time" ⇒
+    json match {
+      case JsAgg("avg", aggregationName, JsAggFieldQuery(field, query)) ⇒ JsSuccess(selectAvg(aggregationName, field, query))
+      case JsAgg("min", aggregationName, JsAggFieldQuery(field, query)) ⇒ JsSuccess(selectMin(aggregationName, field, query))
+      case JsAgg("max", aggregationName, JsAggFieldQuery(field, query)) ⇒ JsSuccess(selectMax(aggregationName, field, query))
+      case JsAgg("sum", aggregationName, JsAggFieldQuery(field, query)) ⇒ JsSuccess(selectSum(aggregationName, field, query))
+      case JsAgg("count", aggregationName, _)                           ⇒ JsSuccess(selectCount(aggregationName, (json \ "_query").asOpt[QueryDef]))
+      case JsAgg("top", aggregationName, _) ⇒
+        val size = (json \ "_size").asOpt[Int].getOrElse(10)
+        val order = (json \ "_order").asOpt[Seq[String]].getOrElse(Nil)
+        JsSuccess(selectTop(aggregationName, size, order))
+      case JsAgg("time", aggregationName, _) ⇒
         val fields = (json \ "_fields").as[Seq[String]]
         val interval = (json \ "_interval").as[String]
         val selectables = (json \ "_select").as[Seq[Agg]]
-        JsSuccess(groupByTime(fields, interval, selectables: _*))
-      case "field" ⇒
+        JsSuccess(groupByTime(aggregationName, fields, interval, selectables: _*))
+      case JsAgg("field", aggregationName, _) ⇒
         val field = (json \ "_field").as[String]
         val size = (json \ "_size").asOpt[Int].getOrElse(10)
         val order = (json \ "_order").asOpt[Seq[String]].getOrElse(Nil)
         val selectables = (json \ "_select").as[Seq[Agg]]
-        JsSuccess(groupByField(field, size, order, selectables: _*))
-      case "category" ⇒
+        JsSuccess(groupByField(aggregationName, field, size, order, selectables: _*))
+      case JsAgg("category", aggregationName, _) ⇒
         val categories = (json \ "_categories").as[Map[String, QueryDef]]
         val selectables = (json \ "_select").as[Seq[Agg]]
-        JsSuccess(groupByCaterogy(categories, selectables: _*))
+        JsSuccess(groupByCaterogy(aggregationName, categories, selectables: _*))
     }
   }
 

@@ -22,16 +22,17 @@ class AuxSrv @Inject() (
     modelSrv: ModelSrv,
     implicit val ec: ExecutionContext,
     implicit val mat: Materializer) {
+
   import org.elastic4play.services.QueryDSL._
   private[AuxSrv] lazy val logger = Logger(getClass)
 
   def removeUnauditedAttributes(entity: BaseEntity): JsObject = {
     JsObject(
       entity.attributes.fields
-        .map { case (name, value) ⇒ (name, value, entity.model.attributes.find(_.name == name)) }
+        .map { case (name, value) ⇒ (name, value, entity.model.attributes.find(_.attributeName == name)) }
         .collect { case (name, value, Some(desc)) if !desc.options.contains(AttributeOption.unaudited) ⇒ name → value }) +
       ("id" → JsString(entity.id)) +
-      ("_type" → JsString(entity.model.name))
+      ("_type" → JsString(entity.model.modelName))
   }
   def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = {
     val entityWithParent = entity.model match {
@@ -46,13 +47,13 @@ class AuxSrv @Inject() (
               else {
                 Json.toJson(entity).as[JsObject]
               }
-              entityObj + (childModel.parentModel.name → parent)
+              entityObj + (childModel.parentModel.modelName → parent)
             }
           }
           .runWith(Sink.headOption)
           .map(_.getOrElse {
-            logger.warn(s"Child entity (${childModel.name} ${entity.id}) has no parent !")
-            JsObject(Nil)
+            logger.warn(s"Child entity (${childModel.modelName} ${entity.id}) has no parent !")
+            JsObject.empty
           })
       case _ if removeUnaudited ⇒ Future.successful(removeUnauditedAttributes(entity))
       case _                    ⇒ Future.successful(Json.toJson(entity).as[JsObject])
@@ -72,7 +73,7 @@ class AuxSrv @Inject() (
 
   def apply(modelName: String, entityId: String, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = {
     if (entityId == "")
-      return Future.successful(JsObject(Nil))
+      return Future.successful(JsObject.empty)
     modelSrv(modelName)
       .map { model ⇒
         val (src, _) = findSrv(model, "_id" ~= entityId, Some("0-1"), Nil)
@@ -80,7 +81,7 @@ class AuxSrv @Inject() (
           .runWith(Sink.headOption)
           .map(_.getOrElse {
             logger.warn(s"Entity $modelName $entityId not found")
-            JsObject(Nil)
+            JsObject.empty
           })
       }
       .getOrElse(Future.failed(InternalError(s"Model $modelName not found")))

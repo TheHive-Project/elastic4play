@@ -21,7 +21,7 @@ import org.elastic4play.models.{ Attribute, EntityDef, ModelDef, AttributeFormat
 import org.elastic4play.utils.{ Hasher, RichFuture }
 
 @Singleton
-class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName) {
+class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName, "DBList", "/list") {
   model ⇒
   @Inject def this(configuration: Configuration) = this(configuration.get[String]("dblist.name"))
 
@@ -70,9 +70,10 @@ class DBLists @Inject() (
     cache: AsyncCacheApi,
     implicit val ec: ExecutionContext,
     implicit val mat: Materializer) {
+
   /**
-   * Returns list of all dblist name
-   */
+    * Returns list of all dblist name
+    */
   def listAll: Future[collection.Set[String]] = {
     import org.elastic4play.services.QueryDSL._
     findSrv(dblistModel, any, groupByField("dblist", selectCount)).map(_.keys)
@@ -85,7 +86,7 @@ class DBLists @Inject() (
   def deleteItem(item: DBListItemEntity)(implicit authContext: AuthContext): Future[Unit] = {
     for {
       _ ← deleteSrv.get.realDelete[DBListModel, DBListItemEntity](dblistModel, item)
-      _ = cache.remove(dblistModel.name + "_" + item.dblist)
+      _ = cache.remove(dblistModel.modelName + "_" + item.dblist)
     } yield ()
   }
 
@@ -93,7 +94,7 @@ class DBLists @Inject() (
 
   def apply(name: String): DBList = new DBList {
     def cachedItems: immutable.Seq[DBListItem] = cache
-      .getOrElseUpdate(dblistModel.name + "_" + name, 10.seconds) {
+      .getOrElseUpdate(dblistModel.modelName + "_" + name, 10.seconds) {
         val (src, _) = getItems()
         src.runWith(Sink.seq)
       }
@@ -113,9 +114,9 @@ class DBLists @Inject() (
     def addItem[A](item: A)(implicit writes: Writes[A]): Future[DBListItem] = {
       val value = Json.toJson(item)
       val id = Hasher("MD5").fromString(value.toString).head.toString
-      dbCreate(dblistModel.name, None, Json.obj("_id" → id, "dblist" → name, "value" → JsString(value.toString)))
+      dbCreate(dblistModel.modelName, None, Json.obj("_id" → id, "dblist" → name, "value" → JsString(value.toString)))
         .map { newItem ⇒
-          cache.remove(dblistModel.name + "_" + name)
+          cache.remove(dblistModel.modelName + "_" + name)
           dblistModel(newItem)
         }
     }
