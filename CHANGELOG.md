@@ -1,8 +1,22 @@
 # Change Log
 
-## [1.3.2](https://github.com/CERT-BDF/elastic4play/tree/1.3.2)
+## [1.4.0](https://github.com/CERT-BDF/elastic4play/tree/1.4.0) (2017-12-05)'
+[Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.3.2...1.4.0)
 
-[Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.3.1...1.3.2) (2017-10-24)
+**Implemented enhancements:**
+
+- Add query inside aggregations [\#36](https://github.com/CERT-BDF/elastic4play/issues/36)
+- Remove the deprecated "user" attribute [\#33](https://github.com/CERT-BDF/elastic4play/issues/33)
+- Add the ability to describe attributes of an entity [\#32](https://github.com/CERT-BDF/elastic4play/issues/32)
+
+**Fixed bugs:**
+
+- Query on numeric value doesn't work [\#37](https://github.com/CERT-BDF/elastic4play/issues/37)
+
+## [1.3.2](https://github.com/CERT-BDF/elastic4play/tree/1.3.2) (2017-10-24)
+[Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.3.1...1.3.2)
+
+**Implemented enhancements:**
 
 **Fixed bugs:**
 
