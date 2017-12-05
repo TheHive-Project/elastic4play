@@ -2,8 +2,9 @@ package org.elastic4play.models
 
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.{ longField, nestedField }
+import com.sksamuel.elastic4s.ElasticDsl.{ dynamicLongField, dynamicTemplate, nestedField }
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
 import org.scalactic.Accumulation._
 import org.scalactic._
 
@@ -33,7 +34,12 @@ class MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
     }
   }
 
-  override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName).fields(Seq(longField("_default_")))
+  override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName)
+
+  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateDefinition] =
+    dynamicTemplate(attributePath.mkString("_"))
+      .mapping(dynamicLongField())
+      .pathMatch(attributePath.mkString(".") + ".*") :: Nil
 
   override def definition(dblists: DBLists, attribute: Attribute[JsValue]): Seq[AttributeDefinition] = {
     dblists("case_metrics").cachedItems.flatMap { item ⇒

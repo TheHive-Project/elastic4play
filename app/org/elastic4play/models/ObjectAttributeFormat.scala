@@ -5,6 +5,7 @@ import play.api.libs.json._
 
 import com.sksamuel.elastic4s.ElasticDsl.nestedField
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
 import org.scalactic.Accumulation._
 import org.scalactic._
 
@@ -82,6 +83,9 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
   }
 
   override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName).fields(subAttributes.map(_.elasticMapping))
+
+  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateDefinition] =
+    subAttributes.flatMap(_.elasticTemplate(attributePath))
 
   override def definition(dblists: DBLists, attribute: Attribute[JsObject]): Seq[AttributeDefinition] =
     subAttributes

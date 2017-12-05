@@ -43,12 +43,14 @@ class DBIndex(
             .fields(model.attributes.filterNot(_.attributeName == "_id").map(_.elasticMapping))
             .dateDetection(false)
             .numericDetection(false)
+            .templates(model.attributes.flatMap(_.elasticTemplate()))
         case model: ChildModelDef[_, _, _, _] ⇒
           mapping(model.modelName)
             .fields(model.attributes.filterNot(_.attributeName == "_id").map(_.elasticMapping))
             .parent(model.parentModel.modelName)
             .dateDetection(false)
             .numericDetection(false)
+            .templates(model.attributes.flatMap(_.elasticTemplate()))
       }
       .toSeq
     db

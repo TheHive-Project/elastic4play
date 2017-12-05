@@ -3,6 +3,7 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json.{ Format, JsArray, JsNull, JsValue }
 
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
 import com.sksamuel.elastic4s.mappings.{ BasicFieldDefinition, FieldDefinition }
 import org.scalactic._
 
@@ -26,6 +27,8 @@ abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Forma
   def fromInputValue(subNames: Seq[String], value: InputValue): T Or Every[AttributeError]
 
   def elasticType(attributeName: String): FieldDefinition
+
+  def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateDefinition] = Nil
 
   protected def formatError(value: InputValue) = Bad(One(InvalidFormatAttributeError("", name, value)))
 
@@ -95,6 +98,9 @@ case class Attribute[T](
     case a: BasicFieldDefinition if isSensitive ⇒ a.index("no")
     case a                                      ⇒ a
   }
+
+  def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateDefinition] =
+    format.elasticTemplate(attributePath :+ attributeName)
 
   def validateForCreation(value: Option[JsValue]): Option[JsValue] Or Every[AttributeError] = {
     val result = value match {
