@@ -2,7 +2,7 @@ package org.elastic4play.models
 
 import play.api.libs.json.{ JsBoolean, JsValue }
 
-import com.sksamuel.elastic4s.ElasticDsl.booleanField
+import com.sksamuel.elastic4s.http.ElasticDsl.booleanField
 import com.sksamuel.elastic4s.mappings.BasicFieldDefinition
 import org.scalactic._
 

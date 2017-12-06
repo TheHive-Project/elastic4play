@@ -4,8 +4,10 @@ import javax.inject.{ Inject, Singleton }
 
 import scala.concurrent.{ ExecutionContext, Future }
 
-import com.sksamuel.elastic4s.ElasticDsl.update
-import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
+import play.api.libs.json.Json
+
+import com.sksamuel.elastic4s.http.ElasticDsl.updateById
+import com.sksamuel.elastic4s.RefreshPolicy
 
 import org.elastic4play.models.{ ModelAttributes, AttributeFormat ⇒ F, AttributeOption ⇒ O }
 
@@ -20,8 +22,7 @@ class DBSequence @Inject() (
 
   def apply(seqId: String): Future[Int] = {
     db.execute {
-      update(seqId)
-        .in(db.indexName → "sequence")
+      updateById(db.indexName, "sequence", seqId)
         .upsert("counter" → 1)
         .script("ctx._source.counter += 1")
         .retryOnConflict(5)
@@ -29,7 +30,7 @@ class DBSequence @Inject() (
         .fetchSource(true)
         .refresh(RefreshPolicy.WAIT_UNTIL)
     } map { updateResponse ⇒
-      updateResponse.get.sourceAsMap().get("counter").asInstanceOf[Int]
+      (Json.parse(updateResponse.result) \ "counter").as[Int]
     }
   }
 }

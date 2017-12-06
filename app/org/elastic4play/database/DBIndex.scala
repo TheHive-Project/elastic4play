@@ -6,7 +6,7 @@ import scala.concurrent.{ ExecutionContext, Future, blocking }
 
 import play.api.{ Configuration, Logger }
 
-import com.sksamuel.elastic4s.ElasticDsl.{ RichFuture, clusterHealth, index, mapping, search }
+import com.sksamuel.elastic4s.http.ElasticDsl.{ RichFuture, clusterHealth, indexExists, mapping, searchWithType }
 import com.sksamuel.elastic4s.indexes.CreateIndexDefinition
 
 import org.elastic4play.models.{ ChildModelDef, ModelAttributes, ModelDef }
@@ -71,7 +71,7 @@ class DBIndex(
   def getIndexStatus: Future[Boolean] = {
     db
       .execute {
-        index.exists(db.indexName)
+        indexExists(db.indexName)
       }
       .map {
         _.isExists
@@ -93,15 +93,15 @@ class DBIndex(
     * @param modelName name of the document type from which the count must be done
     * @return document count
     */
-  def getSize(modelName: String): Future[Long] =
+  def getSize(modelName: String): Future[Int] =
     db
       .execute {
-        search(db.indexName → modelName).matchAllQuery().size(0)
+        searchWithType(db.indexName → modelName).matchAllQuery().size(0)
       }
       .map {
-        _.totalHits
+        _.totalHits.toInt
       }
-      .recover { case _ ⇒ 0L }
+      .recover { case _ ⇒ 0 }
 
   /**
     * Get cluster status:
@@ -116,9 +116,7 @@ class DBIndex(
       .execute {
         clusterHealth(db.indexName)
       }
-      .map {
-        _.getStatus.value().toInt
-      }
+      .map(_.status.toInt) // FIXME
       .recover { case _ ⇒ 2 }
   }
 

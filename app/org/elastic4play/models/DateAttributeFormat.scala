@@ -6,7 +6,7 @@ import scala.util.Try
 
 import play.api.libs.json.{ JsNumber, JsString, JsValue }
 
-import com.sksamuel.elastic4s.ElasticDsl.dateField
+import com.sksamuel.elastic4s.http.ElasticDsl.dateField
 import com.sksamuel.elastic4s.mappings.BasicFieldDefinition
 import org.scalactic._
 

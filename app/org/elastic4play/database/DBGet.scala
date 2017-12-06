@@ -6,9 +6,10 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 import play.api.libs.json.JsObject
 
-import com.sksamuel.elastic4s.ElasticDsl.{ idsQuery, search }
+import com.sksamuel.elastic4s.http.ElasticDsl.{ idsQuery, search }
 
 import org.elastic4play.NotFoundError
+import org.elastic4play.database.DBUtils.JsonHitReader
 
 @Singleton
 class DBGet @Inject() (
@@ -29,14 +30,14 @@ class DBGet @Inject() (
         search(db.indexName)
           .query(idsQuery(id).types(modelName))
           .size(1)
+          .storedFields("_routing", "_source")
       }
       .map { searchResponse ⇒
         searchResponse
           .hits
+          .hits
           .headOption
-          .fold[JsObject](throw NotFoundError(s"$modelName $id not found")) { hit ⇒
-            DBUtils.hit2json(hit)
-          }
+          .fold[JsObject](throw NotFoundError(s"$modelName $id not found"))(_.to[JsObject])
       }
   }
 }

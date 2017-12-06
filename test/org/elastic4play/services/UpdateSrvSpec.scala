@@ -63,7 +63,7 @@ class UpdateSrvSpec extends PlaySpecification with Mockito {
         "metricAttribute" → Json.obj("metric1" → "blah", "metric2" → 2),
         "unknownAttribute" → 1,
         "metricAttribute.metric3" → "aze",
-        "user" → "readonly",
+        "createdBy" → "readonly",
         "multiAttribute" → "single value")
 
       updateSrv.checkAttributes(attrs, model).await must throwA[AttributeCheckingError].like {
@@ -76,7 +76,7 @@ class UpdateSrvSpec extends PlaySpecification with Mockito {
             InvalidFormatAttributeError("hashAttribute", model.hashAttribute.format.name, JsonInputValue(JsString("01ba471-invalid-9c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"))),
             InvalidFormatAttributeError("metricAttribute", model.metricAttribute.format.name, JsonInputValue(Json.obj("metric1" → "blah", "metric2" → 2))),
             UnknownAttributeError("unknownAttribute", JsNumber(1)),
-            UpdateReadOnlyAttributeError("user"),
+            UpdateReadOnlyAttributeError("createdBy"),
             InvalidFormatAttributeError("metricAttribute", "number", JsonInputValue(JsString("aze"))),
             InvalidFormatAttributeError("multiAttribute", "multi-string", JsonInputValue(JsString("single value"))))
       }

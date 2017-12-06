@@ -2,7 +2,7 @@ package org.elastic4play.models
 
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.{ dynamicLongField, dynamicTemplate, nestedField }
+import com.sksamuel.elastic4s.http.ElasticDsl.{ dynamicLongField, dynamicTemplate, nestedField }
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
 import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
 import org.scalactic.Accumulation._

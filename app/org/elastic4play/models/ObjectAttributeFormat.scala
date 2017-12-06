@@ -3,7 +3,7 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.nestedField
+import com.sksamuel.elastic4s.http.ElasticDsl.nestedField
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
 import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
 import org.scalactic.Accumulation._

@@ -2,6 +2,8 @@ package org.elastic4play
 
 import play.api.libs.json.{ JsObject, JsValue }
 
+import com.sksamuel.elastic4s.http.ElasticError
+
 import org.elastic4play.controllers.InputValue
 
 class ErrorWithObject(message: String, val obj: JsObject) extends Exception(message)
@@ -16,7 +18,12 @@ case class NotFoundError(message: String) extends Exception(message)
 case class GetError(message: String) extends Exception(message)
 case class UpdateError(status: Option[String], message: String, attributes: JsObject) extends ErrorWithObject(message, attributes)
 case class InternalError(message: String) extends Exception(message)
-case class SearchError(message: String, cause: Throwable) extends Exception(message, cause)
+case class SearchError(message: String, cause: Throwable, elasticError: ElasticError) extends Exception(message, cause)
+object SearchError {
+  def apply(error: ElasticError): SearchError = SearchError(s"${error.`type`} ${error.reason}", null, error)
+  def apply(message: String): SearchError = SearchError(message, null, null)
+  def apply(message: String, cause: Throwable): SearchError = SearchError(message, cause, null)
+}
 case class AuthenticationError(message: String) extends Exception(message)
 case class OAuth2Redirect(redirectUrl: String, params: Map[String, Seq[String]]) extends Exception(redirectUrl)
 case class AuthorizationError(message: String) extends Exception(message)

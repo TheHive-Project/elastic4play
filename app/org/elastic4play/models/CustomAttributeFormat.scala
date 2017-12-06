@@ -3,10 +3,9 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.{ booleanField, dateField, keywordField, longField, nestedField }
+import com.sksamuel.elastic4s.http.ElasticDsl.{ booleanField, dateField, dynamicNestedField, dynamicTemplate, keywordField, longField, nestedField }
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
 import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
-import com.sksamuel.elastic4s.ElasticDsl._
 import org.scalactic._
 
 import org.elastic4play.AttributeError

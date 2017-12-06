@@ -2,8 +2,8 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Named, Singleton }
 
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ ExecutionContext, Future, Promise }
+import scala.concurrent.duration._
 
 import play.api.inject.ApplicationLifecycle
 import play.api.{ Configuration, Logger }
@@ -11,27 +11,28 @@ import play.api.{ Configuration, Logger }
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{ Sink, Source }
-import com.sksamuel.elastic4s.ElasticDsl._
-import com.sksamuel.elastic4s.admin.IndexExistsDefinition
-import com.sksamuel.elastic4s.bulk.RichBulkItemResponse
+import com.sksamuel.elastic4s.ElasticsearchClientUri
+import com.sksamuel.elastic4s.admin.IndicesExists
 import com.sksamuel.elastic4s.cluster.ClusterHealthDefinition
 import com.sksamuel.elastic4s.delete.DeleteByIdDefinition
-import com.sksamuel.elastic4s.get.{ GetDefinition, RichGetResponse }
-import com.sksamuel.elastic4s.index.RichIndexResponse
+import com.sksamuel.elastic4s.get.GetDefinition
+import com.sksamuel.elastic4s.http.ElasticDsl._
+import com.sksamuel.elastic4s.http.{ HttpClient, RequestFailure, RequestSuccess }
+import com.sksamuel.elastic4s.http.bulk.BulkResponseItem
+import com.sksamuel.elastic4s.http.cluster.ClusterHealthResponse
+import com.sksamuel.elastic4s.http.delete.DeleteResponse
+import com.sksamuel.elastic4s.http.get.GetResponse
+import com.sksamuel.elastic4s.http.index.admin.IndexExistsResponse
+import com.sksamuel.elastic4s.http.index.{ CreateIndexResponse, IndexResponse }
+import com.sksamuel.elastic4s.http.search.{ ClearScrollResponse, SearchHit, SearchResponse }
+import com.sksamuel.elastic4s.http.update.UpdateResponse
 import com.sksamuel.elastic4s.indexes.{ CreateIndexDefinition, IndexDefinition }
 import com.sksamuel.elastic4s.searches._
-import com.sksamuel.elastic4s.streams.ReactiveElastic.ReactiveElastic
 import com.sksamuel.elastic4s.streams.{ RequestBuilder, ResponseListener }
-import com.sksamuel.elastic4s.update.{ RichUpdateResponse, UpdateDefinition }
-import com.sksamuel.elastic4s.{ ElasticsearchClientUri, TcpClient }
-import com.sksamuel.elastic4s.xpack.security.XPackElasticClient
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse
-import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse
-import org.elasticsearch.action.delete.DeleteResponse
-import org.elasticsearch.common.settings.Settings
+import com.sksamuel.elastic4s.update.UpdateDefinition
+import com.sksamuel.elastic4s.streams.ReactiveElastic._
 
-import org.elastic4play.Timed
+import org.elastic4play.{ SearchError, Timed }
 
 /**
   * This class is a wrapper of ElasticSearch client from Elastic4s
@@ -43,8 +44,8 @@ class DBConfiguration(
     searchHost: Seq[String],
     searchCluster: String,
     baseIndexName: String,
-    xpackUsername: Option[String],
-    xpackPassword: Option[String],
+    xpackUsername: Option[String], // FIXME
+    xpackPassword: Option[String], //FIXME
     lifecycle: ApplicationLifecycle,
     val version: Int,
     implicit val ec: ExecutionContext,
@@ -70,66 +71,103 @@ class DBConfiguration(
 
   private[DBConfiguration] lazy val logger = Logger(getClass)
 
-  private def connect(): TcpClient = {
-    val uri = ElasticsearchClientUri(s"elasticsearch://${searchHost.mkString(",")}")
-    val settings = Settings.builder()
-    settings.put("cluster.name", searchCluster)
-
-    val xpackClient = for {
-      username ← xpackUsername
-      if username.nonEmpty
-      password ← xpackPassword
-      if password.nonEmpty
-      _ = settings.put("xpack.security.user", s"$username:$password")
-    } yield XPackElasticClient(settings.build(), uri)
-
-    xpackClient.getOrElse(TcpClient.transport(settings.build(), uri))
-  }
+  // FIXME
+  //  private def connect(): TcpClient = {
+  //    val uri = ElasticsearchClientUri(s"elasticsearch://${searchHost.mkString(",")}")
+  //    val settings = Settings.builder()
+  //    settings.put("cluster.name", searchCluster)
+  //
+  //    val xpackClient = for {
+  //      username ← xpackUsername
+  //      if username.nonEmpty
+  //      password ← xpackPassword
+  //      if password.nonEmpty
+  //      _ = settings.put("xpack.security.user", s"$username:$password")
+  //    } yield XPackElasticClient(settings.build(), uri)
+  //
+  //    xpackClient.getOrElse(TcpClient.transport(settings.build(), uri))
+  //  }
 
   /**
     * Underlying ElasticSearch client
     */
-  private[database] val client = connect()
+  private[database] val client = {
+    val uri = ElasticsearchClientUri("elasticsearch://" + searchHost.mkString(","))
+    HttpClient(uri.copy(options = uri.options + ("cluster.name" -> searchCluster)))
+  }
   // when application close, close also ElasticSearch connection
   lifecycle.addStopHook { () ⇒ Future { client.close() } }
 
+  private def processResponse[R](response: Future[Either[RequestFailure, RequestSuccess[R]]]): Future[R] = {
+    response.flatMap { response ⇒
+      response.fold[Future[R]](
+        r ⇒ Future.failed(SearchError(r.error)),
+        r ⇒ Future.successful(r.result))
+    }
+  }
   @Timed("database.index")
-  def execute(indexDefinition: IndexDefinition): Future[RichIndexResponse] = client.execute(indexDefinition)
+  def execute(indexDefinition: IndexDefinition): Future[IndexResponse] = {
+    processResponse(client.execute(indexDefinition))
+  }
   @Timed("database.search")
-  def execute(searchDefinition: SearchDefinition): Future[RichSearchResponse] = client.execute(searchDefinition)
+  def execute(searchDefinition: SearchDefinition): Future[SearchResponse] = {
+    processResponse(client.execute(searchDefinition))
+  }
   @Timed("database.create")
-  def execute(createIndexDefinition: CreateIndexDefinition): Future[CreateIndexResponse] = client.execute(createIndexDefinition)
+  def execute(createIndexDefinition: CreateIndexDefinition): Future[CreateIndexResponse] = {
+    processResponse(client.execute(createIndexDefinition))
+  }
   @Timed("database.update")
-  def execute(updateDefinition: UpdateDefinition): Future[RichUpdateResponse] = client.execute(updateDefinition)
+  def execute(updateDefinition: UpdateDefinition): Future[UpdateResponse] = {
+    processResponse(client.execute(updateDefinition))
+  }
   @Timed("database.search_scroll")
-  def execute(searchScrollDefinition: SearchScrollDefinition): Future[RichSearchResponse] = client.execute(searchScrollDefinition)
+  def execute(searchScrollDefinition: SearchScrollDefinition): Future[SearchResponse] = {
+    processResponse(client.execute(searchScrollDefinition))
+  }
   @Timed("database.index_exists")
-  def execute(indexExistsDefinition: IndexExistsDefinition): Future[IndicesExistsResponse] = client.execute(indexExistsDefinition)
+  def execute(indicesExists: IndicesExists): Future[IndexExistsResponse] = {
+    processResponse(client.execute(indicesExists))
+  }
   @Timed("database.delete")
-  def execute(deleteByIdDefinition: DeleteByIdDefinition): Future[DeleteResponse] = client.execute(deleteByIdDefinition)
+  def execute(deleteByIdDefinition: DeleteByIdDefinition): Future[DeleteResponse] = {
+    processResponse(client.execute(deleteByIdDefinition))
+  }
   @Timed("database.get")
-  def execute(getDefinition: GetDefinition): Future[RichGetResponse] = client.execute(getDefinition)
+  def execute(getDefinition: GetDefinition): Future[Either[RequestFailure, RequestSuccess[GetResponse]]] = client.execute(getDefinition)
   @Timed("database.clear_scroll")
-  def execute(clearScrollDefinition: ClearScrollDefinition): Future[ClearScrollResult] = client.execute(clearScrollDefinition)
+  def execute(clearScrollDefinition: ClearScrollDefinition): Future[Either[RequestFailure, RequestSuccess[ClearScrollResponse]]] = client.execute(clearScrollDefinition)
   @Timed("database.cluster_health")
-  def execute(clusterHealthDefinition: ClusterHealthDefinition): Future[ClusterHealthResponse] = client.execute(clusterHealthDefinition)
+  def execute(clusterHealthDefinition: ClusterHealthDefinition): Future[ClusterHealthResponse] = {
+    processResponse(client.execute(clusterHealthDefinition))
+  }
 
   /**
     * Creates a Source (akka stream) from the result of the search
     */
-  def source(searchDefinition: SearchDefinition): Source[RichSearchHit, NotUsed] = Source.fromPublisher(client.publisher(searchDefinition))
+  def source(searchDefinition: SearchDefinition): Source[SearchHit, NotUsed] = Source.fromPublisher(client.publisher(searchDefinition))
 
-  private lazy val sinkListener = new ResponseListener {
-    override def onAck(resp: RichBulkItemResponse): Unit = ()
-    override def onFailure(resp: RichBulkItemResponse): Unit = {
-      logger.warn(s"Document index failure ${resp.id}: ${resp.failureMessage}")
-    }
-  }
+  //    private lazy val sinkListener = new ResponseListener[T] {
+  //      override def onAck(resp: BulkResponseItem, original: T): Unit
+  //      def onFailure(resp: BulkResponseItem, original: T): Unit = ()
+  //      override def onAck(resp: RichBulkItemResponse): Unit = ()
+  //      override def onFailure(resp: RichBulkItemResponse): Unit = {
+  //        logger.warn(s"Document index failure ${resp.id}: ${resp.failureMessage}")
+  //      }
+  //    }
 
   /**
     * Create a Sink (akka stream) that create entity in ElasticSearch
     */
   def sink[T](implicit builder: RequestBuilder[T]): Sink[T, Future[Unit]] = {
+    val sinkListener = new ResponseListener[T] {
+      override def onAck(resp: BulkResponseItem, original: T): Unit = ()
+      override def onFailure(resp: BulkResponseItem, original: T): Unit = {
+        val errorMessage = resp.error.fold("unknown")(_.reason)
+        logger.warn(s"Document index failure ${resp.id}: $errorMessage")
+      }
+    }
+
     val end = Promise[Unit]
     val complete = () ⇒ {
       if (!end.isCompleted)

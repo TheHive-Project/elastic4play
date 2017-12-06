@@ -14,9 +14,13 @@ import akka.NotUsed
 import akka.stream.{ Attributes, Materializer, Outlet, SourceShape }
 import akka.stream.scaladsl.Source
 import akka.stream.stage.{ AsyncCallback, GraphStage, GraphStageLogic, OutHandler }
-import com.sksamuel.elastic4s.searches.{ RichSearchHit, RichSearchResponse, SearchBuilderFn, SearchDefinition }
+import com.sksamuel.elastic4s.http.search.{ SearchHit, SearchResponse }
+import com.sksamuel.elastic4s.searches._
 
-import org.elastic4play.SearchError
+import com.sksamuel.elastic4s.http.ElasticDsl
+
+import org.elastic4play.{ InternalError, SearchError }
+import org.elastic4play.database.DBUtils.JsonHitReader
 
 /**
   * Service class responsible for entity search
@@ -27,7 +31,7 @@ class DBFind(
     keepAlive: FiniteDuration,
     db: DBConfiguration,
     implicit val ec: ExecutionContext,
-    implicit val mat: Materializer) {
+    implicit val mat: Materializer) extends ElasticDsl {
 
   @Inject def this(
       configuration: Configuration,
@@ -42,7 +46,6 @@ class DBFind(
       mat)
 
   private[database] val keepAliveStr = keepAlive.toMillis + "ms"
-  private[DBFind] lazy val logger = Logger(getClass)
 
   /**
     * return a new instance of DBFind but using another DBConfiguration
@@ -72,7 +75,7 @@ class DBFind(
   /**
     * Execute the search definition using scroll
     */
-  private[database] def searchWithScroll(searchDefinition: SearchDefinition, offset: Int, limit: Int): (Source[RichSearchHit, NotUsed], Future[Long]) = {
+  private[database] def searchWithScroll(searchDefinition: SearchDefinition, offset: Int, limit: Int): (Source[SearchHit, NotUsed], Future[Long]) = {
     val searchWithScroll = new SearchWithScroll(db, searchDefinition, keepAliveStr, offset, limit)
     (Source.fromGraph(searchWithScroll), searchWithScroll.totalHits)
   }
@@ -80,12 +83,12 @@ class DBFind(
   /**
     * Execute the search definition
     */
-  private[database] def searchWithoutScroll(searchDefinition: SearchDefinition, offset: Int, limit: Int): (Source[RichSearchHit, NotUsed], Future[Long]) = {
+  private[database] def searchWithoutScroll(searchDefinition: SearchDefinition, offset: Int, limit: Int): (Source[SearchHit, NotUsed], Future[Long]) = {
     val resp = db.execute(searchDefinition.start(offset).limit(limit))
     val total = resp.map(_.totalHits)
     val src = Source
       .fromFuture(resp)
-      .mapConcat { resp ⇒ resp.hits.toList }
+      .mapConcat(_.hits.hits.toList)
     (src, total)
   }
 
@@ -103,7 +106,7 @@ class DBFind(
     val sortDef = DBUtils.sortDefinition(sortBy)
     val searchDefinition = query(db.indexName).storedFields("_source", "_routing", "_parent").start(offset).sortBy(sortDef)
 
-    logger.debug(s"search in ${searchDefinition.indexesTypes.indexes.mkString(",")} / ${searchDefinition.indexesTypes.types.mkString(",")} ${SearchBuilderFn(db.client.java, searchDefinition)}")
+    logger.debug(s"search in ${searchDefinition.indexesTypes.indexes.mkString(",")} / ${searchDefinition.indexesTypes.types.mkString(",")} ${db.client.show(searchDefinition)}")
     val (src, total) = if (limit > 2 * pageSize) {
       searchWithScroll(searchDefinition, offset, limit)
     }
@@ -111,16 +114,16 @@ class DBFind(
       searchWithoutScroll(searchDefinition, offset, limit)
     }
 
-    (src.map(DBUtils.hit2json), total)
+    (src.map(_.to[JsObject]), total)
   }
 
   /**
     * Execute the search definition
     * This function is used to run aggregations
     */
-  def apply(query: (String) ⇒ SearchDefinition): Future[RichSearchResponse] = {
+  def apply(query: (String) ⇒ SearchDefinition): Future[SearchResponse] = {
     val searchDefinition = query(db.indexName)
-    logger.debug(s"search in ${searchDefinition.indexesTypes.indexes.mkString(",")} / ${searchDefinition.indexesTypes.types.mkString(",")} ${SearchBuilderFn(db.client.java, searchDefinition)}")
+    logger.debug(s"search in ${searchDefinition.indexesTypes.indexes.mkString(",")} / ${searchDefinition.indexesTypes.types.mkString(",")} ${db.client.show(searchDefinition)}")
 
     db.execute(searchDefinition)
       .recoverWith {
@@ -135,19 +138,19 @@ class SearchWithScroll(
     searchDefinition: SearchDefinition,
     keepAliveStr: String,
     offset: Int,
-    max: Int)(implicit ec: ExecutionContext) extends GraphStage[SourceShape[RichSearchHit]] {
+    max: Int)(implicit ec: ExecutionContext) extends GraphStage[SourceShape[SearchHit]] {
 
   private[SearchWithScroll] lazy val logger = Logger(getClass)
-  val out: Outlet[RichSearchHit] = Outlet[RichSearchHit]("searchHits")
-  val shape: SourceShape[RichSearchHit] = SourceShape.of(out)
-  val firstResults: Future[RichSearchResponse] = db.execute(searchDefinition.scroll(keepAliveStr))
+  val out: Outlet[SearchHit] = Outlet[SearchHit]("searchHits")
+  val shape: SourceShape[SearchHit] = SourceShape.of(out)
+  val firstResults: Future[SearchResponse] = db.execute(searchDefinition.scroll(keepAliveStr))
   val totalHits: Future[Long] = firstResults.map(_.totalHits)
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
     var processed: Long = 0
     var skip: Int = offset
-    val queue: mutable.Queue[RichSearchHit] = mutable.Queue.empty
-    var scrollId: Future[String] = firstResults.map(_.scrollId)
+    val queue: mutable.Queue[SearchHit] = mutable.Queue.empty
+    var scrollId: Future[String] = firstResults.map(_.scrollId.getOrElse(throw InternalError("ScrollId is not set")))
     var firstResultProcessed = false
 
     setHandler(out, new OutHandler {
@@ -160,52 +163,52 @@ class SearchWithScroll(
         }
       }
 
-      val firstCallback: AsyncCallback[RichSearchResponse] = getAsyncCallback[RichSearchResponse] {
+      val firstCallback: AsyncCallback[SearchResponse] = getAsyncCallback[SearchResponse] {
         case searchResponse if skip > 0 ⇒
-          if (searchResponse.hits.length <= skip)
-            skip -= searchResponse.hits.length
+          if (searchResponse.hits.size <= skip)
+            skip -= searchResponse.hits.size.toInt
           else {
-            queue ++= searchResponse.hits.drop(skip)
+            queue ++= searchResponse.hits.hits.drop(skip)
             skip = 0
           }
           firstResultProcessed = true
           onPull()
         case searchResponse ⇒
-          queue ++= searchResponse.hits
+          queue ++= searchResponse.hits.hits
           firstResultProcessed = true
           onPull()
       }
 
       override def onPull(): Unit = if (firstResultProcessed) {
-        import com.sksamuel.elastic4s.ElasticDsl.searchScroll
+        import com.sksamuel.elastic4s.http.ElasticDsl.searchScroll
         if (processed >= max) completeStage()
 
         if (queue.isEmpty) {
-          val callback = getAsyncCallback[Try[RichSearchResponse]] {
+          val callback = getAsyncCallback[Try[SearchResponse]] {
             case Success(searchResponse) if searchResponse.isTimedOut ⇒
               logger.warn("Search timeout")
               failStage(SearchError("Request terminated early or timed out", null))
             case Success(searchResponse) if searchResponse.isEmpty ⇒
               completeStage()
             case Success(searchResponse) if skip > 0 ⇒
-              if (searchResponse.hits.length <= skip) {
-                skip -= searchResponse.hits.length
+              if (searchResponse.hits.size <= skip) {
+                skip -= searchResponse.hits.size.toInt
                 onPull()
               }
               else {
-                queue ++= searchResponse.hits.drop(skip)
+                queue ++= searchResponse.hits.hits.drop(skip)
                 skip = 0
                 pushNextHit()
               }
             case Success(searchResponse) ⇒
-              queue ++= searchResponse.hits
+              queue ++= searchResponse.hits.hits
               pushNextHit()
             case Failure(error) ⇒
               logger.warn("Search error", error)
               failStage(SearchError("Request terminated early or timed out", error))
           }
           val futureSearchResponse = scrollId.flatMap(s ⇒ db.execute(searchScroll(s).keepAlive(keepAliveStr)))
-          scrollId = futureSearchResponse.map(_.scrollId)
+          scrollId = futureSearchResponse.map(_.scrollId.getOrElse(throw InternalError("ScrollId is not set")))
           futureSearchResponse.onComplete(callback.invoke)
         }
         else {
@@ -214,8 +217,9 @@ class SearchWithScroll(
       }
       else firstResults.foreach(firstCallback.invoke)
     })
+
     override def postStop(): Unit = {
-      import com.sksamuel.elastic4s.ElasticDsl.clearScroll
+      import com.sksamuel.elastic4s.http.ElasticDsl.clearScroll
       scrollId.foreach { s ⇒ db.execute(clearScroll(s)) }
     }
   }

@@ -2,7 +2,7 @@ package org.elastic4play.models
 
 import play.api.libs.json.JsValue
 
-import com.sksamuel.elastic4s.ElasticDsl.binaryField
+import com.sksamuel.elastic4s.http.ElasticDsl.binaryField
 import com.sksamuel.elastic4s.mappings.BasicFieldDefinition
 import org.scalactic._
 

@@ -9,15 +9,14 @@ import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json._
 
 import akka.stream.scaladsl.Sink
-import com.sksamuel.elastic4s.ElasticDsl.indexInto
+import com.sksamuel.elastic4s.RefreshPolicy
+import com.sksamuel.elastic4s.http.ElasticDsl.indexInto
+import com.sksamuel.elastic4s.http.ElasticError
 import com.sksamuel.elastic4s.indexes.IndexDefinition
 import com.sksamuel.elastic4s.streams.RequestBuilder
-import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
-import org.elasticsearch.index.engine.VersionConflictEngineException
-import org.elasticsearch.transport.RemoteTransportException
 
 import org.elastic4play.models.BaseEntity
-import org.elastic4play.{ ConflictError, CreateError, InternalError }
+import org.elastic4play.{ InternalError, SearchError }
 
 /**
   * Service lass responsible for entity creation
@@ -66,22 +65,27 @@ class DBCreate @Inject() (
           indexInto(db.indexName, modelName).source(docSource).refresh(RefreshPolicy.WAIT_UNTIL)
         }
       }
-      .transform(
-        indexResponse ⇒ attributes +
+      .map { indexResponse ⇒
+        attributes +
           ("_type" → JsString(modelName)) +
           ("_id" → JsString(indexResponse.id)) +
           ("_parent" → parentId.fold[JsValue](JsNull)(JsString)) +
-          ("_routing" → JsString(routing.getOrElse(indexResponse.id))) +
-          ("_version" -> JsNumber(indexResponse.version)),
-        convertError(attributes, _))
+          ("_version" -> JsNumber(indexResponse.version)) +
+          ("_routing" → JsString(routing.getOrElse(indexResponse.id)))
+      }
+      .recoverWith {
+        case SearchError(_, _, error) ⇒ Future.failed(convertError(attributes, error))
+      }
   }
 
-  private[database] def convertError(attributes: JsObject, error: Throwable): Throwable = error match {
-    case rte: RemoteTransportException        ⇒ convertError(attributes, rte.getCause)
-    case vcee: VersionConflictEngineException ⇒ ConflictError(vcee.getMessage, attributes)
-    case other ⇒
-      logger.warn("create error", other)
-      CreateError(None, other.getMessage, attributes)
+  private[database] def convertError(attributes: JsObject, error: ElasticError): Throwable = error match {
+    //    case ElasticError(???rte: RemoteTransportException        ⇒ convertError(attributes, rte.getCause)
+    //    case vcee: VersionConflictEngineException ⇒ ConflictError(vcee.getMessage, attributes)
+    //    case other ⇒
+    //      logger.warn("create error", other)
+    //      CreateError(None, other.getMessage, attributes)
+    // FIXME
+    case _ ⇒ ???
   }
 
   /**

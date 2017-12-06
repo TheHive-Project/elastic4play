@@ -2,7 +2,7 @@ package org.elastic4play.models
 
 import play.api.libs.json.{ JsString, JsValue }
 
-import com.sksamuel.elastic4s.ElasticDsl.textField
+import com.sksamuel.elastic4s.http.ElasticDsl.textField
 import com.sksamuel.elastic4s.mappings.TextFieldDefinition
 import org.scalactic._
 

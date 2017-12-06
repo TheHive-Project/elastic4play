@@ -7,9 +7,9 @@ import scala.concurrent.{ ExecutionContext, Future }
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.{ script, update }
+import com.sksamuel.elastic4s.http.ElasticDsl.{ script, updateById }
 import com.sksamuel.elastic4s.script.ScriptDefinition
-import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
+import com.sksamuel.elastic4s.RefreshPolicy
 
 import org.elastic4play.models.BaseEntity
 
@@ -80,8 +80,7 @@ class DBModify @Inject() (
   def apply(entity: BaseEntity, updateAttributes: JsObject, modifyConfig: ModifyConfig): Future[BaseEntity] = {
     db
       .execute {
-        val updateDefinition = update(entity.id)
-          .in(db.indexName → entity.model.modelName)
+        val updateDefinition = updateById(db.indexName, entity.model.modelName, entity.id)
           .routing(entity.routing)
           .script(buildScript(entity, updateAttributes))
           .fetchSource(true)
@@ -90,7 +89,7 @@ class DBModify @Inject() (
         modifyConfig.version.fold(updateDefinition)(updateDefinition.version(_))
       }
       .map { updateResponse ⇒
-        entity.model(Json.parse(updateResponse.get.sourceAsString).as[JsObject] +
+        entity.model(Json.parse(updateResponse.result).as[JsObject] +
           ("_type" → JsString(entity.model.modelName)) +
           ("_id" → JsString(entity.id)) +
           ("_routing" → JsString(entity.routing)) +

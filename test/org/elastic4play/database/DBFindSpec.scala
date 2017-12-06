@@ -12,9 +12,9 @@ import play.api.test.PlaySpecification
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import akka.stream.testkit.scaladsl.TestSink
+import com.sksamuel.elastic4s.http.search.{ SearchHit, SearchHits, SearchResponse }
 import com.sksamuel.elastic4s.searches._
-import common.{ Fabricator ⇒ F }
-import org.elasticsearch.search.SearchHitField
+import common.{ Fabricator => F }
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
 import org.specs2.runner.JUnitRunner
@@ -86,32 +86,32 @@ class DBFindSpec extends PlaySpecification with Mockito {
       val searchDef = mock[SearchDefinition]
       searchDef.limit(pageSize) returns searchDef
       searchDef.scroll(dbfind.keepAliveStr) returns searchDef
-      val firstPageResult = mock[RichSearchResponse]
+      val firstPageResult = mock[SearchResponse]
       val scrollId = F.string("scrollId")
       val hits = Range(0, 24)
         .map { i ⇒
-          val m = mock[RichSearchHit]
+          val m = mock[SearchHit]
           m.toString returns s"MockResult-$i"
           m
         }
         .toArray
-      firstPageResult.scrollIdOpt returns Some(scrollId)
-      firstPageResult.totalHits returns hits.length.toLong
+      firstPageResult.scrollId returns Some(scrollId)
+      firstPageResult.totalHits returns hits.length
       firstPageResult.isTimedOut returns false
       firstPageResult.isEmpty returns false
-      firstPageResult.hits returns hits.take(5)
+      firstPageResult.hits returns SearchHits(hits.length, 0, hits.take(5))
       db.execute(searchDef) returns Future.successful(firstPageResult)
 
-      val secondPageResult = mock[RichSearchResponse]
-      secondPageResult.scrollIdOpt returns Some(scrollId)
+      val secondPageResult = mock[SearchResponse]
+      secondPageResult.scrollId returns Some(scrollId)
       secondPageResult.isTimedOut returns false
       secondPageResult.isEmpty returns false
-      secondPageResult.hits returns hits.drop(5)
+      secondPageResult.hits returns SearchHits(hits.length, 0, hits.drop(5))
       db.execute(any[SearchScrollDefinition]) returns Future.successful(secondPageResult)
 
       val (src, total) = dbfind.searchWithScroll(searchDef, 8, 10)
       src
-        .runWith(TestSink.probe[RichSearchHit])
+        .runWith(TestSink.probe[SearchHit])
         .request(2)
         .expectNextN(hits.slice(8, 10).toList)
         .request(5)
@@ -132,19 +132,19 @@ class DBFindSpec extends PlaySpecification with Mockito {
       val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
       val limit = 24
       val offset = 3
-      val hits = Array.fill(limit)(mock[RichSearchHit])
+      val hits = Array.fill(limit)(mock[SearchHit])
       val searchDef = mock[SearchDefinition]
       searchDef.limit(limit) returns searchDef
       searchDef.start(offset) returns searchDef
-      val results = mock[RichSearchResponse]
+      val results = mock[SearchResponse]
       //db.execute(searchDef) returns Future.successful(results)
       doReturn(Future.successful(results)).when(db).execute(searchDef)
       results.totalHits returns 42
-      results.hits returns hits
+      results.hits returns SearchHits(hits.length, 0, hits)
 
       val (src, total) = dbfind.searchWithoutScroll(searchDef, offset, limit)
       src
-        .runWith(TestSink.probe[RichSearchHit])
+        .runWith(TestSink.probe[SearchHit])
         .request(2)
         .expectNextN(hits.take(2).toList)
         .request(10)
@@ -158,15 +158,11 @@ class DBFindSpec extends PlaySpecification with Mockito {
     }
 
     "convert hit to json" in {
-      val hit = mock[RichSearchHit]
+      val hit = mock[SearchHit]
       val routing = F.string("routing")
-      val routingField = mock[SearchHitField]
-      routingField.getValue[String] returns routing
       val parent = F.string("parent")
-      val parentField = mock[SearchHitField]
-      parentField.getValue[String] returns parent
-      val fields = Map("_routing" → RichSearchHitField(routingField), "_parent" → RichSearchHitField(parentField))
-      hit.fields returns fields
+      val fields = Map("_routing" → routing, "_parent" → parent)
+      hit.sourceAsMap returns fields
       val id = F.string("id")
       hit.id returns id
       val doc = Json.obj("magic-number" → 42, "text" → "blah", "really-good" → true)
@@ -174,9 +170,10 @@ class DBFindSpec extends PlaySpecification with Mockito {
       val tpe = "some-object"
       hit.`type` returns tpe
 
-      val db = mock[DBConfiguration]
-      val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
-      DBUtils.hit2json(hit) must_== (doc +
+      //      val db = mock[DBConfiguration]
+      //      val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
+
+      DBUtils.JsonHitReader.read(hit) must beRight(doc +
         ("_id" → JsString(id)) +
         ("_parent" → JsString(parent)) +
         ("_routing" → JsString(routing)) +

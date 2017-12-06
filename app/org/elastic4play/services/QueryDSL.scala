@@ -1,8 +1,10 @@
 package org.elastic4play.services
 
-import com.sksamuel.elastic4s.ElasticDsl.{ boolQuery, existsQuery, hasChildQuery, hasParentQuery, idsQuery, matchAllQuery, matchQuery, nestedQuery, query, rangeQuery, termQuery, termsQuery }
-import com.sksamuel.elastic4s.searches.queries.{ BuildableTermsQueryImplicits, QueryDefinition }
-import org.apache.lucene.search.join.ScoreMode
+import com.sksamuel.elastic4s.http.ElasticDsl.{ boolQuery, existsQuery, hasChildQuery, hasParentQuery, idsQuery, matchAllQuery, matchQuery, nestedQuery, query, rangeQuery, termQuery, termsQuery }
+import com.sksamuel.elastic4s.searches.ScoreMode
+import com.sksamuel.elastic4s.searches.queries.QueryDefinition
+import com.sksamuel.elastic4s.searches.queries.term.{ BuildableTermsQuery, TermsQueryDefinition }
+import org.elasticsearch.index.query.{ QueryBuilders, TermsQueryBuilder }
 
 import org.elastic4play.models.BaseEntity
 
@@ -39,7 +41,39 @@ object QueryDSL {
       }
   }
 
-  implicit class SearchField(field: String) extends BuildableTermsQueryImplicits {
+  case class SearchableTerm[T](t: T)(implicit val buildable: BuildableTermsQuery[T])
+
+  implicit object IntBuildableTermsQuery extends BuildableTermsQuery[Int] {
+    override def build(q: TermsQueryDefinition[Int]): TermsQueryBuilder =
+      QueryBuilders.termsQuery(q.field, q.values.toSeq: _*)
+  }
+
+  implicit object LongBuildableTermsQuery extends BuildableTermsQuery[Long] {
+    override def build(q: TermsQueryDefinition[Long]): TermsQueryBuilder =
+      QueryBuilders.termsQuery(q.field, q.values.toSeq: _*)
+  }
+
+  implicit object FloatBuildableTermsQuery extends BuildableTermsQuery[Float] {
+    override def build(q: TermsQueryDefinition[Float]): TermsQueryBuilder =
+      QueryBuilders.termsQuery(q.field, q.values.toSeq: _*)
+  }
+
+  implicit object DoubleBuildableTermsQuery extends BuildableTermsQuery[Double] {
+    override def build(q: TermsQueryDefinition[Double]): TermsQueryBuilder =
+      QueryBuilders.termsQuery(q.field, q.values.toSeq: _*)
+  }
+
+  implicit object StringBuildableTermsQuery extends BuildableTermsQuery[String] {
+    override def build(q: TermsQueryDefinition[String]): TermsQueryBuilder =
+      QueryBuilders.termsQuery(q.field, q.values.toSeq: _*)
+  }
+
+  implicit object AnyRefBuildableTermsQuery extends BuildableTermsQuery[AnyRef] {
+    override def build(q: TermsQueryDefinition[AnyRef]): TermsQueryBuilder =
+      QueryBuilders.termsQuery(q.field, q.values.map(_.toString).toSeq: _*)
+  }
+
+  implicit class SearchField(field: String) {
     private def convertValue(value: Any): Any = value match {
       case _: Enumeration#Value ⇒ value.toString
       case bd: BigDecimal       ⇒ bd.toDouble
@@ -54,7 +88,8 @@ object QueryDSL {
     def ~>=(value: Any) = QueryDef(nestedField(field, rangeQuery(_).gte(value.toString)))
     def ~<>(value: (Any, Any)) = QueryDef(nestedField(field, rangeQuery(_).gt(value._1.toString).lt(value._2.toString)))
     def ~=<>=(value: (Any, Any)) = QueryDef(nestedField(field, rangeQuery(_).gte(value._1.toString).lte(value._2.toString)))
-    def in(values: AnyRef*) = QueryDef(nestedField(field, termsQuery(_, values)))
+    def in[T: BuildableTermsQuery](values: T*) = QueryDef(nestedField(field, termsQuery(_, values)))
+    def in[T](values: SearchableTerm[T]*) = QueryDef(nestedField(field, termsQuery(_, values.map(_.t))(values.head.buildable)))
   }
 
   def ofType(value: String) = QueryDef(termQuery("_type", value))

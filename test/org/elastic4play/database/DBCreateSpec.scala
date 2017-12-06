@@ -6,7 +6,7 @@ import scala.concurrent.Future
 import play.api.libs.json.{ JsObject, JsString, Json }
 import play.api.test.PlaySpecification
 
-import com.sksamuel.elastic4s.index.RichIndexResponse
+import com.sksamuel.elastic4s.http.index.IndexResponse
 import com.sksamuel.elastic4s.indexes.IndexDefinition
 import common.{ Fabricator ⇒ F }
 import org.junit.runner.RunWith
@@ -27,7 +27,7 @@ class DBCreateSpec extends PlaySpecification with Mockito {
     val dbcreate = new DBCreate(db, ec)
 
     def apply(modelName: String, attributes: JsObject): (JsObject, IndexDefinition) = {
-      val indexResponse = mock[RichIndexResponse]
+      val indexResponse = mock[IndexResponse]
       indexResponse.id returns (attributes \ "_id").asOpt[String].getOrElse(defaultEntityId)
       db.execute(any[IndexDefinition]) returns Future.successful(indexResponse)
       val attrs = dbcreate(modelName, attributes).await
@@ -37,7 +37,7 @@ class DBCreateSpec extends PlaySpecification with Mockito {
     }
 
     def apply(parent: BaseEntity, attributes: JsObject): (JsObject, IndexDefinition) = {
-      val indexResponse = mock[RichIndexResponse]
+      val indexResponse = mock[IndexResponse]
       indexResponse.id returns (attributes \ "_id").asOpt[String].getOrElse(defaultEntityId)
       db.execute(any[IndexDefinition]) returns Future.successful(indexResponse)
       val attrs = dbcreate(modelName, Some(parent), attributes).await

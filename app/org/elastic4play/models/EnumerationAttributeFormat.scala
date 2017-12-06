@@ -2,7 +2,7 @@ package org.elastic4play.models
 
 import play.api.libs.json.{ Format, JsString, JsValue }
 
-import com.sksamuel.elastic4s.ElasticDsl.keywordField
+import com.sksamuel.elastic4s.http.ElasticDsl.keywordField
 import com.sksamuel.elastic4s.mappings.KeywordFieldDefinition
 import org.scalactic._
 

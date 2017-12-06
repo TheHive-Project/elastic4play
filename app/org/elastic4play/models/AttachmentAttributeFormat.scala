@@ -3,7 +3,7 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json.{ JsValue, Json }
 
-import com.sksamuel.elastic4s.ElasticDsl.{ keywordField, longField, nestedField }
+import com.sksamuel.elastic4s.http.ElasticDsl.{ keywordField, longField, nestedField }
 import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
 import org.scalactic._
 

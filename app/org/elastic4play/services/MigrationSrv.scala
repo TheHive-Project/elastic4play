@@ -13,7 +13,7 @@ import play.api.libs.json._
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{ Sink, Source }
-import com.sksamuel.elastic4s.ElasticDsl.search
+import com.sksamuel.elastic4s.http.ElasticDsl.searchWithType
 
 import org.elastic4play.InternalError
 import org.elastic4play.database._
@@ -33,7 +33,7 @@ trait MigrationOperations {
 abstract class DatabaseState {
   def version: Int
   def source(tableName: String): Source[JsObject, NotUsed]
-  def count(tableName: String): Future[Long]
+  def count(tableName: String): Future[Int]
   def getEntity(tableName: String, id: String): Future[JsObject]
 }
 
@@ -61,7 +61,7 @@ class MigrationSrv @Inject() (
   class MigrationTransition(db: DBConfiguration, previousState: DatabaseState, operations: Seq[Operation]) extends DatabaseState {
     override def version: Int = db.version
     override def source(tableName: String): Source[JsObject, NotUsed] = operations.foldLeft(previousState.source _)((f, op) ⇒ op(f))(tableName)
-    override def count(tableName: String): Future[Long] = previousState.count(tableName)
+    override def count(tableName: String): Future[Int] = previousState.count(tableName)
     override def getEntity(tableName: String, id: String): Future[JsObject] = {
       previousState.getEntity(tableName, id).flatMap { previousValue ⇒
         operations.foldLeft((_: String) ⇒ Source.single(previousValue))((f, op) ⇒ op(f))(tableName)
@@ -74,8 +74,8 @@ class MigrationSrv @Inject() (
   case class OriginState(db: DBConfiguration) extends DatabaseState {
     private val currentdbfind = dbfind.switchTo(db)
     override def version: Int = db.version
-    override def source(tableName: String): Source[JsObject, NotUsed] = currentdbfind.apply(Some("all"), Nil)(indexName ⇒ search(indexName → tableName).matchAllQuery)._1
-    override def count(tableName: String): Future[Long] = new DBIndex(db, 0, 0, ec).getSize(tableName)
+    override def source(tableName: String): Source[JsObject, NotUsed] = currentdbfind.apply(Some("all"), Nil)(indexName ⇒ searchWithType(indexName → tableName).matchAllQuery)._1
+    override def count(tableName: String): Future[Int] = new DBIndex(db, 0, 0, ec).getSize(tableName)
     override def getEntity(tableName: String, entityId: String): Future[JsObject] = dbget(tableName, entityId)
   }
 
@@ -83,7 +83,7 @@ class MigrationSrv @Inject() (
   object EmptyState extends DatabaseState {
     override def version = 1
     override def source(tableName: String): Source[JsObject, NotUsed] = Source.empty[JsObject]
-    override def count(tableName: String): Future[Long] = Future.successful(0)
+    override def count(tableName: String): Future[Int] = Future.successful(0)
     override def getEntity(tableName: String, id: String): Future[JsObject] = Future.failed(new Exception("TODO"))
   }
 

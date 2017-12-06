@@ -113,13 +113,23 @@ object JsonFormat {
       } yield (f, value)
   }
 
+  object JsTerm {
+    import com.sksamuel.elastic4s.http.ElasticDsl._
+    def unapply(v: JsValue): Option[SearchableTerm[_]] = v match {
+      case JsString(s)  ⇒ Some(SearchableTerm(s))
+      case JsBoolean(b) ⇒ Some(SearchableTerm(b))
+      case JsNumber(i)  ⇒ Some(SearchableTerm(i))
+      case _            ⇒ None
+    }
+
+  }
   object JsFieldIn {
-    def unapply(v: JsValue): Option[(String, Seq[String])] =
+    def unapply(v: JsValue): Option[(String, Seq[SearchableTerm[_]])] =
       for {
         f ← (v \ "_field").asOpt[String]
         jsValues ← (v \ "_values").asOpt[Seq[JsValue]]
-        values = jsValues.flatMap(JsVal.unapply)
-      } yield f → values.map(_.toString)
+        values = jsValues.flatMap(JsTerm.unapply)
+      } yield f → values
   }
 
   object JsAgg {
