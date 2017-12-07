@@ -70,7 +70,7 @@ class DBConfiguration(
     */
   private[database] val client = TcpClient.transport(
     Settings.builder().put("cluster.name", searchCluster).build(),
-    ElasticsearchClientUri(searchHost.map(h ⇒ s"elasticsearch://$h").mkString(",")))
+    ElasticsearchClientUri(s"elasticsearch://${searchHost.mkString(",")}"))
   // when application close, close also ElasticSearch connection
   lifecycle.addStopHook { () ⇒ Future { client.close() } }
 
