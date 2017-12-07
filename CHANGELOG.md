@@ -1,6 +1,14 @@
 # Change Log
 
-## [1.4.0](https://github.com/CERT-BDF/elastic4play/tree/1.4.0) (2017-12-05)'
+## [1.4.1](https://github.com/CERT-BDF/elastic4play/tree/1.4.1) (2017-12-07)
+
+[Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.4.0...1.4.1)
+
+**Fixed bugs:**
+
+- Error when configuring multiple ElasticSearch nodes [\#38](https://github.com/CERT-BDF/elastic4play/issues/38)
+
+## [1.4.0](https://github.com/CERT-BDF/elastic4play/tree/1.4.0) (2017-12-05)
 [Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.3.2...1.4.0)
 
 **Implemented enhancements:**
@@ -15,8 +23,6 @@
 
 ## [1.3.2](https://github.com/CERT-BDF/elastic4play/tree/1.3.2) (2017-10-24)
 [Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.3.1...1.3.2)
-
-**Implemented enhancements:**
 
 **Fixed bugs:**
 
