@@ -43,8 +43,8 @@ class DBConfiguration(
     searchHost: Seq[String],
     searchCluster: String,
     baseIndexName: String,
-    xpackUsername: String,
-    xpackPassword: String,
+    xpackUsername: Option[String],
+    xpackPassword: Option[String],
     lifecycle: ApplicationLifecycle,
     val version: Int,
     implicit val ec: ExecutionContext,
@@ -60,8 +60,8 @@ class DBConfiguration(
       configuration.get[Seq[String]]("search.host"),
       configuration.get[String]("search.cluster"),
       configuration.get[String]("search.index"),
-      configuration.get[String]("search.username"),
-      configuration.get[String]("search.password"),
+      configuration.getOptional[String]("search.username"),
+      configuration.getOptional[String]("search.password"),
       lifecycle,
       version,
       ec,
@@ -71,16 +71,17 @@ class DBConfiguration(
   private[DBConfiguration] lazy val logger = Logger(getClass)
 
   private def connect(): TcpClient = {
-    var uri = ElasticsearchClientUri(s"elasticsearch://${searchHost.mkString(",")}")
-    var settings = Settings.builder()
+    val uri = ElasticsearchClientUri(s"elasticsearch://${searchHost.mkString(",")}")
+    val settings = Settings.builder()
     settings.put("cluster.name", searchCluster)
-    if (xpackUsername.isEmpty) {
-      return TcpClient.transport(settings.build(), uri)
-    }
-    else {
-      settings.put("xpack.security.user", s"${xpackUsername}:${xpackPassword}")
-      return XPackElasticClient(settings.build(), uri)
-    }
+
+    val xpackClient = for {
+      username ← xpackUsername
+      password ← xpackPassword
+      _ = settings.put("xpack.security.user", s"$username:$password")
+    } yield XPackElasticClient(settings.build(), uri)
+
+    xpackClient.getOrElse(TcpClient.transport(settings.build(), uri))
   }
 
   /**
