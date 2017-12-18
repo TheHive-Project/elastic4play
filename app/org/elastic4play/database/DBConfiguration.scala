@@ -77,7 +77,9 @@ class DBConfiguration(
 
     val xpackClient = for {
       username ← xpackUsername
+      if username.nonEmpty
       password ← xpackPassword
+      if password.nonEmpty
       _ = settings.put("xpack.security.user", s"$username:$password")
     } yield XPackElasticClient(settings.build(), uri)
 
