@@ -10,6 +10,7 @@ import play.api.mvc.{ RequestHeader, ResponseHeader, Result, Results }
 import org.elasticsearch.client.transport.NoNodeAvailableException
 import org.elasticsearch.index.IndexNotFoundException
 import org.elasticsearch.index.query.QueryShardException
+import org.elasticsearch.ElasticsearchSecurityException
 
 import org.elastic4play.JsonFormat.attributeCheckingExceptionWrites
 
@@ -36,6 +37,7 @@ class ErrorHandler extends HttpErrorHandler {
       case SearchError(message, cause)         ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "SearchError", "message" → s"$message (${cause.getMessage})"))
       case ace: AttributeCheckingError         ⇒ Some(Status.BAD_REQUEST → Json.toJson(ace))
       case iae: IllegalArgumentException       ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "IllegalArgument", "message" → iae.getMessage))
+      case _: ElasticsearchSecurityException   ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "NoNodeAvailable", "message" → "ElasticSearch cluster access denied, check your authentication settings"))
       case _: NoNodeAvailableException         ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "NoNodeAvailable", "message" → "ElasticSearch cluster is unreachable"))
       case CreateError(_, message, attributes) ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "CreateError", "message" → message, "object" → attributes))
       case ErrorWithObject(tpe, message, obj)  ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → tpe, "message" → message, "object" → obj))
