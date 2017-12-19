@@ -1,7 +1,13 @@
 # Change Log
 
-## [1.4.1](https://github.com/CERT-BDF/elastic4play/tree/1.4.1) (2017-12-07)
+## [1.4.2](https://github.com/CERT-BDF/elastic4play/tree/1.4.2) (2017-12-19)
+[Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.4.1...1.4.2)
 
+**Merged pull requests:**
+
+- Add XPack authentication support [\#39](https://github.com/CERT-BDF/elastic4play/pull/39) ([srilumpa](https://github.com/srilumpa))
+
+## [1.4.1](https://github.com/CERT-BDF/elastic4play/tree/1.4.1) (2017-12-07)
 [Full Changelog](https://github.com/CERT-BDF/elastic4play/compare/1.4.0...1.4.1)
 
 **Fixed bugs:**
