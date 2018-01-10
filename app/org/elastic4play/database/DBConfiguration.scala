@@ -24,6 +24,7 @@ import com.sksamuel.elastic4s.streams.ReactiveElastic.ReactiveElastic
 import com.sksamuel.elastic4s.streams.{ RequestBuilder, ResponseListener }
 import com.sksamuel.elastic4s.update.{ RichUpdateResponse, UpdateDefinition }
 import com.sksamuel.elastic4s.{ ElasticsearchClientUri, TcpClient }
+import com.sksamuel.elastic4s.xpack.security.XPackElasticClient
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse
@@ -42,6 +43,8 @@ class DBConfiguration(
     searchHost: Seq[String],
     searchCluster: String,
     baseIndexName: String,
+    xpackUsername: Option[String],
+    xpackPassword: Option[String],
     lifecycle: ApplicationLifecycle,
     val version: Int,
     implicit val ec: ExecutionContext,
@@ -57,6 +60,8 @@ class DBConfiguration(
       configuration.get[Seq[String]]("search.host"),
       configuration.get[String]("search.cluster"),
       configuration.get[String]("search.index"),
+      configuration.getOptional[String]("search.username"),
+      configuration.getOptional[String]("search.password"),
       lifecycle,
       version,
       ec,
@@ -65,12 +70,26 @@ class DBConfiguration(
 
   private[DBConfiguration] lazy val logger = Logger(getClass)
 
+  private def connect(): TcpClient = {
+    val uri = ElasticsearchClientUri(s"elasticsearch://${searchHost.mkString(",")}")
+    val settings = Settings.builder()
+    settings.put("cluster.name", searchCluster)
+
+    val xpackClient = for {
+      username ← xpackUsername
+      if username.nonEmpty
+      password ← xpackPassword
+      if password.nonEmpty
+      _ = settings.put("xpack.security.user", s"$username:$password")
+    } yield XPackElasticClient(settings.build(), uri)
+
+    xpackClient.getOrElse(TcpClient.transport(settings.build(), uri))
+  }
+
   /**
     * Underlying ElasticSearch client
     */
-  private[database] val client = TcpClient.transport(
-    Settings.builder().put("cluster.name", searchCluster).build(),
-    ElasticsearchClientUri(s"elasticsearch://${searchHost.mkString(",")}"))
+  private[database] val client = connect()
   // when application close, close also ElasticSearch connection
   lifecycle.addStopHook { () ⇒ Future { client.close() } }
 
@@ -133,5 +152,5 @@ class DBConfiguration(
   /**
     * return a new instance of DBConfiguration that points to the previous version of the index schema
     */
-  def previousVersion: DBConfiguration = new DBConfiguration(searchHost, searchCluster, baseIndexName, lifecycle, version - 1, ec, actorSystem)
+  def previousVersion: DBConfiguration = new DBConfiguration(searchHost, searchCluster, baseIndexName, xpackUsername, xpackPassword, lifecycle, version - 1, ec, actorSystem)
 }
