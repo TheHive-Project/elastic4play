@@ -24,6 +24,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.6" % Test,
   "org.scalactic" %% "scalactic" % "3.0.4",
   "org.bouncycastle" % "bcprov-jdk15on" % "1.58",
+  "com.typesafe.akka" %% "akka-cluster" % "2.5.6",
+  "com.typesafe.akka" %% "akka-cluster-tools" % "2.5.6",
   specs2 % Test
 )
 
