@@ -1,7 +1,7 @@
 package org.elastic4play.services
 
 import java.util.Date
-import javax.inject.{ Inject, Singleton }
+import javax.inject.Singleton
 
 import scala.util.Try
 
@@ -9,10 +9,8 @@ import play.api.Logger
 import play.api.libs.json.JsObject
 import play.api.mvc.{ RequestHeader, Result }
 
-import akka.actor.{ Actor, ActorRef, ActorSystem, Props, actorRef2Scala }
-import akka.cluster.pubsub.DistributedPubSubMediator.{ Publish, Subscribe }
-import akka.cluster.pubsub.DistributedPubSub
-import akka.event.{ ActorEventBus, EventBus, SubchannelClassification }
+import akka.actor.{ ActorRef, actorRef2Scala }
+import akka.event.{ ActorEventBus, SubchannelClassification }
 import akka.util.Subclassification
 
 import org.elastic4play.models.{ BaseEntity, HiveEnumeration }
@@ -25,7 +23,6 @@ object AuditableAction extends Enumeration with HiveEnumeration {
 }
 
 case class RequestProcessStart(request: RequestHeader) extends EventMessage
-
 case class RequestProcessEnd(request: RequestHeader, result: Try[Result]) extends EventMessage
 
 case class AuditOperation(
@@ -35,52 +32,9 @@ case class AuditOperation(
     authContext: AuthContext,
     date: Date = new Date()) extends EventMessage
 
-trait EventSrv {
-  def publish(event: EventMessage): Unit
-  def subscribe(subscriber: ActorRef, classifier: Class[_ <: EventMessage]): Boolean
-  def unsubscribe(subscriber: ActorRef, from: Class[_ <: EventMessage]): Boolean
-  def unsubscribe(subscriber: ActorRef): Unit
-}
-
-class DistributedEventActor(localEventSrv: LocalEventSrv) extends Actor {
-  override def receive: Receive = {
-    case message: EventMessage ⇒ localEventSrv.publish(message)
-  }
-}
-
 @Singleton
-class DistributedEventSrv @Inject() (
-    system: ActorSystem,
-    localEventSrv: LocalEventSrv) extends EventBus with EventSrv {
-  type Event = EventMessage
-  type Classifier = Class[_ <: EventMessage]
-  type Subscriber = ActorRef
-
-  private val mediator = DistributedPubSub(system).mediator
-
-  private val eventActor = system.actorOf(Props(classOf[DistributedEventActor], localEventSrv), "DistributedEventActor")
-  mediator ! Subscribe("stream", eventActor)
-
-  def publish(event: Event): Unit = {
-    mediator ! Publish("stream", event)
-  }
-
-  def subscribe(subscriber: Subscriber, classifier: Classifier): Boolean = {
-    localEventSrv.subscribe(subscriber, classifier)
-  }
-
-  def unsubscribe(subscriber: Subscriber, from: Classifier): Boolean = {
-    localEventSrv.unsubscribe(subscriber, from)
-  }
-
-  def unsubscribe(subscriber: Subscriber): Unit = {
-    localEventSrv.unsubscribe(subscriber)
-  }
-}
-
-@Singleton
-class LocalEventSrv extends ActorEventBus with SubchannelClassification with EventSrv {
-  private[LocalEventSrv] lazy val logger = Logger(getClass)
+class EventSrv extends ActorEventBus with SubchannelClassification {
+  private[EventSrv] lazy val logger = Logger(getClass)
   override type Classifier = Class[_ <: EventMessage]
   override type Event = EventMessage
 
@@ -92,3 +46,4 @@ class LocalEventSrv extends ActorEventBus with SubchannelClassification with Eve
     def isSubclass(x: Classifier, y: Classifier): Boolean = y.isAssignableFrom(x)
   }
 }
+
