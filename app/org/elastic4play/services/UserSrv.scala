@@ -1,7 +1,5 @@
 package org.elastic4play.services
 
-import java.util.concurrent.atomic.AtomicBoolean
-
 import scala.concurrent.Future
 
 import play.api.libs.json.JsObject
@@ -16,8 +14,6 @@ trait AuthContext {
   def userName: String
   def requestId: String
   def roles: Seq[Role]
-  private val baseAudit = new AtomicBoolean(true)
-  def getBaseAudit: Boolean = baseAudit.get && baseAudit.getAndSet(false)
 }
 
 trait UserSrv {
