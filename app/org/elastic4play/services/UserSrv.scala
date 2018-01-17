@@ -42,6 +42,7 @@ trait AuthSrv {
 
   def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] = Future.failed(AuthenticationError("Operation not supported"))
   def authenticate(key: String)(implicit request: RequestHeader): Future[AuthContext] = Future.failed(AuthenticationError("Operation not supported"))
+  def authenticate()(implicit request: RequestHeader): Future[AuthContext] = Future.failed(AuthenticationError("Operation not supported"))
   def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] = Future.failed(AuthorizationError("Operation not supported"))
   def setPassword(username: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] = Future.failed(AuthorizationError("Operation not supported"))
   def renewKey(username: String)(implicit authContext: AuthContext): Future[String] = Future.failed(AuthorizationError("Operation not supported"))
