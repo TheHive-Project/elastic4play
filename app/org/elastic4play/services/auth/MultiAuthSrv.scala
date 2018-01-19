@@ -4,11 +4,9 @@ import javax.inject.{ Inject, Singleton }
 
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
-
 import play.api.mvc.RequestHeader
 import play.api.{ Configuration, Logger }
-
-import org.elastic4play.AuthenticationError
+import org.elastic4play.{ AuthenticationError, OAuth2Redirect }
 import org.elastic4play.services.AuthCapability.Type
 import org.elastic4play.services.{ AuthContext, AuthSrv }
 
@@ -68,8 +66,6 @@ class MultiAuthSrv(
           Future.failed(AuthenticationError("Authentication failure"))
       }
 
-<<<<<<< Updated upstream
-=======
   override def authenticate()(implicit request: RequestHeader): Future[AuthContext] =
     forAllAuthProvider(_.authenticate)
       .recoverWith {
@@ -79,7 +75,6 @@ class MultiAuthSrv(
           Future.failed(AuthenticationError("Authentication failure"))
       }
 
->>>>>>> Stashed changes
   override def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
     forAllAuthProvider(_.changePassword(username, oldPassword, newPassword))
 
