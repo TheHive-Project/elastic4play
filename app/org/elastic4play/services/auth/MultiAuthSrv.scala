@@ -54,12 +54,32 @@ class MultiAuthSrv(
 
   override def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] =
     forAllAuthProvider(_.authenticate(username, password))
-      .recoverWith { case _ ⇒ Future.failed(AuthenticationError("Authentication failure")) }
+      .recoverWith {
+        case authError ⇒
+          MultiAuthSrv.logger.error("Authentication failure", authError)
+          Future.failed(AuthenticationError("Authentication failure"))
+      }
 
   override def authenticate(key: String)(implicit request: RequestHeader): Future[AuthContext] =
     forAllAuthProvider(_.authenticate(key))
-      .recoverWith { case _ ⇒ Future.failed(AuthenticationError("Authentication failure")) }
+      .recoverWith {
+        case authError ⇒
+          MultiAuthSrv.logger.error("Authentication failure", authError)
+          Future.failed(AuthenticationError("Authentication failure"))
+      }
 
+<<<<<<< Updated upstream
+=======
+  override def authenticate()(implicit request: RequestHeader): Future[AuthContext] =
+    forAllAuthProvider(_.authenticate)
+      .recoverWith {
+        case e: OAuth2Redirect ⇒ Future.failed(e)
+        case authError ⇒
+          MultiAuthSrv.logger.error("Authentication failure", authError)
+          Future.failed(AuthenticationError("Authentication failure"))
+      }
+
+>>>>>>> Stashed changes
   override def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
     forAllAuthProvider(_.changePassword(username, oldPassword, newPassword))
 
