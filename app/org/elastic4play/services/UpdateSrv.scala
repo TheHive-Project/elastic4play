@@ -15,7 +15,7 @@ import org.scalactic.{ Bad, One }
 
 import org.elastic4play.JsonFormat.dateFormat
 import org.elastic4play.controllers.Fields
-import org.elastic4play.database.DBModify
+import org.elastic4play.database.{ DBModify, ModifyConfig }
 import org.elastic4play.models.{ AbstractModelDef, BaseEntity, BaseModelDef, EntityDef }
 import org.elastic4play.utils.{ RichFuture, RichOr }
 import org.elastic4play.{ AttributeCheckingError, UnknownAttributeError }
@@ -46,12 +46,12 @@ class UpdateSrv @Inject() (
       .fold(attrs ⇒ Future.successful(JsObject(attrs)), errors ⇒ Future.failed(AttributeCheckingError(model.modelName, errors)))
   }
 
-  private[services] def doUpdate[E <: BaseEntity](entity: E, attributes: JsObject)(implicit authContext: AuthContext): Future[E] = {
+  private[services] def doUpdate[E <: BaseEntity](entity: E, attributes: JsObject, modifyConfig: ModifyConfig)(implicit authContext: AuthContext): Future[E] = {
     for {
       attributesAfterHook ← entity.model.updateHook(entity, addMetaFields(attributes))
       checkedAttributes ← checkAttributes(attributesAfterHook, entity.model)
       attributesWithAttachment ← attachmentSrv(entity.model)(checkedAttributes)
-      newEntity ← dbModify(entity, attributesWithAttachment)
+      newEntity ← dbModify(entity, attributesWithAttachment, modifyConfig)
     } yield newEntity.asInstanceOf[E]
   }
 
@@ -63,33 +63,33 @@ class UpdateSrv @Inject() (
 
   private[services] def removeMetaFields(attrs: JsObject): JsObject = attrs - "updatedBy" - "updatedAt"
 
-  def apply[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, id: String, fields: Fields)(implicit authContext: AuthContext): Future[E] = {
+  def apply[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, id: String, fields: Fields, modifyConfig: ModifyConfig)(implicit authContext: AuthContext): Future[E] = {
     for {
       entity ← getSrv[M, E](model, id)
-      newEntity ← apply[E](entity, fields)
+      newEntity ← apply[E](entity, fields, modifyConfig)
     } yield newEntity
   }
 
-  def apply[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, ids: Seq[String], fields: Fields)(implicit authContext: AuthContext): Future[Seq[Try[E]]] = {
+  def apply[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, ids: Seq[String], fields: Fields, modifyConfig: ModifyConfig)(implicit authContext: AuthContext): Future[Seq[Try[E]]] = {
     Future.sequence {
       ids.map { id ⇒
         getSrv[M, E](model, id)
-          .flatMap(entity ⇒ apply[E](entity, fields).toTry)
+          .flatMap(entity ⇒ apply[E](entity, fields, modifyConfig).toTry)
       }
     }
   }
 
-  def apply[E <: BaseEntity](entity: E, fields: Fields)(implicit authContext: AuthContext): Future[E] = {
+  def apply[E <: BaseEntity](entity: E, fields: Fields, modifyConfig: ModifyConfig)(implicit authContext: AuthContext): Future[E] = {
     for {
       attributes ← fieldsSrv.parse(fields, entity.model).toFuture
-      newEntity ← doUpdate(entity, attributes)
+      newEntity ← doUpdate(entity, attributes, modifyConfig)
       _ = eventSrv.publish(AuditOperation(newEntity, AuditableAction.Update, removeMetaFields(attributes), authContext))
     } yield newEntity
   }
 
-  def apply[E <: BaseEntity](entitiesAttributes: Seq[(E, Fields)])(implicit authContext: AuthContext): Future[Seq[Try[E]]] = {
+  def apply[E <: BaseEntity](entitiesAttributes: Seq[(E, Fields)], modifyConfig: ModifyConfig)(implicit authContext: AuthContext): Future[Seq[Try[E]]] = {
     Future.sequence(entitiesAttributes.map {
-      case (entity, fields) ⇒ apply(entity, fields).toTry
+      case (entity, fields) ⇒ apply(entity, fields, modifyConfig).toTry
     })
   }
 }

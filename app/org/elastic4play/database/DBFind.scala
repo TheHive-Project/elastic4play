@@ -7,7 +7,7 @@ import scala.concurrent.duration.{ DurationLong, FiniteDuration }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
 
-import play.api.libs.json.{ JsNull, JsObject, JsString, Json }
+import play.api.libs.json._
 import play.api.{ Configuration, Logger }
 
 import akka.NotUsed
@@ -90,19 +90,6 @@ class DBFind(
   }
 
   /**
-    * Transform search hit into JsObject
-    * This function parses hit source add _type, _routing, _parent and _id attributes
-    */
-  private[database] def hit2json(hit: RichSearchHit) = {
-    val id = JsString(hit.id)
-    Json.parse(hit.sourceAsString).as[JsObject] +
-      ("_type" → JsString(hit.`type`)) +
-      ("_routing" → hit.fields.get("_routing").map(r ⇒ JsString(r.java.getValue[String])).getOrElse(id)) +
-      ("_parent" → hit.fields.get("_parent").map(r ⇒ JsString(r.java.getValue[String])).getOrElse(JsNull)) +
-      ("_id" → id)
-  }
-
-  /**
     * Search entities in ElasticSearch
     *
     * @param range  first and last entities to retrieve, for example "23-42" (default value is "0-10")
@@ -124,7 +111,7 @@ class DBFind(
       searchWithoutScroll(searchDefinition, offset, limit)
     }
 
-    (src.map(hit2json), total)
+    (src.map(DBUtils.hit2json), total)
   }
 
   /**

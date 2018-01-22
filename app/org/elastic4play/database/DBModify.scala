@@ -13,6 +13,11 @@ import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 
 import org.elastic4play.models.BaseEntity
 
+case class ModifyConfig(retryOnConflict: Int = 5, refreshPolicy: RefreshPolicy = RefreshPolicy.WAIT_UNTIL, version: Option[Long] = None)
+object ModifyConfig {
+  def default: ModifyConfig = ModifyConfig(5, RefreshPolicy.WAIT_UNTIL, None)
+}
+
 @Singleton
 class DBModify @Inject() (
     db: DBConfiguration,
@@ -69,25 +74,28 @@ class DBModify @Inject() (
     * @param entity entity to update
     * @param updateAttributes contains attributes to update. JSON object contains key (attribute name) and value.
     *   Sub attribute can be updated using dot notation ("attr.subattribute").
+    * @param modifyConfig modification parameter (retryOnConflict and refresh policy)
     * @return new version of the entity
     */
-  def apply(entity: BaseEntity, updateAttributes: JsObject): Future[BaseEntity] = {
+  def apply(entity: BaseEntity, updateAttributes: JsObject, modifyConfig: ModifyConfig): Future[BaseEntity] = {
     db
       .execute {
-        update(entity.id)
+        val updateDefinition = update(entity.id)
           .in(db.indexName → entity.model.modelName)
           .routing(entity.routing)
           .script(buildScript(entity, updateAttributes))
           .fetchSource(true)
-          .retryOnConflict(5)
-          .refresh(RefreshPolicy.WAIT_UNTIL)
+          .retryOnConflict(modifyConfig.retryOnConflict)
+          .refresh(modifyConfig.refreshPolicy)
+        modifyConfig.version.fold(updateDefinition)(updateDefinition.version(_))
       }
       .map { updateResponse ⇒
         entity.model(Json.parse(updateResponse.get.sourceAsString).as[JsObject] +
           ("_type" → JsString(entity.model.modelName)) +
           ("_id" → JsString(entity.id)) +
           ("_routing" → JsString(entity.routing)) +
-          ("_parent" → entity.parentId.fold[JsValue](JsNull)(JsString)))
+          ("_parent" → entity.parentId.fold[JsValue](JsNull)(JsString)) +
+          ("_version" -> JsNumber(updateResponse.version)))
       }
   }
 }

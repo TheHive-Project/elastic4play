@@ -7,7 +7,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 import play.api.libs.json.JsObject
 
 import org.elastic4play.NotFoundError
-import org.elastic4play.database.DBRemove
+import org.elastic4play.database.{ DBRemove, ModifyConfig }
 import org.elastic4play.models.{ AbstractModelDef, EntityDef }
 
 @Singleton
@@ -21,7 +21,7 @@ class DeleteSrv @Inject() (
   def apply[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, id: String)(implicit authContext: AuthContext): Future[E] = {
     for {
       entity ← getSrv[M, E](model, id)
-      newEntity ← updateSrv.doUpdate(entity, model.removeAttribute)
+      newEntity ← updateSrv.doUpdate(entity, model.removeAttribute, ModifyConfig.default)
       _ = eventSrv.publish(AuditOperation(newEntity, AuditableAction.Delete, JsObject.empty, authContext))
     } yield newEntity
   }

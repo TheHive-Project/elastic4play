@@ -6,7 +6,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 import play.api.Logger
 import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json.{ JsNull, JsObject, JsString, JsValue }
+import play.api.libs.json._
 
 import akka.stream.scaladsl.Sink
 import com.sksamuel.elastic4s.ElasticDsl.indexInto
@@ -71,7 +71,8 @@ class DBCreate @Inject() (
           ("_type" → JsString(modelName)) +
           ("_id" → JsString(indexResponse.id)) +
           ("_parent" → parentId.fold[JsValue](JsNull)(JsString)) +
-          ("_routing" → JsString(routing.getOrElse(indexResponse.id))),
+          ("_routing" → JsString(routing.getOrElse(indexResponse.id))) +
+          ("_version" -> JsNumber(indexResponse.version)),
         convertError(attributes, _))
   }
 

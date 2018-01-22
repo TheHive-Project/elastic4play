@@ -190,10 +190,11 @@ class Fields(private val fields: Map[String, InputValue]) {
 
   def isEmpty: Boolean = fields.isEmpty
 
-  def addIfAbsent(name: String, value: String): Fields = getString(name) match {
-    case Some(_) ⇒ this
-    case None    ⇒ set(name, value)
-  }
+  def addIfAbsent(name: String, value: String): Fields = getString(name).fold(set(name, value))(_ ⇒ this)
+
+  def addIfAbsent(name: String, value: JsValue): Fields = getValue(name).fold(set(name, value))(_ ⇒ this)
+
+  def addIfAbsent(name: String, value: InputValue): Fields = get(name).fold(set(name, value))(_ ⇒ this)
 
   def ++(other: GenTraversableOnce[(String, InputValue)]) = new Fields(fields ++ other)
 
