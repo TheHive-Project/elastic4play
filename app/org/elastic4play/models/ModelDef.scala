@@ -98,6 +98,7 @@ class BaseEntity(val model: BaseModelDef, val attributes: JsObject) {
   val id = (attributes \ "_id").as[String]
   val routing = (attributes \ "_routing").as[String]
   lazy val parentId = (attributes \ "_parent").asOpt[String]
+  val version = (attributes \ "_version").as[Long]
   def createdBy = (attributes \ "createdBy").as[String]
   def createdAt = (attributes \ "createdAt").as[Date]
   def updatedBy = (attributes \ "updatedBy").as[String]
