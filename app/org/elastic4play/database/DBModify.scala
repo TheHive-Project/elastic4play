@@ -89,7 +89,7 @@ class DBModify @Inject() (
         modifyConfig.version.fold(updateDefinition)(updateDefinition.version(_))
       }
       .map { updateResponse ⇒
-        entity.model(Json.parse(updateResponse.result).as[JsObject] +
+        entity.model(DBUtils.toJson(updateResponse.source).as[JsObject] +
           ("_type" → JsString(entity.model.modelName)) +
           ("_id" → JsString(entity.id)) +
           ("_routing" → JsString(entity.routing)) +

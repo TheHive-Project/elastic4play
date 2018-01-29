@@ -2,14 +2,10 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.concurrent.{ ExecutionContext, Future }
-
-import play.api.libs.json.Json
-
 import com.sksamuel.elastic4s.http.ElasticDsl.updateById
-import com.sksamuel.elastic4s.RefreshPolicy
-
 import org.elastic4play.models.{ ModelAttributes, AttributeFormat ⇒ F, AttributeOption ⇒ O }
+
+import scala.concurrent.{ ExecutionContext, Future }
 
 class SequenceModel extends ModelAttributes("sequence") {
   val counter = attribute("sequence", F.numberFmt, "Value of the sequence", O.model)
@@ -28,9 +24,9 @@ class DBSequence @Inject() (
         .retryOnConflict(5)
         //.fetchSource(Seq("counter"), Nil) // doesn't work any longer
         .fetchSource(true)
-        .refresh(RefreshPolicy.WAIT_UNTIL)
+        .refreshImmediately // FIXME .refresh(RefreshPolicy.WAIT_UNTIL)
     } map { updateResponse ⇒
-      (Json.parse(updateResponse.result) \ "counter").as[Int]
+      (DBUtils.toJson(updateResponse.source) \ "counter").as[Int]
     }
   }
 }

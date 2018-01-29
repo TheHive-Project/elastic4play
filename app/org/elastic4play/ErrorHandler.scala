@@ -1,13 +1,13 @@
 package org.elastic4play
 
-import scala.concurrent.Future
-
+import com.sksamuel.elastic4s.http.ElasticError
+import org.elastic4play.JsonFormat.attributeCheckingExceptionWrites
 import play.api.Logger
 import play.api.http.{ HttpErrorHandler, Status, Writeable }
-import play.api.libs.json.{ JsValue, Json }
+import play.api.libs.json.{ JsNull, JsValue, Json }
 import play.api.mvc.{ RequestHeader, ResponseHeader, Result, Results }
 
-import org.elastic4play.JsonFormat.attributeCheckingExceptionWrites
+import scala.concurrent.Future
 
 /**
   * This class handles errors. It traverses all causes of exception to find known error and shows the appropriate message
@@ -29,7 +29,6 @@ class ErrorHandler extends HttpErrorHandler {
       case nfe: NumberFormatException          ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "NumberFormatException", "message" → ("Invalid format " + nfe.getMessage)))
       case NotFoundError(message)              ⇒ Some(Status.NOT_FOUND → Json.obj("type" → "NotFoundError", "message" → message))
       case BadRequestError(message)            ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "BadRequest", "message" → message))
-      case SearchError(message, cause, _)      ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "SearchError", "message" → s"$message (${cause.getMessage})"))
       case ace: AttributeCheckingError         ⇒ Some(Status.BAD_REQUEST → Json.toJson(ace))
       case iae: IllegalArgumentException       ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "IllegalArgument", "message" → iae.getMessage))
       // FIXME case _: NoNodeAvailableException         ⇒ Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "NoNodeAvailable", "message" → "ElasticSearch cluster is unreachable"))
@@ -41,8 +40,12 @@ class ErrorHandler extends HttpErrorHandler {
           case Some((_, j)) ⇒ j
         }
         Some(Status.MULTI_STATUS → Json.obj("type" → "MultiError", "error" → message, "suberrors" → suberrors))
-      // FIXME case _: IndexNotFoundException ⇒ Some(520 → JsNull)
       // FIXME case qse: QueryShardException  ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "Invalid search query", "message" → qse.getMessage))
+      case SearchError(message, cause, ElasticError("index_not_found_exception", _, _, _, _, _)) ⇒ Some(520 → JsNull)
+      case SearchError(message, cause, elasticError) ⇒
+        toErrorResult(cause)
+          .orElse(Some(Status.BAD_REQUEST → Json.obj("type" → "SearchError", "message" → s"$message (${Option(cause).fold("no cause")(_.getMessage)})")))
+
       case t: Throwable ⇒ Option(t.getCause).flatMap(toErrorResult)
     }
   }

@@ -12,11 +12,6 @@ import org.elastic4play.BadRequestError
 import org.elastic4play.database.DBUtils
 import org.elastic4play.models.BaseModelDef
 
-//case class Aggregations(data: Map[String, Any]) {
-//  def apply(name: String): Aggregations = Aggregations(data(name).asInstanceOf[Map[String, Any]])
-//  def get[T](name: String): T = data(name).asInstanceOf[T]
-//}
-
 abstract class Agg(val aggregationName: String) {
   def apply(model: BaseModelDef): Seq[AggregationDefinition]
 
@@ -78,7 +73,7 @@ class SelectAvg(aggregationName: String, fieldName: String, query: Option[QueryD
   def field(f: String): AggregationDefinition = avgAggregation(aggregationName).field(f)
 
   def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
-    Json.obj(aggregationName -> aggregations.avg(aggregationName).value)
+    Json.obj(aggregationName -> getAggregation(aggregations).avg(aggregationName).value)
   }
 }
 
@@ -88,7 +83,7 @@ class SelectMin(aggregationName: String, fieldName: String, query: Option[QueryD
   def field(f: String): AggregationDefinition = minAggregation(aggregationName).field(f)
 
   def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
-    Json.obj(aggregationName -> aggregations.min(aggregationName).value)
+    Json.obj(aggregationName -> getAggregation(aggregations).min(aggregationName).value)
   }
 }
 
@@ -98,7 +93,7 @@ class SelectMax(aggregationName: String, fieldName: String, query: Option[QueryD
   def field(f: String): AggregationDefinition = maxAggregation(aggregationName).field(f)
 
   def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
-    Json.obj(aggregationName -> aggregations.max(aggregationName).value)
+    Json.obj(aggregationName -> getAggregation(aggregations).max(aggregationName).value)
   }
 }
 
@@ -108,7 +103,7 @@ class SelectSum(aggregationName: String, fieldName: String, query: Option[QueryD
   def field(f: String): AggregationDefinition = sumAggregation(aggregationName).field(f)
 
   def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
-    Json.obj(aggregationName -> aggregations.sum(aggregationName).value)
+    Json.obj(aggregationName -> getAggregation(aggregations).sum(aggregationName).value)
   }
 }
 
@@ -118,7 +113,7 @@ class SelectCount(aggregationName: String, query: Option[QueryDef]) extends Fiel
   def field(f: String): AggregationDefinition = filterAggregation(aggregationName).query(matchAllQuery)
 
   def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
-    Json.obj(aggregationName -> aggregations.filter(aggregationName).docCount)
+    Json.obj(aggregationName -> getAggregation(aggregations).filter(aggregationName).docCount)
   }
 }
 
@@ -127,13 +122,9 @@ class SelectTop(aggregationName: String, size: Int, sortBy: Seq[String], query: 
 
   def field(f: String): AggregationDefinition = topHitsAggregation(aggregationName).size(size).sortBy(DBUtils.sortDefinition(sortBy))
 
-  private def toJson(value: Any): JsValue = value match {
-    case obj: Map[_, _] ⇒ JsObject(obj.map(kv ⇒ kv._1.toString -> toJson(kv._2)))
-  }
-
   def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
-    val topHits = aggregations.tophits(aggregationName).hits.map { h ⇒
-      toJson(h.source).as[JsObject] +
+    val topHits = getAggregation(aggregations).tophits(aggregationName).hits.map { h ⇒
+      DBUtils.toJson(h.source).as[JsObject] +
         ("_type" -> JsString(h.`type`)) +
         ("_id" -> JsString(h.id))
     }
@@ -169,12 +160,14 @@ class GroupByTime(aggregationName: String, fields: Seq[String], interval: String
 
   def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
     JsObject {
-      aggregations.dateHistogram(aggregationName)
-        .buckets
-        .map { b ⇒
-          b.date -> subAggs.map(_.processResult(model, b))
-            .fold(JsObject.empty)(_ ++ _)
-        }
+      fields.flatMap { f ⇒
+        aggregations.dateHistogram(s"${aggregationName}_$f")
+          .buckets
+          .map { b ⇒
+            b.date -> subAggs.map(_.processResult(model, b))
+              .fold(JsObject.empty)(_ ++ _)
+          }
+      }
     }
   }
 }
@@ -213,8 +206,11 @@ class GroupByField(aggregationName: String, fieldName: String, size: Option[Int]
   }
 
   def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
+    val buckets = fieldName.split("\\.").init.foldLeft(aggregations) { (a, _) ⇒
+      a.nested(aggregationName)
+    }
     JsObject {
-      aggregations.terms(aggregationName).buckets
+      buckets.terms(s"${aggregationName}_$fieldName").buckets
         .map { b ⇒
           b.key -> subAggs.map(_.processResult(model, b))
             .fold(JsObject.empty)(_ ++ _)

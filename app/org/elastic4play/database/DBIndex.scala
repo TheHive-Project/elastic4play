@@ -2,14 +2,12 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.concurrent.{ ExecutionContext, Future, blocking }
-
-import play.api.{ Configuration, Logger }
-
 import com.sksamuel.elastic4s.http.ElasticDsl.{ RichFuture, clusterHealth, indexExists, mapping, searchWithType }
 import com.sksamuel.elastic4s.indexes.CreateIndexDefinition
-
 import org.elastic4play.models.{ ChildModelDef, ModelAttributes, ModelDef }
+import play.api.{ Configuration, Logger }
+
+import scala.concurrent.{ ExecutionContext, Future, blocking }
 
 @Singleton
 class DBIndex(
@@ -114,7 +112,7 @@ class DBIndex(
   def getClusterStatus: Future[Int] = {
     db
       .execute {
-        clusterHealth(db.indexName)
+        clusterHealth()
       }
       .map(_.status.toInt) // FIXME
       .recover { case _ ⇒ 2 }

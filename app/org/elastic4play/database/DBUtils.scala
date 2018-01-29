@@ -1,17 +1,14 @@
 package org.elastic4play.database
 
-import scala.util.Try
-
-import play.api.libs.json._
-
 import com.sksamuel.elastic4s.http.ElasticDsl.fieldSort
+import com.sksamuel.elastic4s.http.ElasticError
 import com.sksamuel.elastic4s.http.search.SearchHit
-import com.sksamuel.elastic4s.{ Hit, HitReader }
 import com.sksamuel.elastic4s.searches.sort.FieldSortDefinition
+import com.sksamuel.elastic4s.{ Hit, HitReader }
+import org.elastic4play.{ SearchError, utils }
 import org.elasticsearch.index.IndexNotFoundException
 import org.elasticsearch.transport.RemoteTransportException
-
-import org.elastic4play.{ InternalError, utils }
+import play.api.libs.json._
 
 object DBUtils {
   def sortDefinition(sortBy: Seq[String]): Seq[FieldSortDefinition] = {
@@ -34,41 +31,37 @@ object DBUtils {
     * This function parses hit source add _type, _routing, _parent and _id attributes
     */
   implicit object JsonHitReader extends HitReader[JsObject] {
-    def read(hit: Hit): Either[Throwable, JsObject] = {
-      hit match {
-        case h: SearchHit => h.sourceAsString
-      }
-      val fields = hit.sourceAsMap
-      for {
-        source ← Try(Json.parse(hit.sourceAsString).as[JsObject]).toEither
-        _ = println(s"fields=$fields")
-        routing ← fields.get("_routing")
-          .collect { case r: String ⇒ r }
-          .toRight(InternalError(s"routing is missing in hit $hit"))
-        parent = fields.get("_parent").fold[JsValue](JsNull)(p ⇒ JsString(p.toString))
-      } yield source +
-        ("_type" → JsString(hit.`type`)) +
-        ("_routing" → JsString(routing)) +
-        ("_parent" → parent) +
-        ("_version" -> JsNumber(hit.version)) +
-        ("_id" → JsString(hit.id))
+    def read(hit: Hit): Either[Throwable, JsObject] = hit match {
+      case h: SearchHit ⇒
+        val routing = h.routing.getOrElse(h.id)
+        val parent = h.parent.fold[JsValue](JsNull)(JsString.apply)
+        val source = toJson(h.sourceAsMap).as[JsObject]
+        Right(source +
+          ("_type" → JsString(h.`type`)) +
+          ("_routing" → JsString(routing)) +
+          ("_parent" → parent) +
+          ("_version" -> JsNumber(hit.version)) +
+          ("_id" → JsString(hit.id)))
     }
   }
 
-  //  def hit2json( /*fields: Option[Seq[Attribute[_]]], */ hit: RichSearchHit): JsObject = {
-  //    val fieldsValue = hit.fields
-  //    val id = JsString(hit.id)
-  //    Option(hit.sourceAsString).filterNot(_ == "").fold(JsObject.empty)(s ⇒ Json.parse(s).as[JsObject]) +
-  //      ("_type" → JsString(hit.`type`)) +
-  //      ("_routing" → fieldsValue.get("_routing").map(r ⇒ JsString(r.java.getValue[String])).getOrElse(id)) +
-  //      ("_parent" → fieldsValue.get("_parent").map(r ⇒ JsString(r.java.getValue[String])).getOrElse(JsNull)) +
-  //      ("_id" → id)
-  //  }
+  def toJson(value: Any): JsValue = value match {
+    case obj: Map[_, _] ⇒ JsObject(obj.map(kv ⇒ kv._1.toString -> toJson(kv._2)))
+    case s: String      ⇒ JsString(s)
+    case n: Number      ⇒ JsNumber(n.doubleValue())
+    case b: Boolean     ⇒ JsBoolean(b)
+    case s: Seq[_]      ⇒ JsArray(s.map(toJson))
+    case null           ⇒ JsNull
+    case o ⇒
+      println(s"*** ERROR *** : unexpected value for toJson : $o (${o.getClass})")
+      JsNull
+  }
 
   @scala.annotation.tailrec
   def isIndexMissing(t: Throwable): Boolean = t match {
+    case SearchError(_, _, ElasticError("index_not_found_exception", _, _, _, _, _)) ⇒ true
     case t: RemoteTransportException ⇒ isIndexMissing(t.getCause)
-    case _: IndexNotFoundException   ⇒ true
-    case _                           ⇒ false
+    case _: IndexNotFoundException ⇒ true
+    case _ ⇒ false
   }
 }

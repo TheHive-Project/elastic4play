@@ -2,21 +2,18 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 
-import scala.concurrent.{ ExecutionContext, Future }
-
-import play.api.Logger
-import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json._
-
 import akka.stream.scaladsl.Sink
-import com.sksamuel.elastic4s.RefreshPolicy
 import com.sksamuel.elastic4s.http.ElasticDsl.indexInto
 import com.sksamuel.elastic4s.http.ElasticError
 import com.sksamuel.elastic4s.indexes.IndexDefinition
 import com.sksamuel.elastic4s.streams.RequestBuilder
-
 import org.elastic4play.models.BaseEntity
 import org.elastic4play.{ InternalError, SearchError }
+import play.api.Logger
+import play.api.libs.json.JsValue.jsValueToJsLookup
+import play.api.libs.json._
+
+import scala.concurrent.{ ExecutionContext, Future }
 
 /**
   * Service lass responsible for entity creation
@@ -62,7 +59,7 @@ class DBCreate @Inject() (
     db
       .execute {
         addId(id).andThen(addParent(parentId)).andThen(addRouting(routing)) {
-          indexInto(db.indexName, modelName).source(docSource).refresh(RefreshPolicy.WAIT_UNTIL)
+          indexInto(db.indexName, modelName).source(docSource).refreshImmediately // FIXME .refresh(RefreshPolicy.WAIT_UNTIL)
         }
       }
       .map { indexResponse ⇒
