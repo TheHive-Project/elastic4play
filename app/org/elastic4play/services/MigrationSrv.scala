@@ -5,15 +5,17 @@ import javax.inject.{ Inject, Singleton }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success }
 
-import play.api.Logger
+import play.api.{ Configuration, Logger }
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json._
 
 import akka.NotUsed
-import akka.stream.Materializer
+import akka.actor.ActorSystem
+import akka.stream.{ ActorMaterializer, ActorMaterializerSettings, Materializer }
 import akka.stream.scaladsl.{ Sink, Source }
 import com.sksamuel.elastic4s.ElasticDsl.search
+import com.typesafe.config.Config
 
 import org.elastic4play.InternalError
 import org.elastic4play.database._
@@ -43,6 +45,7 @@ object DatabaseState {
 
 @Singleton
 class MigrationSrv @Inject() (
+    configuration: Configuration,
     migration: MigrationOperations,
     db: DBConfiguration,
     dbcreate: DBCreate,
@@ -52,8 +55,13 @@ class MigrationSrv @Inject() (
     dbindex: DBIndex,
     modelSrv: ModelSrv,
     eventSrv: EventSrv,
-    implicit val ec: ExecutionContext,
-    implicit val materializer: Materializer) {
+    implicit val system: ActorSystem,
+    implicit val ec: ExecutionContext) {
+
+  implicit val mat: Materializer = {
+    val materializerSettings = configuration.getOptional[Config]("migration.stream").map(ActorMaterializerSettings.apply)
+    ActorMaterializer(materializerSettings, None)
+  }
 
   private[MigrationSrv] lazy val logger = Logger(getClass)
 
