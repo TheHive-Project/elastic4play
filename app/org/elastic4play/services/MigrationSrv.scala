@@ -81,10 +81,11 @@ class MigrationSrv @Inject() (
   /* Last version of database */
   case class OriginState(db: DBConfiguration) extends DatabaseState {
     private val currentdbfind = dbfind.switchTo(db)
+    private lazy val currentdbget = new DBGet(db, ec)
     override def version: Int = db.version
     override def source(tableName: String): Source[JsObject, NotUsed] = currentdbfind.apply(Some("all"), Nil)(indexName ⇒ search(indexName → tableName).matchAllQuery)._1
-    override def count(tableName: String): Future[Long] = new DBIndex(db, 0, 0, ec).getSize(tableName)
-    override def getEntity(tableName: String, entityId: String): Future[JsObject] = dbget(tableName, entityId)
+    override def count(tableName: String): Future[Long] = new DBIndex(db, 0, 0, Map.empty, ec).getSize(tableName)
+    override def getEntity(tableName: String, entityId: String): Future[JsObject] = currentdbget(tableName, entityId)
   }
 
   /* If there is no database, use empty one */
@@ -96,7 +97,7 @@ class MigrationSrv @Inject() (
   }
 
   def migrationPath(db: DBConfiguration): Future[(Int, DatabaseState)] = {
-    new DBIndex(db, 0, 0, ec).getIndexStatus.flatMap {
+    new DBIndex(db, 0, 0, Map.empty, ec).getIndexStatus.flatMap {
       case true ⇒
         logger.info(s"Initiate database migration from version ${db.version}")
         Future.successful(db.version → OriginState(db))
