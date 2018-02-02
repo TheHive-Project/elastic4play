@@ -5,8 +5,13 @@
 
 **Implemented enhancements:**
 
+- Add settings in index creation [\#47](https://github.com/TheHive-Project/elastic4play/issues/47)
 - Make migration streams configurable [\#46](https://github.com/TheHive-Project/elastic4play/issues/46)
-- Stream is not cluster ready [\#41](https://github.com/TheHive-Project/elastic4play/issues/41)
+- Manage concurrent updates [\#44](https://github.com/TheHive-Project/elastic4play/issues/44)
+
+**Fixed bugs:**
+
+- getEntity of migration service doesn't use the right index [\#48](https://github.com/TheHive-Project/elastic4play/issues/48)
 
 ## [1.4.2](https://github.com/TheHive-Project/elastic4play/tree/1.4.2) (2018-01-10)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.1...1.4.2)
