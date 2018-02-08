@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.4.4](https://github.com/TheHive-Project/elastic4play/tree/1.4.4) (2018-02-08)
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.3...1.4.4)
+
+**Fixed bugs:**
+
+- Version of document is not retrieve [\#49](https://github.com/TheHive-Project/elastic4play/issues/49)
+
 ## [1.4.3](https://github.com/TheHive-Project/elastic4play/tree/1.4.3) (2018-02-02)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.2...1.4.3)
 

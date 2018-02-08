@@ -101,7 +101,7 @@ class DBFind(
   def apply(range: Option[String], sortBy: Seq[String])(query: (String) ⇒ SearchDefinition): (Source[JsObject, NotUsed], Future[Long]) = {
     val (offset, limit) = getOffsetAndLimitFromRange(range)
     val sortDef = DBUtils.sortDefinition(sortBy)
-    val searchDefinition = query(db.indexName).storedFields("_source", "_routing", "_parent").start(offset).sortBy(sortDef)
+    val searchDefinition = query(db.indexName).storedFields("_source", "_routing", "_parent").start(offset).sortBy(sortDef).version(true)
 
     logger.debug(s"search in ${searchDefinition.indexesTypes.indexes.mkString(",")} / ${searchDefinition.indexesTypes.types.mkString(",")} ${SearchBuilderFn(db.client.java, searchDefinition)}")
     val (src, total) = if (limit > 2 * pageSize) {
