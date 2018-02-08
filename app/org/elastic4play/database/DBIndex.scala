@@ -16,6 +16,7 @@ class DBIndex(
     db: DBConfiguration,
     nbShards: Int,
     nbReplicas: Int,
+    settings: Map[String, Any],
     implicit val ec: ExecutionContext) {
 
   @Inject def this(
@@ -25,6 +26,13 @@ class DBIndex(
     db,
     configuration.getOptional[Int]("search.nbshards").getOrElse(5),
     configuration.getOptional[Int]("search.nbreplicas").getOrElse(1),
+    configuration.getOptional[Configuration]("search.settings")
+      .fold(Map.empty[String, Any]) { settings ⇒
+        settings
+          .entrySet
+          .toMap
+          .mapValues(_.unwrapped)
+      },
     ec)
 
   private[DBIndex] lazy val logger = Logger(getClass)
@@ -55,10 +63,13 @@ class DBIndex(
       .toSeq
     db
       .execute {
-        CreateIndexDefinition(db.indexName)
+        val createIndexDefinition = CreateIndexDefinition(db.indexName)
           .mappings(modelsMapping)
           .shards(nbShards)
           .replicas(nbReplicas)
+        settings.foldLeft(createIndexDefinition) {
+          case (cid, (key, value)) ⇒ cid.indexSetting(key, value)
+        }
       }
       .map { _ ⇒ () }
   }

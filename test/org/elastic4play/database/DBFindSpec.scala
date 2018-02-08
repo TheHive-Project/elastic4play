@@ -176,7 +176,7 @@ class DBFindSpec extends PlaySpecification with Mockito {
 
       val db = mock[DBConfiguration]
       val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
-      dbfind.hit2json(hit) must_== (doc +
+      DBUtils.hit2json(hit) must_== (doc +
         ("_id" → JsString(id)) +
         ("_parent" → JsString(parent)) +
         ("_routing" → JsString(routing)) +
