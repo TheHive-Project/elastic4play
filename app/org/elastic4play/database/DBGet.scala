@@ -29,6 +29,7 @@ class DBGet @Inject() (
         search(db.indexName)
           .query(idsQuery(id).types(modelName))
           .size(1)
+          .version(true)
       }
       .map { searchResponse ⇒
         searchResponse
