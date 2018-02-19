@@ -5,7 +5,6 @@ import java.util.Date
 import javax.inject.{ Inject, Singleton }
 import javax.naming.ldap.LdapName
 
-import scala.collection.JavaConverters._
 import scala.concurrent.duration.{ DurationLong, FiniteDuration }
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.JavaConverters._
@@ -226,7 +225,7 @@ class Authenticated(
     * If user has sufficient right (have required role) action is executed
     * otherwise, action returns a not authorized error
     */
-  def apply(requiredRole: Role): ActionBuilder[AuthenticatedRequest, AnyContent] =
+  def apply(requiredRole: Role*): ActionBuilder[AuthenticatedRequest, AnyContent] =
     new ActionBuilder[AuthenticatedRequest, AnyContent] {
       val executionContext: ExecutionContext = ec
 
@@ -234,7 +233,7 @@ class Authenticated(
 
       def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) ⇒ Future[Result]): Future[Result] = {
         getContext(request).flatMap { authContext ⇒
-          if (authContext.roles.contains(requiredRole))
+          if (requiredRole.isEmpty || requiredRole.toSet.intersect(authContext.roles.toSet).nonEmpty)
             block(new AuthenticatedRequest(authContext, request))
               .map(result ⇒ setSessingUser(result, authContext)(request))
           else

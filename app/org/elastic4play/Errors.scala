@@ -32,6 +32,7 @@ case class AttributeCheckingError(
 sealed trait AttributeError extends Throwable {
   def withName(name: String): AttributeError
   val name: String
+  override def getMessage: String = toString
 }
 
 case class InvalidFormatAttributeError(name: String, format: String, value: InputValue) extends AttributeError {
