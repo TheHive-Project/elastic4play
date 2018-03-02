@@ -39,7 +39,7 @@ object JsonFormat {
     Json.obj(
       "tableName" → ace.tableName,
       "type" → "AttributeCheckingError",
-      "errors" → Json.arr(ace.errors.map {
+      "errors" → JsArray(ace.errors.map {
         case e: InvalidFormatAttributeError  ⇒ invalidFormatAttributeErrorWrites.writes(e)
         case e: UnknownAttributeError        ⇒ unknownAttributeErrorWrites.writes(e)
         case e: UpdateReadOnlyAttributeError ⇒ updateReadOnlyAttributeErrorWrites.writes(e)
