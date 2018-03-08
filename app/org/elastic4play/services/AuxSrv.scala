@@ -30,7 +30,10 @@ class AuxSrv @Inject() (
     JsObject(
       entity.attributes.fields
         .map { case (name, value) ⇒ (name, value, entity.model.attributes.find(_.attributeName == name)) }
-        .collect { case (name, value, Some(desc)) if !desc.options.contains(AttributeOption.unaudited) ⇒ name → value }) +
+        .collect {
+          case (name, value, Some(desc)) if !desc.options.contains(AttributeOption.unaudited) ⇒ name → value
+          case (name, value, _) if name.startsWith("_")                                       ⇒ name → value
+        }) +
       ("id" → JsString(entity.id)) +
       ("_type" → JsString(entity.model.modelName))
   }
