@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.4.5](https://github.com/TheHive-Project/elastic4play/tree/1.4.5)
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.4...1.4.5)
+
+**Fixed bugs:**
+
+- Meta attributes are filtered when entities are converted to json [\#50](https://github.com/TheHive-Project/elastic4play/issues/50)
+
 ## [1.4.4](https://github.com/TheHive-Project/elastic4play/tree/1.4.4) (2018-02-08)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.3...1.4.4)
 

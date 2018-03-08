@@ -108,12 +108,14 @@ class BaseEntity(val model: BaseModelDef, val attributes: JsObject) {
   private final def removeProtectedAttributes(attrs: JsObject) = JsObject {
     attrs.fields
       .map { case (name, value) ⇒ (name, value, model.attributes.find(_.attributeName == name)) }
-      .collect { case (name, value, Some(desc)) if !desc.isSensitive ⇒ name → value }
+      .collect {
+        case (name, value, Some(desc)) if !desc.isSensitive ⇒ name → value
+        case (name, value, _) if name.startsWith("_")       ⇒ name → value
+      }
   }
 
   def toJson = removeProtectedAttributes(attributes) +
-    ("id" → JsString(id)) +
-    ("_type" → JsString(model.modelName))
+    ("id" → JsString(id))
 
   /* compute auxiliary data */
   override def toString = Json.prettyPrint(toJson)
