@@ -58,9 +58,9 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
 
       val id = "42"
       getSrv[TestModel, TestEntity](model, id) returns Future.successful(entity)
-      dbRemove(model, entity) returns Future.successful(true)
+      dbRemove(entity) returns Future.successful(true)
       deleteSrv.realDelete[TestModel, TestEntity](model, id).await must not(throwA[Exception])
-      there was one(dbRemove).apply(model, entity)
+      there was one(dbRemove).apply(entity)
     }
 
     "returns error if entity can't be retrieve" in {
@@ -85,7 +85,7 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
 
       val id = "42"
       getSrv[TestModel, TestEntity](model, id) returns Future.successful(entity)
-      dbRemove(model, entity) returns Future.successful(false)
+      dbRemove(entity) returns Future.successful(false)
       deleteSrv.realDelete[TestModel, TestEntity](model, id).await must throwA[NotFoundError]
     }
   }

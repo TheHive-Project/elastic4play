@@ -8,7 +8,7 @@ import play.api.libs.json.JsObject
 
 import org.elastic4play.NotFoundError
 import org.elastic4play.database.{ DBRemove, ModifyConfig }
-import org.elastic4play.models.{ AbstractModelDef, EntityDef }
+import org.elastic4play.models.{ AbstractModelDef, BaseEntity, EntityDef }
 
 @Singleton
 class DeleteSrv @Inject() (
@@ -27,13 +27,13 @@ class DeleteSrv @Inject() (
   }
 
   def realDelete[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, id: String)(implicit authContext: AuthContext): Future[Unit] = {
-    getSrv[M, E](model, id).flatMap(entity ⇒ realDelete(model, entity))
+    getSrv[M, E](model, id).flatMap(entity ⇒ realDelete(entity))
   }
 
-  def realDelete[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, entity: E)(implicit authContext: AuthContext): Future[Unit] = {
-    dbremove(model, entity).map { isFound ⇒
+  def realDelete[E <: BaseEntity](entity: E)(implicit authContext: AuthContext): Future[Unit] = {
+    dbremove(entity).map { isFound ⇒
       if (isFound) eventSrv.publish(AuditOperation(entity, AuditableAction.Delete, JsObject.empty, authContext))
-      else throw NotFoundError(s"${model.modelName} ${entity.id} not found")
+      else throw NotFoundError(s"${entity.model.modelName} ${entity.id} not found")
     }
   }
 }
