@@ -32,7 +32,7 @@ class DeleteSrv @Inject() (
 
   def realDelete[E <: BaseEntity](entity: E)(implicit authContext: AuthContext): Future[Unit] = {
     dbremove(entity).map { isFound ⇒
-      if (isFound) eventSrv.publish(AuditOperation(entity, AuditableAction.Delete, JsObject.empty, authContext))
+      if (isFound) eventSrv.publish(AuditOperation(entity, AuditableAction.Delete, entity.toJson, authContext))
       else throw NotFoundError(s"${entity.model.modelName} ${entity.id} not found")
     }
   }
