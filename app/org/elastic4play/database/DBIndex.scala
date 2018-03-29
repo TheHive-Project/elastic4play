@@ -2,11 +2,13 @@ package org.elastic4play.database
 
 import javax.inject.{ Inject, Singleton }
 
+import scala.collection.JavaConverters.asScalaSetConverter
 import scala.concurrent.{ ExecutionContext, Future, blocking }
 
 import play.api.{ Configuration, Logger }
 
 import com.sksamuel.elastic4s.ElasticDsl.{ RichFuture, clusterHealth, index, mapping, search }
+import com.sksamuel.elastic4s.cluster.ClusterStatsDefinition
 import com.sksamuel.elastic4s.indexes.CreateIndexDefinition
 
 import org.elastic4play.models.{ ChildModelDef, ModelAttributes, ModelDef }
@@ -146,5 +148,12 @@ class DBIndex(
 
   def clusterStatusName: String = blocking {
     getClusterStatusName.await
+  }
+
+  def clusterVersions: Future[Seq[String]] = {
+    db.execute(ClusterStatsDefinition())
+      .map { clusterStatsResponse ⇒
+        clusterStatsResponse.getNodesStats.getVersions.asScala.toSeq.map(_.toString)
+      }
   }
 }

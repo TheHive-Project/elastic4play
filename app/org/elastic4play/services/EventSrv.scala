@@ -1,16 +1,18 @@
 package org.elastic4play.services
 
 import java.util.Date
-import javax.inject.Singleton
+import javax.inject.{ Inject, Singleton }
 
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
 import play.api.Logger
 import play.api.libs.json.JsObject
-import play.api.mvc.{ RequestHeader, Result }
+import play.api.mvc.{ Filter, RequestHeader, Result }
 
 import akka.actor.{ ActorRef, actorRef2Scala }
 import akka.event.{ ActorEventBus, SubchannelClassification }
+import akka.stream.Materializer
 import akka.util.Subclassification
 
 import org.elastic4play.models.{ BaseEntity, HiveEnumeration }
@@ -24,6 +26,8 @@ object AuditableAction extends Enumeration with HiveEnumeration {
 
 case class RequestProcessStart(request: RequestHeader) extends EventMessage
 case class RequestProcessEnd(request: RequestHeader, result: Try[Result]) extends EventMessage
+case class InternalRequestProcessStart(requestId: String) extends EventMessage
+case class InternalRequestProcessEnd(requestId: String) extends EventMessage
 
 case class AuditOperation(
     entity: BaseEntity,
@@ -31,6 +35,19 @@ case class AuditOperation(
     details: JsObject,
     authContext: AuthContext,
     date: Date = new Date()) extends EventMessage
+
+@Singleton
+class EventFilter @Inject() (
+    eventSrv: EventSrv,
+    implicit val mat: Materializer,
+    implicit val ec: ExecutionContext) extends Filter {
+  def apply(nextFilter: RequestHeader ⇒ Future[Result])(requestHeader: RequestHeader): Future[Result] = {
+    eventSrv.publish(RequestProcessStart(requestHeader))
+    nextFilter(requestHeader).andThen {
+      case result ⇒ eventSrv.publish(RequestProcessEnd(requestHeader, result))
+    }
+  }
+}
 
 @Singleton
 class EventSrv extends ActorEventBus with SubchannelClassification {

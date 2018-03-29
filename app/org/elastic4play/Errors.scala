@@ -18,6 +18,7 @@ case class UpdateError(status: Option[String], message: String, attributes: JsOb
 case class InternalError(message: String) extends Exception(message)
 case class SearchError(message: String, cause: Throwable) extends Exception(message, cause)
 case class AuthenticationError(message: String) extends Exception(message)
+case class OAuth2Redirect(redirectUrl: String, params: Map[String, Seq[String]]) extends Exception(redirectUrl)
 case class AuthorizationError(message: String) extends Exception(message)
 case class MultiError(message: String, exceptions: Seq[Exception]) extends Exception(message + exceptions.map(_.getMessage).mkString(" :\n\t- ", "\n\t- ", ""))
 
@@ -31,6 +32,7 @@ case class AttributeCheckingError(
 sealed trait AttributeError extends Throwable {
   def withName(name: String): AttributeError
   val name: String
+  override def getMessage: String = toString
 }
 
 case class InvalidFormatAttributeError(name: String, format: String, value: InputValue) extends AttributeError {
