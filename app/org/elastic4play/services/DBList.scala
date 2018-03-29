@@ -85,7 +85,7 @@ class DBLists @Inject() (
 
   def deleteItem(item: DBListItemEntity)(implicit authContext: AuthContext): Future[Unit] = {
     for {
-      _ ← deleteSrv.get.realDelete[DBListModel, DBListItemEntity](dblistModel, item)
+      _ ← deleteSrv.get.realDelete(item)
       _ = cache.remove(dblistModel.modelName + "_" + item.dblist)
     } yield ()
   }

@@ -19,18 +19,20 @@ import akka.util.ByteString
 
 import org.elastic4play.controllers.JsonFormat.{ attachmentInputValueReads, fileInputValueFormat }
 import org.elastic4play.controllers.{ AttachmentInputValue, FileInputValue, JsonInputValue }
-import org.elastic4play.database.DBCreate
+import org.elastic4play.database.{ DBCreate, DBFind, DBRemove }
 import org.elastic4play.models.{ AttributeDef, BaseModelDef, EntityDef, ModelDef, AttributeFormat ⇒ F }
 import org.elastic4play.services.JsonFormat.attachmentFormat
 import org.elastic4play.utils.{ Hash, Hasher }
 import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, MissingAttributeError }
 
 case class Attachment(name: String, hashes: Seq[Hash], size: Long, contentType: String, id: String)
+
 object Attachment {
   def apply(id: String, hashes: Seq[Hash], fiv: FileInputValue): Attachment = Attachment(fiv.name, hashes, Files.size(fiv.filepath), fiv.contentType, id)
 }
 
-trait AttachmentAttributes { _: AttributeDef ⇒
+trait AttachmentAttributes {
+  _: AttributeDef ⇒
   val data: A[Array[Byte]] = attribute("binary", F.binaryFmt, "data")
 }
 
@@ -38,6 +40,7 @@ trait AttachmentAttributes { _: AttributeDef ⇒
 class AttachmentModel(datastoreName: String) extends ModelDef[AttachmentModel, AttachmentChunk](datastoreName, "Attachment", "/datastore") with AttachmentAttributes {
   @Inject() def this(configuration: Configuration) = this(configuration.get[String]("datastore.name"))
 }
+
 class AttachmentChunk(model: AttachmentModel, attributes: JsObject) extends EntityDef[AttachmentModel, AttachmentChunk](model, attributes) with AttachmentAttributes
 
 @Singleton
@@ -46,7 +49,10 @@ class AttachmentSrv(
     extraHashes: Seq[String],
     chunkSize: Int,
     dbCreate: DBCreate,
+    dbRemove: DBRemove,
+    dbFind: DBFind,
     getSrv: GetSrv,
+    findSrv: FindSrv,
     attachmentModel: AttachmentModel,
     implicit val ec: ExecutionContext,
     implicit val mat: Materializer) {
@@ -54,7 +60,10 @@ class AttachmentSrv(
   @Inject() def this(
       configuration: Configuration,
       dbCreate: DBCreate,
+      dbRemove: DBRemove,
       getSrv: GetSrv,
+      dbFind: DBFind,
+      findSrv: FindSrv,
       attachmentModel: AttachmentModel,
       ec: ExecutionContext,
       mat: Materializer) =
@@ -63,7 +72,10 @@ class AttachmentSrv(
       configuration.get[Seq[String]]("datastore.hash.extra"),
       configuration.underlying.getBytes("datastore.chunksize").toInt,
       dbCreate,
+      dbRemove,
+      dbFind,
       getSrv,
+      findSrv,
       attachmentModel,
       ec,
       mat)
@@ -155,4 +167,33 @@ class AttachmentSrv(
   def stream(id: String): InputStream = source(id).runWith(StreamConverters.asInputStream(1.minute))
 
   def getHashes(id: String): Future[Seq[Hash]] = extraHashers.fromSource(source(id))
+
+  def attachmentUseCount(attachmentId: String): Future[Long] = {
+    import org.elastic4play.services.QueryDSL._
+    findSrv(None, "attachment.id" ~= attachmentId, Some("0-0"), Nil)._2
+  }
+
+  def delete(id: String): Future[Unit] = {
+    def removeChunks(chunkNumber: Int = 0): Future[Unit] = {
+      getSrv[AttachmentModel, AttachmentChunk](attachmentModel, s"${id}_$chunkNumber")
+        .map { chunk ⇒ dbRemove(chunk) }
+        .flatMap { _ ⇒ removeChunks(chunkNumber + 1) }
+    }
+
+    removeChunks().recover { case _ ⇒ () }
+  }
+
+  def cleanup: Future[Unit] = {
+    import com.sksamuel.elastic4s.ElasticDsl.{ search, RichString }
+    dbFind(Some("all"), Nil)(index ⇒ search(index / attachmentModel.modelName).fetchSource(false))._1
+      .mapConcat(o ⇒ (o \ "_id").asOpt[String].toList)
+      .collect { case id if id.endsWith("_0") ⇒ id.dropRight(2) }
+      .mapAsync(1) { id ⇒ attachmentUseCount(id).map(id -> _) }
+      .mapAsync(1) {
+        case (id, 0L) ⇒ delete(id)
+        case _        ⇒ Future.successful(())
+      }
+      .runWith(Sink.ignore)
+      .map(_ ⇒ ())
+  }
 }

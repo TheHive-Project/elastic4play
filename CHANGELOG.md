@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.4.6](https://github.com/TheHive-Project/elastic4play/tree/1.4.6)
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.5...1.4.6)
+
+**Implemented enhancements:**
+
+- Add the ability to remove datastore entry [\#54](https://github.com/TheHive-Project/elastic4play/issues/54)
+
 ## [1.4.5](https://github.com/TheHive-Project/elastic4play/tree/1.4.5)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.4...1.4.5)
 
@@ -14,7 +21,7 @@
 
 - Version of document is not retrieve [\#49](https://github.com/TheHive-Project/elastic4play/issues/49)
 
-## [1.4.3](https://github.com/TheHive-Project/elastic4play/tree/1.4.3) (2018-02-02)
+## [1.4.3](https://github.com/TheHive-Project/elastic4play/tree/1.4.3) (2018-02-08)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.2...1.4.3)
 
 **Implemented enhancements:**
