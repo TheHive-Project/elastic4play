@@ -1,13 +1,27 @@
 # Change Log
 
-## [1.4.6](https://github.com/TheHive-Project/elastic4play/tree/1.4.6)
+## [1.5.0](https://github.com/TheHive-Project/elastic4play/tree/1.5.0) (2018-03-29)
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.6...1.5.0)
+
+**Implemented enhancements:**
+
+- Get version of ElasticSearch cluster [\#51](https://github.com/TheHive-Project/elastic4play/issues/51)
+- Add ability to provide multiple roles on controller helper [\#52](https://github.com/TheHive-Project/elastic4play/issues/52)
+- Stream is not cluster ready [\#41](https://github.com/TheHive-Project/elastic4play/issues/41)
+- OAuth2 Single Sign-on support [\#42](https://github.com/TheHive-Project/elastic4play/issues/42)
+
+**Merged pull requests:**
+
+- Add support for OAuth2 SSO [\#43](https://github.com/TheHive-Project/elastic4play/pull/43) ([saibot94](https://github.com/saibot94))
+
+## [1.4.6](https://github.com/TheHive-Project/elastic4play/tree/1.4.6) (2018-03-29)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.5...1.4.6)
 
 **Implemented enhancements:**
 
 - Add the ability to remove datastore entry [\#54](https://github.com/TheHive-Project/elastic4play/issues/54)
 
-## [1.4.5](https://github.com/TheHive-Project/elastic4play/tree/1.4.5)
+## [1.4.5](https://github.com/TheHive-Project/elastic4play/tree/1.4.5) (2018-03-08)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.4...1.4.5)
 
 **Fixed bugs:**
