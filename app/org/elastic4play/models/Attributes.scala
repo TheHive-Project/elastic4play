@@ -47,6 +47,7 @@ object AttributeFormat {
   val stringFmt = StringAttributeFormat
   val userFmt = UserAttributeFormat
   val booleanFmt = BooleanAttributeFormat
+  val orgFmt = OrganizationAttributeFormat
   val numberFmt = NumberAttributeFormat
   val attachmentFmt = AttachmentAttributeFormat
   val metricsFmt = MetricsAttributeFormat
