@@ -70,7 +70,7 @@ class ClientAuthSSLEngineProvider(serverConfig: ServerConfig, appProvider: Appli
     sslParameters.setUseCipherSuitesOrder(true)
 
     // http://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#SSLParameters
-    val needClientAuth = config.getOptional[Boolean]("play.server.https.needClientAuth").getOrElse(false)
+    val needClientAuth = config.getOptional[Boolean]("auth.method.pki").getOrElse(false)
     logger.info(s"Client certificate authentication is ${if (needClientAuth) "enable" else "disable"}")
     sslParameters.setNeedClientAuth(needClientAuth)
 
