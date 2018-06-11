@@ -17,13 +17,14 @@ resolvers += "elasticsearch-releases" at "https://artifacts.elastic.co/maven"
 
 libraryDependencies ++= Seq(
   cacheApi,
-  "com.sksamuel.elastic4s" %% "elastic4s-core" % "5.6.0",
-  "com.sksamuel.elastic4s" %% "elastic4s-streams" % "5.6.0",
-  "com.sksamuel.elastic4s" %% "elastic4s-tcp" % "5.6.0",
-  "com.sksamuel.elastic4s" %% "elastic4s-xpack-security" % "5.6.0",
+  "com.sksamuel.elastic4s" %% "elastic4s-core" % "5.6.6",
+  "com.sksamuel.elastic4s" %% "elastic4s-streams" % "5.6.6",
+  "com.sksamuel.elastic4s" %% "elastic4s-tcp" % "5.6.6",
+  "com.sksamuel.elastic4s" %% "elastic4s-xpack-security" % "5.6.6",
   "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.6" % Test,
   "org.scalactic" %% "scalactic" % "3.0.4",
   "org.bouncycastle" % "bcprov-jdk15on" % "1.58",
+  "com.floragunn" % "search-guard-ssl" % "5.6.9-23",
   specs2 % Test
 )
 
