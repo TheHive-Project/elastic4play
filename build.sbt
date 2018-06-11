@@ -9,7 +9,7 @@ organizationHomepage := Some(url("https://thehive-project.org/"))
 licenses += "AGPL-V3" -> url("https://www.gnu.org/licenses/agpl-3.0.html")
 
 lazy val elastic4play = (project in file("."))
-  .enablePlugins(PlayScala)
+  .enablePlugins(PlayScala, PlayAkkaHttp2Support)
 
 scalaVersion := "2.12.4"
 
