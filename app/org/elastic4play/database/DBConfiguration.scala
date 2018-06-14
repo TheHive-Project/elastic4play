@@ -46,6 +46,10 @@ class DBConfiguration(
     baseIndexName: String,
     xpackUsername: Option[String],
     xpackPassword: Option[String],
+    xpackSSL: Boolean,
+    xpackCAPath: Option[String],
+    xpackCertificatePath: Option[String],
+    xpackKeyPath: Option[String],
     lifecycle: ApplicationLifecycle,
     val version: Int,
     implicit val ec: ExecutionContext,
@@ -63,6 +67,10 @@ class DBConfiguration(
       configuration.get[String]("search.index"),
       configuration.getOptional[String]("search.username"),
       configuration.getOptional[String]("search.password"),
+      configuration.getOptional[Boolean]("search.ssl.enabled").getOrElse(false),
+      configuration.getOptional[String]("search.ssl.ca"),
+      configuration.getOptional[String]("search.ssl.certificate"),
+      configuration.getOptional[String]("search.ssl.key"),
       lifecycle,
       version,
       ec,
@@ -76,15 +84,21 @@ class DBConfiguration(
     val settings = Settings.builder()
     settings.put("cluster.name", searchCluster)
 
-    val xpackClient = for {
-      username ← xpackUsername
-      if username.nonEmpty
-      password ← xpackPassword
-      if password.nonEmpty
-      _ = settings.put("xpack.security.user", s"$username:$password")
-    } yield XPackElasticClient(settings.build(), uri)
+    if (xpackUsername.isDefined && xpackPassword.isDefined) {
+      settings.put("xpack.security.user", s"${xpackUsername.toString}:${xpackPassword.toString}")
+    }
+    if (xpackSSL) {
+      settings.put("xpack.security.transport.ssl.enabled", "true")
+    }
+    if (xpackCAPath.isDefined) {
+      settings.put("xpack.ssl.certificate_authorities", xpackCAPath.toString)
+    }
+    if (xpackCertificatePath.isDefined && xpackKeyPath.isDefined) {
+      settings.put("xpack.ssl.certificate", xpackCertificatePath.toString)
+      settings.put("xpack.ssl.key", xpackKeyPath.toString)
+    }
 
-    xpackClient.getOrElse(TcpClient.transport(settings.build(), uri))
+    XPackElasticClient(settings.build(), uri)
   }
 
   /**
@@ -155,5 +169,5 @@ class DBConfiguration(
   /**
     * return a new instance of DBConfiguration that points to the previous version of the index schema
     */
-  def previousVersion: DBConfiguration = new DBConfiguration(searchHost, searchCluster, baseIndexName, xpackUsername, xpackPassword, lifecycle, version - 1, ec, actorSystem)
+  def previousVersion: DBConfiguration = new DBConfiguration(searchHost, searchCluster, baseIndexName, xpackUsername, xpackPassword, xpackSSL, xpackCAPath, xpackCertificatePath, xpackKeyPath, lifecycle, version - 1, ec, actorSystem)
 }
