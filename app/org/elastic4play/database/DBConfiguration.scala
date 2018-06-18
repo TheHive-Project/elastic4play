@@ -47,6 +47,10 @@ class DBConfiguration(
     baseIndexName: String,
     xpackUsername: Option[String],
     xpackPassword: Option[String],
+    xpackSSL: Boolean,
+    xpackCAPath: Option[String],
+    xpackCertificatePath: Option[String],
+    xpackKeyPath: Option[String],
     sgKeystorePath: Option[String],
     sgTruststorePath: Option[String],
     sgKeystorePassword: Option[String],
@@ -70,6 +74,10 @@ class DBConfiguration(
       configuration.get[String]("search.index"),
       configuration.getOptional[String]("search.username"),
       configuration.getOptional[String]("search.password"),
+      configuration.getOptional[Boolean]("search.ssl.enabled").getOrElse(false),
+      configuration.getOptional[String]("search.ssl.ca"),
+      configuration.getOptional[String]("search.ssl.certificate"),
+      configuration.getOptional[String]("search.ssl.key"),
       configuration.getOptional[String]("search.guard.keyStore.path"),
       configuration.getOptional[String]("search.guard.trustStore.path"),
       configuration.getOptional[String]("search.guard.keyStore.password"),
@@ -90,8 +98,16 @@ class DBConfiguration(
       if username.nonEmpty
       password ← xpackPassword
       if password.nonEmpty
-      _ = settings.put("xpack.security.user", s"$username:$password")
-    } yield XPackElasticClient(settings.build(), uri)
+    } yield {
+      settings.put("xpack.security.user", s"$username:$password")
+      if (xpackSSL) {
+        settings.put("xpack.security.transport.ssl.enabled", "true")
+        xpackCAPath.foreach(ca ⇒ settings.put("xpack.ssl.certificate_authorities", ca))
+        xpackCertificatePath.foreach(cp ⇒ settings.put("xpack.ssl.certificate", cp))
+        xpackKeyPath.foreach(k ⇒ settings.put("xpack.ssl.key", k))
+      }
+      XPackElasticClient(settings.build(), uri)
+    }
   }
 
   private def sgConnect(uri: ElasticsearchClientUri, settings: Settings.Builder): Option[TcpClient] = {
@@ -195,6 +211,10 @@ class DBConfiguration(
     baseIndexName,
     xpackUsername,
     xpackPassword,
+    xpackSSL,
+    xpackCAPath,
+    xpackCertificatePath,
+    xpackKeyPath,
     sgKeystorePath,
     sgTruststorePath,
     sgKeystorePassword,
