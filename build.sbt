@@ -1,8 +1,8 @@
 name := "elastic4play"
 
-organization := "org.cert-bdf"
+organization := "org.thehive-project"
 
-organizationName := "CERT-BDF"
+organizationName := "TheHive-Project"
 
 organizationHomepage := Some(url("https://thehive-project.org/"))
 
@@ -30,9 +30,9 @@ libraryDependencies ++= Seq(
 
 PlayKeys.externalizeResources := false
 
-bintrayOrganization := Some("cert-bdf")
+bintrayOrganization := Some("thehive-project")
 
-bintrayRepository := "elastic4play"
+bintrayRepository := "maven"
 
 publishMavenStyle := true
 
