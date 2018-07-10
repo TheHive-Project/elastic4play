@@ -140,6 +140,13 @@ class Authenticated(
       }
     } yield authContext
 
+  private def asn1String(obj: ASN1Primitive): String = obj match {
+    case ds: DERUTF8String    ⇒ DERUTF8String.getInstance(ds).getString
+    case to: ASN1TaggedObject ⇒ asn1String(ASN1TaggedObject.getInstance(to).getObject)
+    case os: ASN1OctetString  ⇒ new String(os.getOctets)
+    case as: ASN1String       ⇒ as.getString
+  }
+
   private object CertificateSAN {
     def unapply(l: java.util.List[_]): Option[(String, String)] = {
       val typeValue = for (t ← Option(l.get(0)); v ← Option(l.get(1))) yield t → v
@@ -150,7 +157,8 @@ class Authenticated(
             val asn1 = new ASN1InputStream(new ByteArrayInputStream(value)).readObject()
             val asn1Seq = ASN1Sequence.getInstance(asn1)
             val id = ASN1ObjectIdentifier.getInstance(asn1Seq.getObjectAt(0)).getId
-            val valueStr = DERUTF8String.getInstance(asn1Seq.getObjectAt(1).asInstanceOf[ASN1TaggedObject].getObject).getString
+            val valueStr = asn1String(asn1Seq.getObjectAt(1).toASN1Primitive)
+
             id match {
               case "1.3.6.1.4.1.311.20.2.3" ⇒ "upn" → valueStr
               // Add other object id
