@@ -56,6 +56,10 @@ class TempSrv @Inject() (
     Files.createTempFile(td, prefix, suffix)
   }
 
+  def releaseTemporaryFiles()(implicit authContext: AuthContext): Unit = {
+    releaseTemporaryFiles(authContext.requestId)
+  }
+  
   def releaseTemporaryFiles(request: RequestHeader): Unit = {
     releaseTemporaryFiles(Instance.getRequestId(request))
   }
