@@ -95,7 +95,7 @@ class DBModify @Inject() (
           ("_id" → JsString(entity.id)) +
           ("_routing" → JsString(entity.routing)) +
           ("_parent" → entity.parentId.fold[JsValue](JsNull)(JsString)) +
-          ("_version" -> JsNumber(updateResponse.version)))
+          ("_version" → JsNumber(updateResponse.version)))
       }
   }
 }

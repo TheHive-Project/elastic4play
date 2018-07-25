@@ -187,7 +187,7 @@ class GroupByTime(aggregationName: String, fields: Seq[String], interval: String
           .map(_.processResult(model, RichAggregations(bucket.getAggregations)))
           .reduceOption(_ ++ _)
           .getOrElse(JsObject.empty)
-        // date -> obj(key{avg, min} -> value)
+        // date → obj(key{avg, min} → value)
         bucket.getKey.asInstanceOf[DateTime].getMillis.toString → results
       }.toMap
     }.toMap

@@ -30,7 +30,7 @@ class MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
       }
     }
     else {
-      OptionalAttributeFormat(NumberAttributeFormat).inputValueToJson(subNames.tail, value) //.map(v => JsObject(Seq(subNames.head -> v)))
+      OptionalAttributeFormat(NumberAttributeFormat).inputValueToJson(subNames.tail, value) //.map(v ⇒ JsObject(Seq(subNames.head → v)))
     }
   }
 

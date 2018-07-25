@@ -183,7 +183,7 @@ object Operation {
     def apply(f: String ⇒ Source[JsObject, NotUsed]): String ⇒ Source[JsObject, NotUsed] = o(f)
   }
   def renameEntity(previous: String, next: String): Operation = Operation((f: String ⇒ Source[JsObject, NotUsed]) ⇒ {
-    case `next` ⇒ f(previous).map(_ + ("_type" -> JsString(next)))
+    case `next` ⇒ f(previous).map(_ + ("_type" → JsString(next)))
     case "audit" ⇒ f("audit").map { x ⇒
       (x \ "objectType").asOpt[String] match {
         case Some(`previous`) ⇒ x - "objectType" + ("objectType" → JsString(next))

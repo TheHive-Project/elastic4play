@@ -37,7 +37,7 @@ object DBUtils {
       ("_routing" → hit.fields.get("_routing").map(r ⇒ JsString(r.java.getValue[String])).getOrElse(id)) +
       ("_parent" → hit.fields.get("_parent").map(r ⇒ JsString(r.java.getValue[String])).getOrElse(JsNull)) +
       ("_id" → id) +
-      ("_version" -> JsNumber(hit.version))
+      ("_version" → JsNumber(hit.version))
   }
 
   @scala.annotation.tailrec

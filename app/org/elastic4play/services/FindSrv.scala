@@ -29,7 +29,7 @@ class FindSrv @Inject() (
     val (src, total) = dbfind(range, sortBy)(indexName ⇒ modelName.fold(search(indexName))(m ⇒ search(indexName → m)).query(queryDef.query))
     val entities = src.map { attrs ⇒
       modelName match {
-        //case Some("audit") => auditModel.get()(attrs)
+        //case Some("audit") ⇒ auditModel.get()(attrs)
         case Some(m) ⇒ modelSrv(m).getOrElse(sys.error("TODO"))(attrs)
         case None ⇒
           val tpe = (attrs \ "_type").asOpt[String].getOrElse(sys.error("TODO"))

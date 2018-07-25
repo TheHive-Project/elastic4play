@@ -57,7 +57,7 @@ class CreateSrvSpec extends PlaySpecification with Mockito {
     "returns errors if attribute format is invalid" in {
       val attrs = Json.obj(
         "textAttribute" → true,
-        // "stringAttribute" -> 2134,
+        // "stringAttribute" → 2134,
         "dateAttribute" → "2016-01-28",
         "booleanAttribute" → "true",
         "uuidAttribute" → "ee0caf69560b44539bae72982225e661",

@@ -188,7 +188,7 @@ class AttachmentSrv(
     dbFind(Some("all"), Nil)(index ⇒ search(index / attachmentModel.modelName).fetchSource(false))._1
       .mapConcat(o ⇒ (o \ "_id").asOpt[String].toList)
       .collect { case id if id.endsWith("_0") ⇒ id.dropRight(2) }
-      .mapAsync(1) { id ⇒ attachmentUseCount(id).map(id -> _) }
+      .mapAsync(1) { id ⇒ attachmentUseCount(id).map(id → _) }
       .mapAsync(1) {
         case (id, 0L) ⇒ delete(id)
         case _        ⇒ Future.successful(())

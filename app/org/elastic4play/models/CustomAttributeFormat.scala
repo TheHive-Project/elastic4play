@@ -21,7 +21,7 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
   override def checkJsonForCreation(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = {
     val result = if (subNames.isEmpty && objectIsValid(value)) Good(value)
     else formatError(JsonInputValue(value))
-    logger.debug(s"checkJsonForCreation($subNames, $value) => $result")
+    logger.debug(s"checkJsonForCreation($subNames, $value) ⇒ $result")
     result
   }
 
@@ -53,7 +53,7 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
       case (Seq(_, tpe), v) ⇒ if (fieldIsValid(tpe → v)) Good(value) else formatError(JsonInputValue(value))
       case _                ⇒ formatError(JsonInputValue(value))
     }
-    logger.debug(s"checkJsonForUpdate($subNames, $value) => $result")
+    logger.debug(s"checkJsonForUpdate($subNames, $value) ⇒ $result")
     result
   }
 
