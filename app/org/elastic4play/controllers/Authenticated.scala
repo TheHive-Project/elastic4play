@@ -92,7 +92,7 @@ class Authenticated(
   def getFromSession(request: RequestHeader): Future[AuthContext] = {
     val userId = for {
       userId ← request.session.get(sessionUsername).toRight(AuthenticationError("User session not found"))
-      _ = if (expirationStatus(request) != ExpirationError) Right(()) else Left(AuthenticationError("User session has expired"))
+      _ ← if (expirationStatus(request) != ExpirationError) Right(()) else Left(AuthenticationError("User session has expired"))
     } yield userId
     userId.fold(authError ⇒ Future.failed[AuthContext](authError), id ⇒ userSrv.getFromId(request, id))
   }
