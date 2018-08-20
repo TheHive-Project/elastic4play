@@ -1,7 +1,6 @@
 package org.elastic4play.database
 
 import javax.inject.{ Inject, Named, Singleton }
-
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ ExecutionContext, Future, Promise }
 
@@ -31,6 +30,8 @@ import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse
 import org.elasticsearch.action.delete.DeleteResponse
 import org.elasticsearch.common.settings.Settings
+import com.floragunn.searchguard.ssl.SearchGuardSSLPlugin
+import com.floragunn.searchguard.ssl.util.SSLConfigConstants
 
 import org.elastic4play.Timed
 
@@ -46,6 +47,16 @@ class DBConfiguration(
     baseIndexName: String,
     xpackUsername: Option[String],
     xpackPassword: Option[String],
+    xpackSSL: Boolean,
+    xpackCAPath: Option[String],
+    xpackCertificatePath: Option[String],
+    xpackKeyPath: Option[String],
+    sgKeystorePath: Option[String],
+    sgTruststorePath: Option[String],
+    sgKeystorePassword: Option[String],
+    sgTruststorePassword: Option[String],
+    sgHostVerification: Boolean,
+    sgHostVerificationResolveHostname: Boolean,
     lifecycle: ApplicationLifecycle,
     val version: Int,
     implicit val ec: ExecutionContext,
@@ -63,6 +74,16 @@ class DBConfiguration(
       configuration.get[String]("search.index"),
       configuration.getOptional[String]("search.username"),
       configuration.getOptional[String]("search.password"),
+      configuration.getOptional[Boolean]("search.ssl.enabled").getOrElse(false),
+      configuration.getOptional[String]("search.ssl.ca"),
+      configuration.getOptional[String]("search.ssl.certificate"),
+      configuration.getOptional[String]("search.ssl.key"),
+      configuration.getOptional[String]("search.guard.keyStore.path"),
+      configuration.getOptional[String]("search.guard.trustStore.path"),
+      configuration.getOptional[String]("search.guard.keyStore.password"),
+      configuration.getOptional[String]("search.guard.trustStore.password"),
+      configuration.getOptional[Boolean]("search.guard.hostVerification").getOrElse(false),
+      configuration.getOptional[Boolean]("search.guard.hostVerificationResolveHostname").getOrElse(false),
       lifecycle,
       version,
       ec,
@@ -71,20 +92,49 @@ class DBConfiguration(
 
   private[DBConfiguration] lazy val logger = Logger(getClass)
 
+  private def xpackConnect(uri: ElasticsearchClientUri, settings: Settings.Builder): Option[TcpClient] = {
+    for {
+      username ← xpackUsername
+      if username.nonEmpty
+      password ← xpackPassword
+      if password.nonEmpty
+    } yield {
+      settings.put("xpack.security.user", s"$username:$password")
+      if (xpackSSL) {
+        settings.put("xpack.security.transport.ssl.enabled", "true")
+        xpackCAPath.foreach(ca ⇒ settings.put("xpack.ssl.certificate_authorities", ca))
+        xpackCertificatePath.foreach(cp ⇒ settings.put("xpack.ssl.certificate", cp))
+        xpackKeyPath.foreach(k ⇒ settings.put("xpack.ssl.key", k))
+      }
+      XPackElasticClient(settings.build(), uri)
+    }
+  }
+
+  private def sgConnect(uri: ElasticsearchClientUri, settings: Settings.Builder): Option[TcpClient] = {
+    for {
+      keystorePath ← sgKeystorePath
+      truststorePath ← sgTruststorePath
+      keystorePassword ← sgKeystorePassword
+      truststorePassword ← sgTruststorePassword
+    } yield {
+      settings.put(SSLConfigConstants.SEARCHGUARD_SSL_TRANSPORT_KEYSTORE_FILEPATH, keystorePath)
+      settings.put(SSLConfigConstants.SEARCHGUARD_SSL_TRANSPORT_TRUSTSTORE_FILEPATH, truststorePath)
+      settings.put(SSLConfigConstants.SEARCHGUARD_SSL_TRANSPORT_KEYSTORE_PASSWORD, keystorePassword)
+      settings.put(SSLConfigConstants.SEARCHGUARD_SSL_TRANSPORT_TRUSTSTORE_PASSWORD, truststorePassword)
+      settings.put(SSLConfigConstants.SEARCHGUARD_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION, sgHostVerification)
+      settings.put(SSLConfigConstants.SEARCHGUARD_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION_RESOLVE_HOST_NAME, sgHostVerificationResolveHostname)
+      TcpClient.transport(settings.build(), uri, classOf[SearchGuardSSLPlugin])
+    }
+  }
+
   private def connect(): TcpClient = {
     val uri = ElasticsearchClientUri(s"elasticsearch://${searchHost.mkString(",")}")
     val settings = Settings.builder()
     settings.put("cluster.name", searchCluster)
 
-    val xpackClient = for {
-      username ← xpackUsername
-      if username.nonEmpty
-      password ← xpackPassword
-      if password.nonEmpty
-      _ = settings.put("xpack.security.user", s"$username:$password")
-    } yield XPackElasticClient(settings.build(), uri)
-
-    xpackClient.getOrElse(TcpClient.transport(settings.build(), uri))
+    xpackConnect(uri, settings)
+      .orElse(sgConnect(uri, settings))
+      .getOrElse(TcpClient.transport(settings.build(), uri))
   }
 
   /**
@@ -155,5 +205,24 @@ class DBConfiguration(
   /**
     * return a new instance of DBConfiguration that points to the previous version of the index schema
     */
-  def previousVersion: DBConfiguration = new DBConfiguration(searchHost, searchCluster, baseIndexName, xpackUsername, xpackPassword, lifecycle, version - 1, ec, actorSystem)
+  def previousVersion: DBConfiguration = new DBConfiguration(
+    searchHost,
+    searchCluster,
+    baseIndexName,
+    xpackUsername,
+    xpackPassword,
+    xpackSSL,
+    xpackCAPath,
+    xpackCertificatePath,
+    xpackKeyPath,
+    sgKeystorePath,
+    sgTruststorePath,
+    sgKeystorePassword,
+    sgTruststorePassword,
+    sgHostVerification,
+    sgHostVerificationResolveHostname,
+    lifecycle,
+    version - 1,
+    ec,
+    actorSystem)
 }

@@ -28,7 +28,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
           .map { _ ⇒ obj }
       case _ ⇒ formatError(JsonInputValue(value))
     }
-    logger.debug(s"checkJsonForCreation($subNames, $value) => $result")
+    logger.debug(s"checkJsonForCreation($subNames, $value) ⇒ $result")
     result
   }
 
@@ -78,7 +78,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
           case _ ⇒ formatError(value)
         }
       }
-    logger.debug(s"fromInputValue($subNames, $value) => $result")
+    logger.debug(s"fromInputValue($subNames, $value) ⇒ $result")
     result
   }
 

@@ -72,7 +72,7 @@ class DBCreate @Inject() (
           ("_id" → JsString(indexResponse.id)) +
           ("_parent" → parentId.fold[JsValue](JsNull)(JsString)) +
           ("_routing" → JsString(routing.getOrElse(indexResponse.id))) +
-          ("_version" -> JsNumber(indexResponse.version)),
+          ("_version" → JsNumber(indexResponse.version)),
         convertError(attributes, _))
   }
 

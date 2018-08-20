@@ -118,7 +118,7 @@ case class Attribute[T](
           case other                             ⇒ other
         }))
     }
-    logger.debug(s"$modelName.$attributeName(${format.name}).validateForCreation($value) => $result")
+    logger.debug(s"$modelName.$attributeName(${format.name}).validateForCreation($value) ⇒ $result")
     result
   }
 
@@ -133,7 +133,7 @@ case class Attribute[T](
           case other                             ⇒ other
         })
     }
-    logger.debug(s"$modelName.$attributeName(${format.name}).validateForUpdate($value) => $result")
+    logger.debug(s"$modelName.$attributeName(${format.name}).validateForUpdate($value) ⇒ $result")
     result
   }
 }

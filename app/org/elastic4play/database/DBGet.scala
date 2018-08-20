@@ -25,7 +25,7 @@ class DBGet @Inject() (
   def apply(modelName: String, id: String): Future[JsObject] = {
     db
       .execute {
-        // Search by id is not possible on child entity without routing information => id query
+        // Search by id is not possible on child entity without routing information ⇒ id query
         search(db.indexName)
           .query(idsQuery(id).types(modelName))
           .size(1)

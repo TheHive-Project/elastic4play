@@ -45,11 +45,15 @@ class TempSrv @Inject() (
     case t: Throwable ⇒ logger.warn(s"Fail to remove temporary files ($directory) : $t")
   }
 
+  private def requestTempDir(requestId: String): Path = {
+    tempDir.resolve(requestId.replaceAllLiterally(":", "_"))
+  }
+
   def newTemporaryFile(prefix: String, suffix: String)(implicit authContext: AuthContext): Path = {
-    val td = tempDir.resolve(authContext.requestId)
+    val td = requestTempDir(authContext.requestId)
     if (!Files.exists(td))
       Files.createDirectories(td)
-    Files.createTempFile(tempDir.resolve(authContext.requestId), prefix, suffix)
+    Files.createTempFile(td, prefix, suffix)
   }
 
   def releaseTemporaryFiles()(implicit authContext: AuthContext): Unit = {
@@ -61,9 +65,9 @@ class TempSrv @Inject() (
   }
 
   def releaseTemporaryFiles(requestId: String): Unit = {
-    val d = tempDir.resolve(requestId)
-    if (Files.exists(d))
-      delete(d)
+    val td = requestTempDir(requestId)
+    if (Files.exists(td))
+      delete(td)
   }
 }
 
