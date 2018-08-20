@@ -70,9 +70,9 @@ class ClientAuthSSLEngineProvider(serverConfig: ServerConfig, appProvider: Appli
     sslParameters.setUseCipherSuitesOrder(true)
 
     // http://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#SSLParameters
-    val needClientAuth = config.getOptional[Boolean]("auth.method.pki").getOrElse(false)
-    logger.info(s"Client certificate authentication is ${if (needClientAuth) "enable" else "disable"}")
-    sslParameters.setNeedClientAuth(needClientAuth)
+    val wantClientAuth = config.getOptional[Boolean]("auth.method.pki").getOrElse(false)
+    logger.info(s"Client certificate authentication is ${if (wantClientAuth) "enable" else "disable"}")
+    sslParameters.setWantClientAuth(wantClientAuth)
 
     // Clone and modify the default SSL parameters.
     val engine = sslContext.createSSLEngine
