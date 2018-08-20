@@ -1,13 +1,41 @@
 # Change Log
 
+## [1.6.0](https://github.com/TheHive-Project/elastic4play/tree/1.6.0) (2018-07-31)
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.5.0...1.6.0)
+
+**Implemented enhancements:**
+
+- New TheHive-Project repository [\#58](https://github.com/TheHive-Project/elastic4play/issues/58)
+- Elasticsearch secured by SearchGuard [\#53](https://github.com/TheHive-Project/elastic4play/issues/53)
+
+**Fixed bugs:**
+
+- Race condition when an attachment is saved [\#63](https://github.com/TheHive-Project/elastic4play/issues/63)
+- Session cookie expiration is not correctly checked [\#62](https://github.com/TheHive-Project/elastic4play/issues/62)
+- x.509 PKI - illegal object in getInstance: org.bouncycastle.asn1.DERTaggedObject [\#61](https://github.com/TheHive-Project/elastic4play/issues/61)
+- Entity rename in migration doesn't work [\#60](https://github.com/TheHive-Project/elastic4play/issues/60)
+- Temporary files cannot be created on Windows as their filename contains ":" [\#59](https://github.com/TheHive-Project/elastic4play/issues/59)
+
+**Closed issues:**
+
+- SSL support [\#56](https://github.com/TheHive-Project/elastic4play/issues/56)
+- Single Sign-On with X.509 certificates [\#26](https://github.com/TheHive-Project/elastic4play/issues/26)
+
+**Merged pull requests:**
+
+- Add SSL support [\#57](https://github.com/TheHive-Project/elastic4play/pull/57) ([srilumpa](https://github.com/srilumpa))
+
 ## [1.5.0](https://github.com/TheHive-Project/elastic4play/tree/1.5.0) (2018-03-29)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.6...1.5.0)
 
 **Implemented enhancements:**
 
 - Get version of ElasticSearch cluster [\#51](https://github.com/TheHive-Project/elastic4play/issues/51)
-- Add ability to provide multiple roles on controller helper [\#52](https://github.com/TheHive-Project/elastic4play/issues/52)
 - Stream is not cluster ready [\#41](https://github.com/TheHive-Project/elastic4play/issues/41)
+
+**Closed issues:**
+
+- Add ability to provide multiple roles on controller helper [\#52](https://github.com/TheHive-Project/elastic4play/issues/52)
 - OAuth2 Single Sign-on support [\#42](https://github.com/TheHive-Project/elastic4play/issues/42)
 
 **Merged pull requests:**
