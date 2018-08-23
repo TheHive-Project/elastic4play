@@ -74,7 +74,7 @@ class ClientAuthSSLEngineProvider(serverConfig: ServerConfig, appProvider: Appli
 
     // http://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#SSLParameters
     val wantClientAuth = config.getOptional[Boolean]("auth.method.pki").getOrElse(false)
-    logger.info(s"Client certificate authentication is ${if (wantClientAuth) "enable" else "disable"}")
+    logger.debug(s"Client certificate authentication is ${if (wantClientAuth) "enable" else "disable"}")
     sslParameters.setWantClientAuth(wantClientAuth)
 
     // Clone and modify the default SSL parameters.
