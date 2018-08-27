@@ -51,7 +51,7 @@ case class LdapConnection(
         }
           .flatten
           .recoverWith {
-            case ldapError =>
+            case ldapError ⇒
               logger.debug("LDAP connect error", ldapError)
               Failure(ldapError)
           }
