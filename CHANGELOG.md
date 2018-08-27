@@ -1,6 +1,19 @@
 # Change Log
 
-## [1.6.0](https://github.com/TheHive-Project/elastic4play/tree/1.6.0) (2018-07-31)
+## [1.6.1](https://github.com/TheHive-Project/elastic4play/tree/1.6.1)
+
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.6.0...1.6.1)
+
+**Implemented enhancements:**
+
+- X509 authentication: request certificate without requiring it [\#65](https://github.com/TheHive-Project/elastic4play/issues/65)
+- Make SSL truststore configuration optional [\#64](https://github.com/TheHive-Project/elastic4play/issues/64)
+
+**Fixed bugs:**
+
+- GroupByTime on nested fields doesn't work [\#66](https://github.com/TheHive-Project/elastic4play/issues/66)
+
+## [1.6.0](https://github.com/TheHive-Project/elastic4play/tree/1.6.0) (2018-08-20)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.5.0...1.6.0)
 
 **Implemented enhancements:**
