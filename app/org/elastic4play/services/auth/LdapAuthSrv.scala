@@ -50,9 +50,11 @@ case class LdapConnection(
           finally ctx.close()
         }
           .flatten
-      case (failure @ Failure(e), _) ⇒
-        logger.debug("LDAP connect error", e)
-        failure
+          .recoverWith {
+            case ldapError ⇒
+              logger.debug("LDAP connect error", ldapError)
+              Failure(ldapError)
+          }
       case (r, _) ⇒ r
     }
   }

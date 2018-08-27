@@ -173,16 +173,31 @@ class GroupByCategory(aggregationName: String, categories: Map[String, QueryDef]
 }
 
 class GroupByTime(aggregationName: String, fields: Seq[String], interval: String, subAggs: Seq[Agg]) extends Agg(aggregationName) {
-  def apply(model: BaseModelDef): Seq[DateHistogramAggregation] = {
-    fields.map { f ⇒
-      dateHistogramAggregation(s"${aggregationName}_$f").field(f).interval(new DateHistogramInterval(interval)).subAggregations(subAggs.flatMap(_.apply(model)))
+  def apply(model: BaseModelDef): Seq[AggregationDefinition] = {
+    fields.map { fieldName ⇒
+      val dateHistoAgg = dateHistogramAggregation(s"${aggregationName}_$fieldName").field(fieldName).interval(new DateHistogramInterval(interval)).subAggregations(subAggs.flatMap(_.apply(model)))
+      fieldName
+        .split("\\.")
+        .toSeq
+        .init
+        .inits
+        .toSeq
+        .init
+        .foldLeft[AggregationDefinition](dateHistoAgg) { (agg, f) ⇒
+          nestedAggregation(aggregationName, f.mkString(".")).subaggs(agg)
+        }
     }
   }
 
   def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
-    val aggs = fields.map { f ⇒
-      val buckets = aggregations.getAs[Histogram](s"${aggregationName}_$f").getBuckets
-      f → buckets.asScala.map { bucket ⇒
+    val aggs = fields.map { fieldName ⇒
+
+      val agg = fieldName.split("\\.").init.foldLeft(aggregations) { (a, _) ⇒
+        RichAggregations(a.getAs[Nested](aggregationName).getAggregations)
+      }
+
+      val buckets = agg.getAs[Histogram](s"${aggregationName}_$fieldName").getBuckets
+      fieldName → buckets.asScala.map { bucket ⇒
         val results = subAggs
           .map(_.processResult(model, RichAggregations(bucket.getAggregations)))
           .reduceOption(_ ++ _)

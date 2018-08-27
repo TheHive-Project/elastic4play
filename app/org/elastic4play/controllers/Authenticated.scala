@@ -179,19 +179,28 @@ class Authenticated(
   def getFromClientCertificate(request: RequestHeader): Future[AuthContext] = {
     certificateField
       .fold[Future[AuthContext]](Future.failed(AuthenticationError("Certificate authentication is not configured"))) { cf ⇒
+        logger.debug(s"Client certificate is : ${request.clientCertificateChain.toList.flatten.map(_.getSubjectX500Principal.getName).mkString(";")}")
         request.clientCertificateChain.flatMap(_.headOption)
           .flatMap { cert ⇒
             val dn = cert.getSubjectX500Principal.getName
             val ldapName = new LdapName(dn)
-            ldapName.getRdns.asScala
+            val rdns = ldapName.getRdns.asScala
+            logger.debug(s"Client certificate subject is ${rdns.map(x ⇒ x.getType + "=" + x.getValue.toString).mkString(",")}")
+            rdns
               .collectFirst {
-                case rdn if rdn.getType == cf ⇒ userSrv.getFromId(request, rdn.getValue.toString)
+                case rdn if rdn.getType == cf ⇒
+                  logger.debug(s"Found user id ${rdn.getValue} in dn:$cf")
+                  userSrv.getFromId(request, rdn.getValue.toString)
               }
               .orElse {
+                logger.debug(s"Field $cf not found in certificate subject")
                 for {
                   san ← Option(cert.getSubjectAlternativeNames)
+                  _ = logger.debug(s"Subject alternative name is ${san.asScala.mkString(",")}")
                   fieldValue ← san.asScala.collectFirst {
-                    case CertificateSAN(`cf`, value) ⇒ userSrv.getFromId(request, value)
+                    case CertificateSAN(`cf`, value) ⇒
+                      logger.debug(s"Found user id $value in san:$cf")
+                      userSrv.getFromId(request, value)
                   }
                 } yield fieldValue
               }

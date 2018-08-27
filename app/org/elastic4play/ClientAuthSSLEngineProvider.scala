@@ -33,20 +33,23 @@ class ClientAuthSSLEngineProvider(serverConfig: ServerConfig, appProvider: Appli
   }
 
   def readTrustManagers(): Array[TrustManager] = {
-    val trustStorePath = Paths.get(config.get[String]("play.server.https.trustStore.path"))
-    val keyStoreType = config.getOptional[String]("play.server.https.keyStore.type").getOrElse(KeyStore.getDefaultType)
-    val trustStorePassword = config.getOptional[String]("play.server.https.trustStore.password").getOrElse("").toCharArray
-    val trustInputStream = Files.newInputStream(trustStorePath)
-    try {
-      val keyStore = KeyStore.getInstance(keyStoreType)
-      keyStore.load(trustInputStream, trustStorePassword)
-      val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
-      tmf.init(keyStore)
-      tmf.getTrustManagers
-    }
-    finally {
-      trustInputStream.close()
-    }
+    config.getOptional[String]("play.server.https.trustStore.path")
+      .map { trustStorePath ⇒
+        val keyStoreType = config.getOptional[String]("play.server.https.keyStore.type").getOrElse(KeyStore.getDefaultType)
+        val trustStorePassword = config.getOptional[String]("play.server.https.trustStore.password").getOrElse("").toCharArray
+        val trustInputStream = Files.newInputStream(Paths.get(trustStorePath))
+        try {
+          val keyStore = KeyStore.getInstance(keyStoreType)
+          keyStore.load(trustInputStream, trustStorePassword)
+          val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
+          tmf.init(keyStore)
+          tmf.getTrustManagers
+        }
+        finally {
+          trustInputStream.close()
+        }
+      }
+      .getOrElse(Array.empty)
   }
 
   def createSSLContext(applicationProvider: ApplicationProvider): SSLContext = {
@@ -70,9 +73,9 @@ class ClientAuthSSLEngineProvider(serverConfig: ServerConfig, appProvider: Appli
     sslParameters.setUseCipherSuitesOrder(true)
 
     // http://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#SSLParameters
-    val needClientAuth = config.getOptional[Boolean]("auth.method.pki").getOrElse(false)
-    logger.info(s"Client certificate authentication is ${if (needClientAuth) "enable" else "disable"}")
-    sslParameters.setNeedClientAuth(needClientAuth)
+    val wantClientAuth = config.getOptional[Boolean]("auth.method.pki").getOrElse(false)
+    logger.debug(s"Client certificate authentication is ${if (wantClientAuth) "enable" else "disable"}")
+    sslParameters.setWantClientAuth(wantClientAuth)
 
     // Clone and modify the default SSL parameters.
     val engine = sslContext.createSSLEngine

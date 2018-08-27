@@ -10,8 +10,10 @@ licenses += "AGPL-V3" -> url("https://www.gnu.org/licenses/agpl-3.0.html")
 
 lazy val elastic4play = (project in file("."))
   .enablePlugins(PlayScala, PlayAkkaHttp2Support)
+// Add Http2 support to be able to ask client certificate
+// cf. https://github.com/playframework/playframework/issues/8143
 
-scalaVersion := "2.12.4"
+scalaVersion := "2.12.6"
 
 resolvers += "elasticsearch-releases" at "https://artifacts.elastic.co/maven"
 
@@ -21,8 +23,8 @@ libraryDependencies ++= Seq(
   "com.sksamuel.elastic4s" %% "elastic4s-streams" % "5.6.6",
   "com.sksamuel.elastic4s" %% "elastic4s-tcp" % "5.6.6",
   "com.sksamuel.elastic4s" %% "elastic4s-xpack-security" % "5.6.6",
-  "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.6" % Test,
-  "org.scalactic" %% "scalactic" % "3.0.4",
+  "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.10" % Test,
+  "org.scalactic" %% "scalactic" % "3.0.5",
   "org.bouncycastle" % "bcprov-jdk15on" % "1.58",
   "com.floragunn" % "search-guard-ssl" % "5.6.9-23",
   specs2 % Test
