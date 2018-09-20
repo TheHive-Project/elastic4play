@@ -1,18 +1,16 @@
 package org.elastic4play.services
 
-import javax.inject.{ Inject, Singleton }
-
 import scala.concurrent.{ ExecutionContext, Future }
 
 import play.api.Logger
-import play.api.libs.json.{ JsObject, JsString, Json }
+import play.api.libs.json.{ JsObject, JsString }
 
 import akka.stream.Materializer
 import akka.stream.scaladsl.{ Sink, Source }
+import javax.inject.{ Inject, Singleton }
 
 import org.elastic4play.InternalError
 import org.elastic4play.database.DBConfiguration
-import org.elastic4play.models.JsonFormat.baseModelEntityWrites
 import org.elastic4play.models.{ AttributeOption, BaseEntity, ChildModelDef }
 
 @Singleton
@@ -24,32 +22,31 @@ class AuxSrv @Inject() (
     implicit val mat: Materializer) {
 
   import org.elastic4play.services.QueryDSL._
+
   private[AuxSrv] lazy val logger = Logger(getClass)
 
-  def removeUnauditedAttributes(entity: BaseEntity): JsObject = {
+  def filterAttributes(entity: BaseEntity, filter: Seq[AttributeOption.Type] ⇒ Boolean): JsObject = {
     JsObject(
       entity.attributes.fields
         .map { case (name, value) ⇒ (name, value, entity.model.attributes.find(_.attributeName == name)) }
         .collect {
-          case (name, value, Some(desc)) if !desc.options.contains(AttributeOption.unaudited) ⇒ name → value
-          case (name, value, _) if name.startsWith("_")                                       ⇒ name → value
+          case (name, value, Some(desc)) if filter(desc.options) ⇒ name → value
+          case (name, value, _) if name.startsWith("_")          ⇒ name → value
         }) +
       ("id" → JsString(entity.id)) +
       ("_type" → JsString(entity.model.modelName))
   }
-  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = {
+
+  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = apply(entity, nparent, withStats, opts ⇒ !opts.contains(AttributeOption.unaudited))
+
+  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, filter: Seq[AttributeOption.Type] ⇒ Boolean): Future[JsObject] = {
     val entityWithParent = entity.model match {
       case childModel: ChildModelDef[_, _, _, _] if nparent > 0 ⇒
         val (src, _) = findSrv(childModel.parentModel, "_id" ~= entity.parentId.getOrElse(throw InternalError(s"Child entity $entity has no parent ID")), Some("0-1"), Nil)
         src
           .mapAsync(1) { parent ⇒
-            apply(parent, nparent - 1, withStats, removeUnaudited).map { parent ⇒
-              val entityObj = if (removeUnaudited) {
-                removeUnauditedAttributes(entity)
-              }
-              else {
-                Json.toJson(entity).as[JsObject]
-              }
+            apply(parent, nparent - 1, withStats, filter).map { parent ⇒
+              val entityObj = filterAttributes(entity, filter)
               entityObj + (childModel.parentModel.modelName → parent)
             }
           }
@@ -58,8 +55,7 @@ class AuxSrv @Inject() (
             logger.warn(s"Child entity (${childModel.modelName} ${entity.id}) has no parent !")
             JsObject.empty
           })
-      case _ if removeUnaudited ⇒ Future.successful(removeUnauditedAttributes(entity))
-      case _                    ⇒ Future.successful(Json.toJson(entity).as[JsObject])
+      case _ ⇒ Future.successful(filterAttributes(entity, filter))
     }
     if (withStats) {
       for {
