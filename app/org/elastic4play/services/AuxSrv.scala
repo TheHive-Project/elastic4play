@@ -37,7 +37,7 @@ class AuxSrv @Inject() (
       ("_type" → JsString(entity.model.modelName))
   }
 
-  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = apply(entity, nparent, withStats, opts ⇒ !opts.contains(AttributeOption.unaudited))
+  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = apply(entity, nparent, withStats, opts ⇒ !removeUnaudited || !opts.contains(AttributeOption.unaudited))
 
   def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, filter: Seq[AttributeOption.Type] ⇒ Boolean): Future[JsObject] = {
     val entityWithParent = entity.model match {
