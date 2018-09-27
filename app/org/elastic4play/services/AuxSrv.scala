@@ -26,15 +26,10 @@ class AuxSrv @Inject() (
   private[AuxSrv] lazy val logger = Logger(getClass)
 
   def filterAttributes(entity: BaseEntity, filter: Seq[AttributeOption.Type] ⇒ Boolean): JsObject = {
-    JsObject(
-      entity.attributes.fields
-        .map { case (name, value) ⇒ (name, value, entity.model.attributes.find(_.attributeName == name)) }
-        .collect {
-          case (name, value, Some(desc)) if filter(desc.options) ⇒ name → value
-          case (name, value, _) if name.startsWith("_")          ⇒ name → value
-        }) +
-      ("id" → JsString(entity.id)) +
-      ("_type" → JsString(entity.model.modelName))
+    entity.model.attributes.foldLeft(entity.toJson) {
+      case (json, attribute) if !filter(attribute.options) ⇒ json - attribute.attributeName
+      case (json, _)                                       ⇒ json
+    }
   }
 
   def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = apply(entity, nparent, withStats, opts ⇒ !removeUnaudited || !opts.contains(AttributeOption.unaudited))
