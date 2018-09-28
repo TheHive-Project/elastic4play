@@ -44,9 +44,11 @@ class Authenticated(
     sessionWarning: FiniteDuration,
     sessionUsername: String,
     certificateField: Option[String],
+    proxyHeaderName: Option[String],
     authBySessionCookie: Boolean,
     authByKey: Boolean,
     authByBasicAuth: Boolean,
+    authByProxyAuth: Boolean,
     authByInitialUser: Boolean,
     authByPki: Boolean,
     userSrv: UserSrv,
@@ -70,9 +72,11 @@ class Authenticated(
           case "userprincipalname" ⇒ "upn"
           case f                   ⇒ f
         },
+      configuration.getOptional[String]("auth.proxy.headerName"),
       configuration.getOptional[Boolean]("auth.method.session").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.key").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.basic").getOrElse(true),
+      configuration.getOptional[Boolean]("auth.method.proxy").getOrElse(false),
       configuration.getOptional[Boolean]("auth.method.init").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.pki").getOrElse(true),
       userSrv,
@@ -143,6 +147,15 @@ class Authenticated(
         case Array(username, password) ⇒ authSrv.authenticate(username, password)(request)
         case _                         ⇒ Future.failed(AuthenticationError("Can't decode authentication header"))
       }
+    } yield authContext
+
+  def getFromProxyHeader(request: RequestHeader): Future[AuthContext] =
+    for {
+      username ← request
+        .headers
+        .get(proxyHeaderName.getOrElse("X-Forwarded-User"))
+        .fold(Future.failed[String](AuthenticationError("Authentication header not found")))(Future.successful)
+      authContext ← userSrv.get(username).flatMap(user ⇒ userSrv.getFromUser(request, user))
     } yield authContext
 
   private def asn1String(obj: ASN1Primitive): String = obj match {
@@ -219,6 +232,7 @@ class Authenticated(
       (if (authByPki) Seq("pki" → getFromClientCertificate _) else Nil) ++
       (if (authByKey) Seq("key" → getFromApiKey _) else Nil) ++
       (if (authByBasicAuth) Seq("basic" → getFromBasicAuth _) else Nil) ++
+      (if (authByProxyAuth) Seq("proxy" → getFromProxyHeader _) else Nil) ++
       (if (authByInitialUser) Seq("init" → userSrv.getInitialUser _) else Nil)
 
   def getContext(request: RequestHeader): Future[AuthContext] = {
