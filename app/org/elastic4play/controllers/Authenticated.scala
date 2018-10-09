@@ -195,7 +195,7 @@ class Authenticated(
               .collectFirst {
                 case rdn if rdn.getType.toLowerCase == cf ⇒
                   logger.debug(s"Found user id ${rdn.getValue} in dn:$cf")
-                  userSrv.getFromId(request, rdn.getValue.toString)
+                  userSrv.getFromId(request, rdn.getValue.toString.toLowerCase)
               }
               .orElse {
                 logger.debug(s"Field $cf not found in certificate subject")
@@ -205,7 +205,7 @@ class Authenticated(
                   fieldValue ← san.asScala.collectFirst {
                     case CertificateSAN(name, value) if name.toLowerCase == cf ⇒
                       logger.debug(s"Found user id $value in san:$cf")
-                      userSrv.getFromId(request, value)
+                      userSrv.getFromId(request, value.toLowerCase)
                   }
                 } yield fieldValue
               }
