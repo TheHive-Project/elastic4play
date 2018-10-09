@@ -64,7 +64,12 @@ class Authenticated(
       configuration.getMillis("session.inactivity").millis,
       configuration.getMillis("session.warning").millis,
       configuration.getOptional[String]("session.username").getOrElse("username"),
-      configuration.getOptional[String]("auth.pki.certificateField"),
+      configuration.getOptional[String]("auth.pki.certificateField")
+        .map(_.toLowerCase)
+        .map {
+          case "userprincipalname" ⇒ "upn"
+          case f                   ⇒ f
+        },
       configuration.getOptional[Boolean]("auth.method.session").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.key").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.basic").getOrElse(true),
@@ -188,7 +193,7 @@ class Authenticated(
             logger.debug(s"Client certificate subject is ${rdns.map(x ⇒ x.getType + "=" + x.getValue.toString).mkString(",")}")
             rdns
               .collectFirst {
-                case rdn if rdn.getType == cf ⇒
+                case rdn if rdn.getType.toLowerCase == cf ⇒
                   logger.debug(s"Found user id ${rdn.getValue} in dn:$cf")
                   userSrv.getFromId(request, rdn.getValue.toString)
               }
@@ -198,7 +203,7 @@ class Authenticated(
                   san ← Option(cert.getSubjectAlternativeNames)
                   _ = logger.debug(s"Subject alternative name is ${san.asScala.mkString(",")}")
                   fieldValue ← san.asScala.collectFirst {
-                    case CertificateSAN(`cf`, value) ⇒
+                    case CertificateSAN(name, value) if name.toLowerCase == cf ⇒
                       logger.debug(s"Found user id $value in san:$cf")
                       userSrv.getFromId(request, value)
                   }

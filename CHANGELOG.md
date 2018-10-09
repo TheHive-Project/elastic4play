@@ -1,7 +1,17 @@
 # Change Log
 
-## [1.6.1](https://github.com/TheHive-Project/elastic4play/tree/1.6.1)
+## [1.6.2](https://github.com/TheHive-Project/elastic4play/tree/1.6.2) (2018-09-25)
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.6.1...1.6.2)
 
+**Implemented enhancements:**
+
+- Add a better filter on attributes in AuxSrv [\#69](https://github.com/TheHive-Project/elastic4play/issues/69)
+
+**Fixed bugs:**
+
+- Make certificate field case insensitive [\#68](https://github.com/TheHive-Project/elastic4play/issues/68)
+
+## [1.6.1](https://github.com/TheHive-Project/elastic4play/tree/1.6.1) (2018-08-27)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.6.0...1.6.1)
 
 **Implemented enhancements:**
