@@ -1,5 +1,13 @@
 # Change Log
 
+## [1.6.3](https://github.com/TheHive-Project/elastic4play/tree/1.6.3) (2018-10-09)
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.6.2...1.6.3)
+
+**Fixed bugs:**
+
+- User name extracted from certificate is not correctly lowercased [\#71](https://github.com/TheHive-Project/elastic4play/issues/71)
+- AuxSrv doesn't use Json marshaller define in model [\#70](https://github.com/TheHive-Project/elastic4play/issues/70)
+
 ## [1.6.2](https://github.com/TheHive-Project/elastic4play/tree/1.6.2) (2018-09-25)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.6.1...1.6.2)
 
@@ -61,10 +69,6 @@
 - Add ability to provide multiple roles on controller helper [\#52](https://github.com/TheHive-Project/elastic4play/issues/52)
 - OAuth2 Single Sign-on support [\#42](https://github.com/TheHive-Project/elastic4play/issues/42)
 
-**Merged pull requests:**
-
-- Add support for OAuth2 SSO [\#43](https://github.com/TheHive-Project/elastic4play/pull/43) ([saibot94](https://github.com/saibot94))
-
 ## [1.4.6](https://github.com/TheHive-Project/elastic4play/tree/1.4.6) (2018-03-29)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.5...1.4.6)
 
@@ -98,6 +102,10 @@
 **Fixed bugs:**
 
 - getEntity of migration service doesn't use the right index [\#48](https://github.com/TheHive-Project/elastic4play/issues/48)
+
+**Merged pull requests:**
+
+- Add support for OAuth2 SSO [\#43](https://github.com/TheHive-Project/elastic4play/pull/43) ([saibot94](https://github.com/saibot94))
 
 ## [1.4.2](https://github.com/TheHive-Project/elastic4play/tree/1.4.2) (2018-01-10)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.4.1...1.4.2)
