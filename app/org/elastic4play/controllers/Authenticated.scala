@@ -44,11 +44,13 @@ class Authenticated(
     sessionWarning: FiniteDuration,
     sessionUsername: String,
     certificateField: Option[String],
+    authHeaderName: Option[String],
     authBySessionCookie: Boolean,
     authByKey: Boolean,
     authByBasicAuth: Boolean,
     authByInitialUser: Boolean,
     authByPki: Boolean,
+    authByHeader: Boolean,
     userSrv: UserSrv,
     authSrv: AuthSrv,
     defaultParser: BodyParsers.Default,
@@ -70,11 +72,13 @@ class Authenticated(
           case "userprincipalname" ⇒ "upn"
           case f                   ⇒ f
         },
+      configuration.getOptional[String]("auth.header.name"),
       configuration.getOptional[Boolean]("auth.method.session").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.key").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.basic").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.init").getOrElse(true),
       configuration.getOptional[Boolean]("auth.method.pki").getOrElse(true),
+      configuration.getOptional[Boolean]("auth.method.header").getOrElse(false),
       userSrv,
       authSrv,
       defaultParser,
@@ -214,12 +218,21 @@ class Authenticated(
       }
   }
 
+  def getFromHeader(request: RequestHeader): Future[AuthContext] = {
+    for {
+      header ← authHeaderName.fold[Future[String]](Future.failed(AuthenticationError("HTTP header is not configured")))(Future.successful)
+      username ← request.headers.get(header).fold[Future[String]](Future.failed(AuthenticationError("HTTP header is not set")))(Future.successful)
+      user ← userSrv.getFromId(request, username)
+    } yield user
+  }
+
   val authenticationMethods: Seq[(String, RequestHeader ⇒ Future[AuthContext])] =
     (if (authBySessionCookie) Seq("session" → getFromSession _) else Nil) ++
       (if (authByPki) Seq("pki" → getFromClientCertificate _) else Nil) ++
       (if (authByKey) Seq("key" → getFromApiKey _) else Nil) ++
       (if (authByBasicAuth) Seq("basic" → getFromBasicAuth _) else Nil) ++
-      (if (authByInitialUser) Seq("init" → userSrv.getInitialUser _) else Nil)
+      (if (authByInitialUser) Seq("init" → userSrv.getInitialUser _) else Nil) ++
+      (if (authByHeader) Seq("header" -> getFromHeader _) else Nil)
 
   def getContext(request: RequestHeader): Future[AuthContext] = {
     authenticationMethods
