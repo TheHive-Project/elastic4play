@@ -23,7 +23,7 @@ import org.elastic4play.controllers.{ AttachmentInputValue, FileInputValue, Json
 import org.elastic4play.database.{ DBCreate, DBFind, DBRemove }
 import org.elastic4play.models.{ AttributeDef, BaseModelDef, EntityDef, ModelDef, AttributeFormat ⇒ F }
 import org.elastic4play.services.JsonFormat.attachmentFormat
-import org.elastic4play.utils.{ Hash, Hasher, RetryOnError }
+import org.elastic4play.utils.{ Hash, Hasher, Retry }
 import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, MissingAttributeError }
 
 case class Attachment(name: String, hashes: Seq[Hash], size: Long, contentType: String, id: String)
@@ -127,7 +127,7 @@ class AttachmentSrv(
     val hashes = extraHashers.fromByteArray(data)
 
     for {
-      attachment ← RetryOnError() {
+      attachment ← Retry()(classOf[Exception]) {
         getSrv[AttachmentModel, AttachmentChunk](attachmentModel, hash + "_0")
           .fallbackTo { // it it doesn't exist, create it
             Source.fromIterator(() ⇒ data.grouped(chunkSize))
@@ -148,7 +148,7 @@ class AttachmentSrv(
     for {
       hash ← mainHasher.fromPath(fiv.filepath).map(_.head.toString())
       hashes ← extraHashers.fromPath(fiv.filepath)
-      attachment ← RetryOnError() {
+      attachment ← Retry()(classOf[Exception]) {
         getSrv[AttachmentModel, AttachmentChunk](attachmentModel, hash + "_0")
           .fallbackTo { // it it doesn't exist, create it
             FileIO.fromPath(fiv.filepath, chunkSize)

@@ -3,7 +3,7 @@ package org.elastic4play.services
 import scala.concurrent.{ ExecutionContext, Future }
 
 import play.api.Logger
-import play.api.libs.json.{ JsObject, JsString }
+import play.api.libs.json.JsObject
 
 import akka.stream.Materializer
 import akka.stream.scaladsl.{ Sink, Source }

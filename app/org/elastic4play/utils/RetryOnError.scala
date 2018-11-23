@@ -26,7 +26,7 @@ object Retry {
   val logger = Logger(getClass)
 
   def exceptionCheck(exceptions: Seq[Class[_]])(t: Throwable): Boolean =
-    exceptions.contains(t.getClass) || Option(t.getCause).exists(exceptionCheck(exceptions))
+    exceptions.exists(_.isAssignableFrom(t.getClass)) || Option(t.getCause).exists(exceptionCheck(exceptions))
 
   def apply[T](maxRetry: Int = 5, initialDelay: FiniteDuration = 1.second)(exceptions: Class[_]*)(body: ⇒ Future[T])(implicit system: ActorSystem, ec: ExecutionContext): Future[T] =
     body.recoverWith {
