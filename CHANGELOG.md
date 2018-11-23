@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.7.0](https://github.com/TheHive-Project/elastic4play/tree/1.7.0) (2018-11-15)
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.6.3...1.7.0)
+
+**Implemented enhancements:**
+
+- Allow external authentication on a reverse proxy [\#73](https://github.com/TheHive-Project/elastic4play/issues/73)
+
 ## [1.6.3](https://github.com/TheHive-Project/elastic4play/tree/1.6.3) (2018-10-09)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.6.2...1.6.3)
 
@@ -8,7 +15,7 @@
 - User name extracted from certificate is not correctly lowercased [\#71](https://github.com/TheHive-Project/elastic4play/issues/71)
 - AuxSrv doesn't use Json marshaller define in model [\#70](https://github.com/TheHive-Project/elastic4play/issues/70)
 
-## [1.6.2](https://github.com/TheHive-Project/elastic4play/tree/1.6.2) (2018-09-25)
+## [1.6.2](https://github.com/TheHive-Project/elastic4play/tree/1.6.2) (2018-10-09)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.6.1...1.6.2)
 
 **Implemented enhancements:**
