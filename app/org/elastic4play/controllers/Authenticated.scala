@@ -222,7 +222,7 @@ class Authenticated(
     for {
       header ← authHeaderName.fold[Future[String]](Future.failed(AuthenticationError("HTTP header is not configured")))(Future.successful)
       username ← request.headers.get(header).fold[Future[String]](Future.failed(AuthenticationError("HTTP header is not set")))(Future.successful)
-      user ← userSrv.getFromId(request, username)
+      user ← userSrv.getFromId(request, username.toLowerCase)
     } yield user
   }
 

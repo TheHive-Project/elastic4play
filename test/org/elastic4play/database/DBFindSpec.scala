@@ -6,7 +6,7 @@ import scala.concurrent.duration._
 
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json.{ JsString, Json }
+import play.api.libs.json.{ JsNumber, JsString, Json }
 import play.api.test.PlaySpecification
 
 import akka.actor.ActorSystem
@@ -173,14 +173,17 @@ class DBFindSpec extends PlaySpecification with Mockito {
       hit.sourceAsString returns doc.toString
       val tpe = "some-object"
       hit.`type` returns tpe
+      val version = 12L
+      hit.version returns version
 
-//      val db = mock[DBConfiguration]
-//      val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
+      //      val db = mock[DBConfiguration]
+      //      val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
       DBUtils.hit2json(hit) must_== (doc +
         ("_id" → JsString(id)) +
         ("_parent" → JsString(parent)) +
         ("_routing" → JsString(routing)) +
-        ("_type" → JsString(tpe)))
+        ("_type" → JsString(tpe)) +
+        ("_version" -> JsNumber(version)))
     }
   }
 }

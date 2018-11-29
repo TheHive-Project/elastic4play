@@ -47,7 +47,6 @@ class CreateSrvSpec extends PlaySpecification with Mockito {
         "uuidAttribute" → "ee0caf69-560b-4453-9bae-72982225e661",
         "hashAttribute" → "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
         "metricAttribute" → Json.obj("metric1" → 1, "metric2" → 2),
-        "user" → "testUser",
         "createdAt" → "20160620T162845+0200",
         "createdBy" → "testUser")
 
@@ -78,7 +77,6 @@ class CreateSrvSpec extends PlaySpecification with Mockito {
             InvalidFormatAttributeError("metricAttribute", model.metricAttribute.format.name, JsonInputValue(Json.obj("metric1" → "blah", "metric2" → 2))),
             UnknownAttributeError("unknownAttribute", JsNumber(1)),
             MissingAttributeError("stringAttribute"),
-            MissingAttributeError("user"),
             MissingAttributeError("createdBy"),
             UnknownAttributeError("metricAttribute.metric3", JsString("aze")))
 

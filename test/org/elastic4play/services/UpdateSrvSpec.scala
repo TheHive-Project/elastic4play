@@ -13,7 +13,7 @@ import org.elastic4play.controllers.JsonInputValue
 import org.elastic4play.database.DBModify
 import org.elastic4play.models.{ EntityDef, ModelDef, AttributeFormat ⇒ F }
 import org.elastic4play.utils.RichFuture
-import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, UnknownAttributeError, UpdateReadOnlyAttributeError }
+import org.elastic4play.{ AttributeCheckingError, InvalidFormatAttributeError, UnknownAttributeError }
 
 @RunWith(classOf[JUnitRunner])
 class UpdateSrvSpec extends PlaySpecification with Mockito {
@@ -63,7 +63,6 @@ class UpdateSrvSpec extends PlaySpecification with Mockito {
         "metricAttribute" → Json.obj("metric1" → "blah", "metric2" → 2),
         "unknownAttribute" → 1,
         "metricAttribute.metric3" → "aze",
-        "user" → "readonly",
         "multiAttribute" → "single value")
 
       updateSrv.checkAttributes(attrs, model).await must throwA[AttributeCheckingError].like {
@@ -76,7 +75,6 @@ class UpdateSrvSpec extends PlaySpecification with Mockito {
             InvalidFormatAttributeError("hashAttribute", model.hashAttribute.format.name, JsonInputValue(JsString("01ba471-invalid-9c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"))),
             InvalidFormatAttributeError("metricAttribute", model.metricAttribute.format.name, JsonInputValue(Json.obj("metric1" → "blah", "metric2" → 2))),
             UnknownAttributeError("unknownAttribute", JsNumber(1)),
-            UpdateReadOnlyAttributeError("user"),
             InvalidFormatAttributeError("metricAttribute", "number", JsonInputValue(JsString("aze"))),
             InvalidFormatAttributeError("multiAttribute", "multi-string", JsonInputValue(JsString("single value"))))
       }

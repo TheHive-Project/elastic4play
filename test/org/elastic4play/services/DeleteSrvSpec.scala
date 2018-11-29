@@ -37,6 +37,7 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
     "_id" → "42",
     "_routing" → "42",
     "_type" → "testModel",
+    "_version" -> 1,
     "textAttribute" → "valid text",
     "stringAttribute" → "valid string",
     "dateAttribute" → "20160128T175800+0100",

@@ -1,6 +1,15 @@
 # Change Log
 
-## [1.7.0](https://github.com/TheHive-Project/elastic4play/tree/1.7.0) (2018-11-15)
+## [1.7.1](https://github.com/TheHive-Project/elastic4play/tree/1.7.1) (2018-11-29)
+
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.7.0...1.7.1)
+
+**Implemented enhancements:**
+
+- Lowercase user ID coming from HTTP header [\#75](https://github.com/TheHive-Project/elastic4play/issues/75)
+- Add configuration for drone continuous integration [\#74](https://github.com/TheHive-Project/elastic4play/issues/74)
+
+## [1.7.0](https://github.com/TheHive-Project/elastic4play/tree/1.7.0) (2018-11-23)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.6.3...1.7.0)
 
 **Implemented enhancements:**
