@@ -101,10 +101,7 @@ class Fields(private val fields: Map[String, InputValue]) {
     */
   def getStrings(name: String): Option[Seq[String]] = fields.get(name) flatMap {
     case StringInputValue(ss) ⇒ Some(ss)
-    case JsonInputValue(JsArray(js)) ⇒ js.foldLeft[Option[Seq[String]]](Some(Nil)) {
-      case (Some(l), JsString(s)) ⇒ Some(s +: l)
-      case _                      ⇒ None
-    }
+    case JsonInputValue(js: JsArray) ⇒ js.asOpt[Seq[String]]
     case _ ⇒ None
   }
 
@@ -113,10 +110,7 @@ class Fields(private val fields: Map[String, InputValue]) {
     */
   def getStrings(name: String, separator: String): Option[Seq[String]] = fields.get(name) flatMap {
     case StringInputValue(ss) ⇒ Some(ss.flatMap(_.split(separator)).filterNot(_.isEmpty))
-    case JsonInputValue(JsArray(js)) ⇒ js.foldLeft[Option[Seq[String]]](Some(Nil)) {
-      case (Some(l), JsString(s)) ⇒ Some(s +: l)
-      case _                      ⇒ None
-    }
+    case JsonInputValue(js: JsArray) ⇒ js.asOpt[Seq[String]]
     case _ ⇒ None
   }
 
