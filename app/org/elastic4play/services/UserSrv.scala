@@ -7,7 +7,9 @@ import play.api.mvc.RequestHeader
 
 import org.elastic4play.{ AuthenticationError, AuthorizationError }
 
-abstract class Role(val name: String)
+abstract class Role(val name: String) {
+  override def toString: String = name
+}
 
 trait AuthContext {
   def userId: String
