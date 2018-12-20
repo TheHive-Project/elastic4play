@@ -1,7 +1,18 @@
 # Change Log
 
-## [1.7.1](https://github.com/TheHive-Project/elastic4play/tree/1.7.1) (2018-11-29)
+## [1.7.2](https://github.com/TheHive-Project/elastic4play/tree/1.7.2) (2018-12-20)
 
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.7.1...1.7.2)
+
+**Implemented enhancements:**
+
+- Role doesn't implement toString [\#77](https://github.com/TheHive-Project/elastic4play/issues/77)
+
+**Fixed bugs:**
+
+- Order is inverted when extracting list of strings from Fields object [\#76](https://github.com/TheHive-Project/elastic4play/issues/76)
+
+## [1.7.1](https://github.com/TheHive-Project/elastic4play/tree/1.7.1) (2018-11-29)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.7.0...1.7.1)
 
 **Implemented enhancements:**

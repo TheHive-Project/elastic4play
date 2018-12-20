@@ -100,24 +100,18 @@ class Fields(private val fields: Map[String, InputValue]) {
     * Get data value as list of String. Returns None if field doesn't exist or format is not a list of string
     */
   def getStrings(name: String): Option[Seq[String]] = fields.get(name) flatMap {
-    case StringInputValue(ss) ⇒ Some(ss)
-    case JsonInputValue(JsArray(js)) ⇒ js.foldLeft[Option[Seq[String]]](Some(Nil)) {
-      case (Some(l), JsString(s)) ⇒ Some(s +: l)
-      case _                      ⇒ None
-    }
-    case _ ⇒ None
+    case StringInputValue(ss)        ⇒ Some(ss)
+    case JsonInputValue(js: JsArray) ⇒ js.asOpt[Seq[String]]
+    case _                           ⇒ None
   }
 
   /**
     * Get data value as list of String. Returns None if field doesn't exist or format is not a list of string
     */
   def getStrings(name: String, separator: String): Option[Seq[String]] = fields.get(name) flatMap {
-    case StringInputValue(ss) ⇒ Some(ss.flatMap(_.split(separator)).filterNot(_.isEmpty))
-    case JsonInputValue(JsArray(js)) ⇒ js.foldLeft[Option[Seq[String]]](Some(Nil)) {
-      case (Some(l), JsString(s)) ⇒ Some(s +: l)
-      case _                      ⇒ None
-    }
-    case _ ⇒ None
+    case StringInputValue(ss)        ⇒ Some(ss.flatMap(_.split(separator)).filterNot(_.isEmpty))
+    case JsonInputValue(js: JsArray) ⇒ js.asOpt[Seq[String]]
+    case _                           ⇒ None
   }
 
   /**
