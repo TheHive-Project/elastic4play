@@ -28,6 +28,7 @@ class AuthenticatedRequest[A](val authContext: AuthContext, request: Request[A])
   def userName: String = authContext.userName
   def requestId: String = Instance.getRequestId(request)
   def roles: Seq[Role] = authContext.roles
+  def authMethod: String = authContext.authMethod
 }
 
 sealed trait ExpirationStatus
@@ -92,18 +93,24 @@ class Authenticated(
     * Insert or update session cookie containing user name and session expiration timestamp
     * Cookie is signed by Play framework (it cannot be modified by user)
     */
-  def setSessingUser(result: Result, authContext: AuthContext)(implicit request: RequestHeader): Result =
-    result.addingToSession(sessionUsername → authContext.userId, "expire" → (now + maxSessionInactivity.toMillis).toString)
+  def setSessingUser(result: Result, authContext: AuthContext)(implicit request: RequestHeader): Result = {
+    if (authContext.authMethod != "key")
+      result.addingToSession(sessionUsername → authContext.userId, "expire" → (now + maxSessionInactivity.toMillis).toString, "authMethod" -> authContext.authMethod)
+    else
+      result
+  }
 
   /**
     * Retrieve authentication information form cookie
     */
   def getFromSession(request: RequestHeader): Future[AuthContext] = {
-    val userId = for {
+    val authContext = for {
       userId ← request.session.get(sessionUsername).toRight(AuthenticationError("User session not found"))
+      authMethod ← request.session.get("authMethod").toRight(AuthenticationError("Authentication method not found in session"))
       _ ← if (expirationStatus(request) != ExpirationError) Right(()) else Left(AuthenticationError("User session has expired"))
-    } yield userId
-    userId.fold(authError ⇒ Future.failed[AuthContext](authError), id ⇒ userSrv.getFromId(request, id))
+      ctx = userSrv.getFromId(request, userId, authMethod)
+    } yield ctx
+    authContext.fold(authError ⇒ Future.failed[AuthContext](authError), identity)
   }
 
   def expirationStatus(request: RequestHeader): ExpirationStatus = {
@@ -199,7 +206,7 @@ class Authenticated(
               .collectFirst {
                 case rdn if rdn.getType.toLowerCase == cf ⇒
                   logger.debug(s"Found user id ${rdn.getValue} in dn:$cf")
-                  userSrv.getFromId(request, rdn.getValue.toString.toLowerCase)
+                  userSrv.getFromId(request, rdn.getValue.toString.toLowerCase, "pki")
               }
               .orElse {
                 logger.debug(s"Field $cf not found in certificate subject")
@@ -209,7 +216,7 @@ class Authenticated(
                   fieldValue ← san.asScala.collectFirst {
                     case CertificateSAN(name, value) if name.toLowerCase == cf ⇒
                       logger.debug(s"Found user id $value in san:$cf")
-                      userSrv.getFromId(request, value.toLowerCase)
+                      userSrv.getFromId(request, value.toLowerCase, "pki")
                   }
                 } yield fieldValue
               }
@@ -222,7 +229,7 @@ class Authenticated(
     for {
       header ← authHeaderName.fold[Future[String]](Future.failed(AuthenticationError("HTTP header is not configured")))(Future.successful)
       username ← request.headers.get(header).fold[Future[String]](Future.failed(AuthenticationError("HTTP header is not set")))(Future.successful)
-      user ← userSrv.getFromId(request, username.toLowerCase)
+      user ← userSrv.getFromId(request, username.toLowerCase, "header")
     } yield user
   }
 
@@ -266,7 +273,7 @@ class Authenticated(
 
       def parser: BodyParser[AnyContent] = defaultParser
 
-      def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) ⇒ Future[Result]): Future[Result] = {
+      def invokeBlock[A](request: Request[A], block: AuthenticatedRequest[A] ⇒ Future[Result]): Future[Result] = {
         getContext(request).flatMap { authContext ⇒
           if (requiredRole.isEmpty || requiredRole.toSet.intersect(authContext.roles.toSet).nonEmpty)
             block(new AuthenticatedRequest(authContext, request))

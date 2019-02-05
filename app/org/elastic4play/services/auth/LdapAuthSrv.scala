@@ -127,7 +127,7 @@ class LdapAuthSrv(
 
   override def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] = {
     ldapConnection.authenticate(username, password).map { _ ⇒
-      userSrv.getFromId(request, username)
+      userSrv.getFromId(request, username, name)
     }
       .fold[Future[AuthContext]](Future.failed, identity)
       .recoverWith {
