@@ -119,7 +119,7 @@ class ADAuthSrv(
   override def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] = {
     (for {
       _ ← Future.fromTry(adConnection.authenticate(username, password))
-      authContext ← userSrv.getFromId(request, username)
+      authContext ← userSrv.getFromId(request, username, name)
     } yield authContext)
       .recoverWith {
         case t ⇒
