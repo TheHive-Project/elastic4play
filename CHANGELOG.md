@@ -1,7 +1,14 @@
 # Change Log
 
-## [1.7.2](https://github.com/TheHive-Project/elastic4play/tree/1.7.2) (2018-12-20)
+## [1.8.0](https://github.com/TheHive-Project/elastic4play/tree/1.8.0) (2019-02-05)
 
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.7.2...1.8.0)
+
+**Implemented enhancements:**
+
+- Don't generate session cookie if API key is used for authentication [\#78](https://github.com/TheHive-Project/elastic4play/issues/78)
+
+## [1.7.2](https://github.com/TheHive-Project/elastic4play/tree/1.7.2) (2018-12-20)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.7.1...1.7.2)
 
 **Implemented enhancements:**
