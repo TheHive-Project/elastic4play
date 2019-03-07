@@ -1,7 +1,14 @@
 # Change Log
 
-## [1.8.0](https://github.com/TheHive-Project/elastic4play/tree/1.8.0) (2019-02-05)
+## [1.9.0](https://github.com/TheHive-Project/elastic4play/tree/1.9.0) (2019-03-07)
 
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.8.0...1.9.0)
+
+**Implemented enhancements:**
+
+- Add support of wildcard search [\#79](https://github.com/TheHive-Project/elastic4play/issues/79)
+
+## [1.8.0](https://github.com/TheHive-Project/elastic4play/tree/1.8.0) (2019-02-05)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.7.2...1.8.0)
 
 **Implemented enhancements:**

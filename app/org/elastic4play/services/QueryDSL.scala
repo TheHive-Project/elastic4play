@@ -1,6 +1,6 @@
 package org.elastic4play.services
 
-import com.sksamuel.elastic4s.ElasticDsl.{ boolQuery, existsQuery, hasChildQuery, hasParentQuery, idsQuery, matchAllQuery, matchQuery, nestedQuery, query, rangeQuery, termQuery, termsQuery }
+import com.sksamuel.elastic4s.ElasticDsl.{ boolQuery, existsQuery, hasChildQuery, hasParentQuery, idsQuery, matchAllQuery, matchQuery, nestedQuery, query, rangeQuery, termQuery, termsQuery, wildcardQuery }
 import com.sksamuel.elastic4s.searches.queries.{ BuildableTermsQueryImplicits, QueryDefinition }
 import org.apache.lucene.search.join.ScoreMode
 
@@ -45,7 +45,8 @@ object QueryDSL {
       case bd: BigDecimal       ⇒ bd.toDouble
       case _                    ⇒ value
     }
-    def ~=(value: Any) = QueryDef(nestedField(field, termQuery(_, convertValue(value))))
+    def ~=(value: Any) = QueryDef(nestedField(field, wildcardQuery(_, convertValue(value))))
+    def ~==(value: Any) = QueryDef(nestedField(field, termQuery(_, convertValue(value))))
     def like(value: Any) = QueryDef(nestedField(field, matchQuery(_, convertValue(value))))
     def ~!=(value: Any): QueryDef = not(QueryDef(nestedField(field, termQuery(_, convertValue(value)))))
     def ~<(value: Any) = QueryDef(nestedField(field, rangeQuery(_).lt(value.toString)))
