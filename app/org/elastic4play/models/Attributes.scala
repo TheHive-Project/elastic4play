@@ -54,6 +54,7 @@ object AttributeFormat {
   val uuidFmt = UUIDAttributeFormat
   val hashFmt = HashAttributeFormat
   val binaryFmt = BinaryAttributeFormat
+  val rawFmt = RawAttributeFormat
 
   def enumFmt[T <: Enumeration](e: T)(implicit format: Format[T#Value]): EnumerationAttributeFormat[T] = EnumerationAttributeFormat[T](e)
 
@@ -95,8 +96,8 @@ case class Attribute[T](
   }
 
   def elasticMapping: FieldDefinition = format.elasticType(attributeName) match {
-    case a: BasicFieldDefinition if isSensitive ⇒ a.index("no")
-    case a                                      ⇒ a
+    case a: BasicFieldDefinition if isSensitive && a.`type` == "String" ⇒ a.index("no")
+    case a ⇒ a
   }
 
   def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateDefinition] =
