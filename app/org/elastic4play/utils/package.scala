@@ -13,7 +13,7 @@ import org.scalactic.{ Bad, Good, Or }
 
 package object utils {
   implicit class RichFuture[T](future: Future[T]) {
-    def withTimeout(after: FiniteDuration, default: T)(implicit system: ActorSystem, ec: ExecutionContext): Future[T] = {
+    def withTimeout(after: FiniteDuration, default: ⇒ T)(implicit system: ActorSystem, ec: ExecutionContext): Future[T] = {
       val prom = Promise[T]()
       val timeout = system.scheduler.scheduleOnce(after) { prom.success(default); () }
       future onComplete { _ ⇒ timeout.cancel() }
@@ -41,7 +41,7 @@ package object utils {
         obj + (name → writes.writes(value))
     }
 
-    def mapValues(f: (JsValue) ⇒ JsValue) = JsObject(obj.fields.map {
+    def mapValues(f: JsValue ⇒ JsValue) = JsObject(obj.fields.map {
       case (key, value) ⇒ key → f(value)
     })
 
