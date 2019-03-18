@@ -1,7 +1,18 @@
 # Change Log
 
-## [1.9.0](https://github.com/TheHive-Project/elastic4play/tree/1.9.0) (2019-03-07)
+## [1.10.0](https://github.com/TheHive-Project/elastic4play/tree/1.10.0)
 
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.9.0...1.10.0)
+
+**Implemented enhancements:**
+
+- Add attribute format for large raw data [\#80](https://github.com/TheHive-Project/elastic4play/issues/80)
+
+**Fixed bugs:**
+
+- Numeric field can't be searched with wildcard operator [\#81](https://github.com/TheHive-Project/elastic4play/issues/81)
+
+## [1.9.0](https://github.com/TheHive-Project/elastic4play/tree/1.9.0) (2019-03-07)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.8.0...1.9.0)
 
 **Implemented enhancements:**
