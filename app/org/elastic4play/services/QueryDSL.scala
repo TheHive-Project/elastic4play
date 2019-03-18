@@ -45,8 +45,8 @@ object QueryDSL {
       case bd: BigDecimal       ⇒ bd.toDouble
       case _                    ⇒ value
     }
-    def ~=(value: Any) = QueryDef(nestedField(field, wildcardQuery(_, convertValue(value))))
-    def ~==(value: Any) = QueryDef(nestedField(field, termQuery(_, convertValue(value))))
+    def ~=(value: Any) = QueryDef(nestedField(field, termQuery(_, convertValue(value))))
+    def ~=~(value: Any) = QueryDef(nestedField(field, wildcardQuery(_, convertValue(value))))
     def like(value: Any) = QueryDef(nestedField(field, matchQuery(_, convertValue(value))))
     def ~!=(value: Any): QueryDef = not(QueryDef(nestedField(field, termQuery(_, convertValue(value)))))
     def ~<(value: Any) = QueryDef(nestedField(field, rangeQuery(_).lt(value.toString)))
