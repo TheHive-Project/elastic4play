@@ -1,8 +1,8 @@
 package org.elastic4play.database
 
-import javax.inject.{ Inject, Singleton }
+import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.Logger
 import play.api.libs.json.JsValue.jsValueToJsLookup
@@ -17,16 +17,14 @@ import org.elasticsearch.index.engine.VersionConflictEngineException
 import org.elasticsearch.transport.RemoteTransportException
 
 import org.elastic4play.models.BaseEntity
-import org.elastic4play.{ ConflictError, CreateError, InternalError }
+import org.elastic4play.{ConflictError, CreateError, InternalError}
 
 /**
   * Service lass responsible for entity creation
   * This service doesn't check any attribute conformity (according to model)
   */
 @Singleton
-class DBCreate @Inject() (
-    db: DBConfiguration,
-    implicit val ec: ExecutionContext) {
+class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
 
   private[DBCreate] lazy val logger = Logger(getClass)
 
@@ -37,9 +35,8 @@ class DBCreate @Inject() (
     * @param attributes JSON object containing attributes of the creating entity. Attributes can contain _id, _parent and _routing.
     * @return created entity attributes with _id and _routing (and _parent if entity is a child)
     */
-  def apply(modelName: String, attributes: JsObject): Future[JsObject] = {
+  def apply(modelName: String, attributes: JsObject): Future[JsObject] =
     apply(modelName, None, attributes)
-  }
 
   /**
     * Create an entity of type modelName with attributes and optionally a parent
@@ -52,28 +49,31 @@ class DBCreate @Inject() (
     */
   def apply(modelName: String, parent: Option[BaseEntity], attributes: JsObject): Future[JsObject] = {
     val id = (attributes \ "_id").asOpt[String]
-    val parentId = parent.map(_.id)
+    val parentId = parent
+      .map(_.id)
       .orElse((attributes \ "_parent").asOpt[String])
-    val routing = parent.map(_.routing)
+    val routing = parent
+      .map(_.routing)
       .orElse((attributes \ "_routing").asOpt[String])
       .orElse(id)
 
     // remove attributes that starts with "_" because we wan't permit to interfere with elasticsearch internal fields
     val docSource = JsObject(attributes.fields.filterNot(_._1.startsWith("_"))).toString
-    db
-      .execute {
+    db.execute {
         addId(id).andThen(addParent(parentId)).andThen(addRouting(routing)) {
           indexInto(db.indexName, modelName).source(docSource).refresh(RefreshPolicy.WAIT_UNTIL)
         }
       }
       .transform(
-        indexResponse ⇒ attributes +
-          ("_type" → JsString(modelName)) +
-          ("_id" → JsString(indexResponse.id)) +
-          ("_parent" → parentId.fold[JsValue](JsNull)(JsString)) +
-          ("_routing" → JsString(routing.getOrElse(indexResponse.id))) +
-          ("_version" → JsNumber(indexResponse.version)),
-        convertError(attributes, _))
+        indexResponse ⇒
+          attributes +
+            ("_type"    → JsString(modelName)) +
+            ("_id"      → JsString(indexResponse.id)) +
+            ("_parent"  → parentId.fold[JsValue](JsNull)(JsString)) +
+            ("_routing" → JsString(routing.getOrElse(indexResponse.id))) +
+            ("_version" → JsNumber(indexResponse.version)),
+        convertError(attributes, _)
+      )
   }
 
   private[database] def convertError(attributes: JsObject, error: Throwable): Throwable = error match {
@@ -91,6 +91,7 @@ class DBCreate @Inject() (
     case Some(i) ⇒ _ id i createOnly true
     case None    ⇒ identity
   }
+
   /**
     * add parent information in index definition
     */
@@ -114,9 +115,9 @@ class DBCreate @Inject() (
   private class AttributeRequestBuilder() extends RequestBuilder[JsObject] {
     override def request(attributes: JsObject): IndexDefinition = {
       val docSource = JsObject(attributes.fields.filterNot(_._1.startsWith("_"))).toString
-      val id = (attributes \ "_id").asOpt[String]
-      val parent = (attributes \ "_parent").asOpt[String]
-      val routing = (attributes \ "_routing").asOpt[String] orElse parent orElse id
+      val id        = (attributes \ "_id").asOpt[String]
+      val parent    = (attributes \ "_parent").asOpt[String]
+      val routing   = (attributes \ "_routing").asOpt[String] orElse parent orElse id
       val modelName = (attributes \ "_type").asOpt[String].getOrElse(throw InternalError("The entity doesn't contain _type attribute"))
       addId(id).andThen(addParent(parent)).andThen(addRouting(routing)) {
         indexInto(db.indexName, modelName).source(docSource)

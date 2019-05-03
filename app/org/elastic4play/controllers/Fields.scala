@@ -4,7 +4,7 @@ import java.nio.file.Path
 import java.util.Locale
 import javax.inject.Inject
 
-import scala.collection.{ GenTraversableOnce, immutable }
+import scala.collection.{immutable, GenTraversableOnce}
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
@@ -17,7 +17,7 @@ import play.api.mvc._
 import akka.util.ByteString
 
 import org.elastic4play.BadRequestError
-import org.elastic4play.controllers.JsonFormat.{ fieldsReader, pathFormat }
+import org.elastic4play.controllers.JsonFormat.{fieldsReader, pathFormat}
 import org.elastic4play.services.Attachment
 import org.elastic4play.utils.Hash
 
@@ -34,6 +34,7 @@ sealed trait InputValue {
 case class StringInputValue(data: Seq[String]) extends InputValue {
   def jsonValue: JsValue = Json.toJson(data)
 }
+
 object StringInputValue {
   def apply(s: String): StringInputValue = this(Seq(s))
 }
@@ -56,16 +57,14 @@ case class FileInputValue(name: String, filepath: Path, contentType: String) ext
   * Define an attachment that is already in datastore. This type can't be from HTTP request.
   */
 case class AttachmentInputValue(name: String, hashes: Seq[Hash], size: Long, contentType: String, id: String) extends InputValue {
-  def jsonValue: JsObject = Json.obj(
-    "name" → name,
-    "hashes" → hashes.map(_.toString()),
-    "size" → size,
-    "contentType" → contentType,
-    "id" → id)
-  def toAttachment = Attachment(name, hashes, size, contentType, id)
+  def jsonValue: JsObject = Json.obj("name" → name, "hashes" → hashes.map(_.toString()), "size" → size, "contentType" → contentType, "id" → id)
+  def toAttachment        = Attachment(name, hashes, size, contentType, id)
 }
+
 object AttachmentInputValue {
-  def apply(attachment: Attachment) = new AttachmentInputValue(attachment.name, attachment.hashes, attachment.size, attachment.contentType, attachment.id)
+
+  def apply(attachment: Attachment) =
+    new AttachmentInputValue(attachment.name, attachment.hashes, attachment.size, attachment.contentType, attachment.id)
 }
 
 /**
@@ -79,22 +78,21 @@ object NullInputValue extends InputValue {
   * Contain data values from HTTP request
   */
 class Fields(private val fields: Map[String, InputValue]) {
+
   /**
     * Get InputValue
     */
-  def get(name: String): Option[InputValue] = {
+  def get(name: String): Option[InputValue] =
     fields.get(name)
-  }
 
   /**
     * Get data value as String. Returns None if field doesn't exist or format is not a string
     */
-  def getString(name: String): Option[String] = {
+  def getString(name: String): Option[String] =
     fields.get(name) collect {
       case StringInputValue(Seq(s))    ⇒ s
       case JsonInputValue(JsString(s)) ⇒ s
     }
-  }
 
   /**
     * Get data value as list of String. Returns None if field doesn't exist or format is not a list of string
@@ -128,6 +126,7 @@ class Fields(private val fields: Map[String, InputValue]) {
     case StringInputValue(Seq(s))     ⇒ Try(s.toBoolean).orElse(Try(s.toLong == 1)).toOption
     case _                            ⇒ None
   }
+
   /**
     * Get data value as json. Returns None if field doesn't exist or can't be converted to json
     */
@@ -142,6 +141,7 @@ class Fields(private val fields: Map[String, InputValue]) {
     case StringInputValue(ss)        ⇒ ss.map(s ⇒ JsString(s))
     case _                           ⇒ Nil
   }
+
   /**
     * Extract all fields, name and value
     */
@@ -213,11 +213,10 @@ object Fields {
   }
 }
 
-class FieldsBodyParser @Inject() (
-    playBodyParsers: PlayBodyParsers,
-    implicit val ec: ExecutionContext) extends BodyParser[Fields] {
+class FieldsBodyParser @Inject()(playBodyParsers: PlayBodyParsers, implicit val ec: ExecutionContext) extends BodyParser[Fields] {
 
   private[FieldsBodyParser] lazy val logger = Logger(getClass)
+
   def apply(request: RequestHeader): Accumulator[ByteString, Either[Result, Fields]] = {
     def queryFields = request.queryString.mapValues(v ⇒ StringInputValue(v))
 
@@ -225,27 +224,38 @@ class FieldsBodyParser @Inject() (
 
       case Some("text/json") | Some("application/json") ⇒ playBodyParsers.json[Fields].map(f ⇒ f ++ queryFields).apply(request)
 
-      case Some("application/x-www-form-urlencoded") ⇒ playBodyParsers.tolerantFormUrlEncoded
-        .map { form ⇒ Fields(form.mapValues(v ⇒ StringInputValue(v))) }
-        .map(f ⇒ f ++ queryFields)
-        .apply(request)
+      case Some("application/x-www-form-urlencoded") ⇒
+        playBodyParsers
+          .tolerantFormUrlEncoded
+          .map { form ⇒
+            Fields(form.mapValues(v ⇒ StringInputValue(v)))
+          }
+          .map(f ⇒ f ++ queryFields)
+          .apply(request)
 
-      case Some("multipart/form-data") ⇒ playBodyParsers.multipartFormData
-        .map {
-          case MultipartFormData(dataParts, files, _) ⇒
-            val dataFields = dataParts
-              .getOrElse("_json", Nil)
-              .headOption
-              .map { s ⇒
-                Json.parse(s).as[JsObject]
-                  .value.toMap
-                  .mapValues(v ⇒ JsonInputValue(v))
+      case Some("multipart/form-data") ⇒
+        playBodyParsers
+          .multipartFormData
+          .map {
+            case MultipartFormData(dataParts, files, _) ⇒
+              val dataFields = dataParts
+                .getOrElse("_json", Nil)
+                .headOption
+                .map { s ⇒
+                  Json
+                    .parse(s)
+                    .as[JsObject]
+                    .value
+                    .toMap
+                    .mapValues(v ⇒ JsonInputValue(v))
+                }
+                .getOrElse(Map.empty)
+              val fileFields = files.map { f ⇒
+                f.key → FileInputValue(f.filename.split("[/\\\\]").last, f.ref.path, f.contentType.getOrElse("application/octet-stream"))
               }
-              .getOrElse(Map.empty)
-            val fileFields = files.map { f ⇒ f.key → FileInputValue(f.filename.split("[/\\\\]").last, f.ref.path, f.contentType.getOrElse("application/octet-stream")) }
-            Fields(dataFields ++ fileFields ++ queryFields)
-        }
-        .apply(request)
+              Fields(dataFields ++ fileFields ++ queryFields)
+          }
+          .apply(request)
 
       case contentType ⇒
         val contentLength = request.headers.get("Content-Length").fold(0)(_.toInt)

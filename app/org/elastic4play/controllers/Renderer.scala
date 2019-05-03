@@ -2,23 +2,20 @@ package org.elastic4play.controllers
 
 import javax.inject.Inject
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success, Try }
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 import play.api.http.Status
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
-import play.api.libs.json.{ JsValue, Json, Writes }
-import play.api.mvc.{ Result, Results }
+import play.api.libs.json.{JsValue, Json, Writes}
+import play.api.mvc.{Result, Results}
 
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 
 import org.elastic4play.ErrorHandler
 
-class Renderer @Inject() (
-    errorHandler: ErrorHandler,
-    implicit val ec: ExecutionContext,
-    implicit val mat: Materializer) {
+class Renderer @Inject()(errorHandler: ErrorHandler, implicit val ec: ExecutionContext, implicit val mat: Materializer) {
 
   def toMultiOutput[A](status: Int, objects: Seq[Try[A]])(implicit writes: Writes[A]): Result = {
 
@@ -42,7 +39,7 @@ class Renderer @Inject() (
 
   def toOutput[C](status: Int, content: C)(implicit writes: Writes[C]): Result = {
     val json = Json.toJson(content)
-    val s = new Results.Status(status)
+    val s    = new Results.Status(status)
     s(json)
   }
 

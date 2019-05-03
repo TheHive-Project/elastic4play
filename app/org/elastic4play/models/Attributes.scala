@@ -1,15 +1,15 @@
 package org.elastic4play.models
 
 import play.api.Logger
-import play.api.libs.json.{ Format, JsArray, JsNull, JsValue }
+import play.api.libs.json.{Format, JsArray, JsNull, JsValue}
 
 import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
-import com.sksamuel.elastic4s.mappings.{ BasicFieldDefinition, FieldDefinition }
+import com.sksamuel.elastic4s.mappings.{BasicFieldDefinition, FieldDefinition}
 import org.scalactic._
 
 import org.elastic4play.controllers.InputValue
 import org.elastic4play.services.DBLists
-import org.elastic4play.{ AttributeError, InvalidFormatAttributeError, MissingAttributeError, UpdateReadOnlyAttributeError }
+import org.elastic4play.{AttributeError, InvalidFormatAttributeError, MissingAttributeError, UpdateReadOnlyAttributeError}
 
 case class AttributeDefinition(name: String, `type`: String, description: String, values: Seq[JsValue], labels: Seq[String])
 
@@ -22,7 +22,8 @@ abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Forma
   def checkJsonForUpdate(subNames: Seq[String], value: JsValue): JsValue Or Every[AttributeError] =
     checkJson(subNames, value)
 
-  def inputValueToJson(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] = fromInputValue(subNames, value).map(v ⇒ jsFormat.writes(v))
+  def inputValueToJson(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] =
+    fromInputValue(subNames, value).map(v ⇒ jsFormat.writes(v))
 
   def fromInputValue(subNames: Seq[String], value: InputValue): T Or Every[AttributeError]
 
@@ -33,32 +34,28 @@ abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Forma
   protected def formatError(value: InputValue) = Bad(One(InvalidFormatAttributeError("", name, value)))
 
   def definition(dblists: DBLists, attribute: Attribute[T]): Seq[AttributeDefinition] =
-    Seq(AttributeDefinition(
-      attribute.attributeName,
-      name,
-      attribute.description,
-      Nil,
-      Nil))
+    Seq(AttributeDefinition(attribute.attributeName, name, attribute.description, Nil, Nil))
 }
 
 object AttributeFormat {
-  val dateFmt = DateAttributeFormat
-  val textFmt = TextAttributeFormat
-  val stringFmt = StringAttributeFormat
-  val userFmt = UserAttributeFormat
-  val booleanFmt = BooleanAttributeFormat
-  val numberFmt = NumberAttributeFormat
+  val dateFmt       = DateAttributeFormat
+  val textFmt       = TextAttributeFormat
+  val stringFmt     = StringAttributeFormat
+  val userFmt       = UserAttributeFormat
+  val booleanFmt    = BooleanAttributeFormat
+  val numberFmt     = NumberAttributeFormat
   val attachmentFmt = AttachmentAttributeFormat
-  val metricsFmt = MetricsAttributeFormat
-  val customFields = CustomAttributeFormat
-  val uuidFmt = UUIDAttributeFormat
-  val hashFmt = HashAttributeFormat
-  val binaryFmt = BinaryAttributeFormat
-  val rawFmt = RawAttributeFormat
+  val metricsFmt    = MetricsAttributeFormat
+  val customFields  = CustomAttributeFormat
+  val uuidFmt       = UUIDAttributeFormat
+  val hashFmt       = HashAttributeFormat
+  val binaryFmt     = BinaryAttributeFormat
+  val rawFmt        = RawAttributeFormat
 
   def enumFmt[T <: Enumeration](e: T)(implicit format: Format[T#Value]): EnumerationAttributeFormat[T] = EnumerationAttributeFormat[T](e)
 
-  def listEnumFmt(enumerationName: String)(dblists: DBLists): ListEnumerationAttributeFormat = ListEnumerationAttributeFormat(enumerationName)(dblists)
+  def listEnumFmt(enumerationName: String)(dblists: DBLists): ListEnumerationAttributeFormat =
+    ListEnumerationAttributeFormat(enumerationName)(dblists)
 
   def objectFmt(subAttributes: Seq[Attribute[_]]) = ObjectAttributeFormat(subAttributes)
 }
@@ -74,7 +71,8 @@ case class Attribute[T](
     format: AttributeFormat[T],
     options: Seq[AttributeOption.Type],
     defaultValue: Option[() ⇒ T],
-    description: String) {
+    description: String
+) {
 
   private[Attribute] lazy val logger = Logger(getClass)
 
@@ -84,9 +82,9 @@ case class Attribute[T](
     case _: MultiAttributeFormat[_] ⇒ true
     case _                          ⇒ false
   }
-  lazy val isForm: Boolean = !options.contains(AttributeOption.model)
-  lazy val isModel: Boolean = !options.contains(AttributeOption.form)
-  lazy val isReadonly: Boolean = options.contains(AttributeOption.readonly)
+  lazy val isForm: Boolean      = !options.contains(AttributeOption.model)
+  lazy val isModel: Boolean     = !options.contains(AttributeOption.form)
+  lazy val isReadonly: Boolean  = options.contains(AttributeOption.readonly)
   lazy val isUnaudited: Boolean = options.contains(AttributeOption.unaudited) || isSensitive || isReadonly
   lazy val isSensitive: Boolean = options.contains(AttributeOption.sensitive)
   lazy val isRequired: Boolean = format match {
@@ -97,7 +95,7 @@ case class Attribute[T](
 
   def elasticMapping: FieldDefinition = format.elasticType(attributeName) match {
     case a: BasicFieldDefinition if isSensitive && a.`type` == "String" ⇒ a.index("no")
-    case a ⇒ a
+    case a                                                              ⇒ a
   }
 
   def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateDefinition] =
@@ -114,10 +112,16 @@ case class Attribute[T](
         else
           Bad(One(MissingAttributeError(attributeName)))
       case Some(v) ⇒
-        format.checkJsonForCreation(Nil, v).transform(g ⇒ Good(Some(g)), x ⇒ Bad(x.map {
-          case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = attributeName)
-          case other                             ⇒ other
-        }))
+        format
+          .checkJsonForCreation(Nil, v)
+          .transform(
+            g ⇒ Good(Some(g)),
+            x ⇒
+              Bad(x.map {
+                case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = attributeName)
+                case other                             ⇒ other
+              })
+          )
     }
     logger.debug(s"$modelName.$attributeName(${format.name}).validateForCreation($value) ⇒ $result")
     result
@@ -129,10 +133,12 @@ case class Attribute[T](
       case JsNull | JsArray(Seq()) if isRequired ⇒ Bad(One(MissingAttributeError(attributeName)))
       case JsNull | JsArray(Seq())               ⇒ Good(value)
       case v ⇒
-        format.checkJsonForUpdate(subNames, v).badMap(_.map {
-          case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = attributeName)
-          case other                             ⇒ other
-        })
+        format
+          .checkJsonForUpdate(subNames, v)
+          .badMap(_.map {
+            case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = attributeName)
+            case other                             ⇒ other
+          })
     }
     logger.debug(s"$modelName.$attributeName(${format.name}).validateForUpdate($value) ⇒ $result")
     result

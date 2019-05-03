@@ -2,26 +2,20 @@ package org.elastic4play.services.auth
 
 import java.net.ConnectException
 import java.util
-import javax.inject.{ Inject, Singleton }
+import javax.inject.{Inject, Singleton}
 import javax.naming.Context
 import javax.naming.directory._
 
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.util.{ Failure, Success, Try }
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 import play.api.mvc.RequestHeader
-import play.api.{ Configuration, Logger }
+import play.api.{Configuration, Logger}
 
-import org.elastic4play.services.{ AuthCapability, _ }
-import org.elastic4play.{ AuthenticationError, AuthorizationError }
+import org.elastic4play.services.{AuthCapability, _}
+import org.elastic4play.{AuthenticationError, AuthorizationError}
 
-case class LdapConnection(
-    serverNames: Seq[String],
-    useSSL: Boolean,
-    bindDN: String,
-    bindPW: String,
-    baseDN: String,
-    filter: String) {
+case class LdapConnection(serverNames: Seq[String], useSSL: Boolean, bindDN: String, bindPW: String, baseDN: String, filter: String) {
 
   private[LdapConnection] lazy val logger = Logger(classOf[LdapAuthSrv])
 
@@ -34,11 +28,11 @@ case class LdapConnection(
     case _                                ⇒ isFatal(t.getCause)
   }
 
-  private def connect[A](username: String, password: String)(f: InitialDirContext ⇒ Try[A]): Try[A] = {
+  private def connect[A](username: String, password: String)(f: InitialDirContext ⇒ Try[A]): Try[A] =
     serverNames.foldLeft[Try[A]](Failure(noLdapServerAvailableException)) {
       case (Failure(e), serverName) if !isFatal(e) ⇒
         val protocol = if (useSSL) "ldaps://" else "ldap://"
-        val env = new util.Hashtable[Any, Any]
+        val env      = new util.Hashtable[Any, Any]
         env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
         env.put(Context.PROVIDER_URL, protocol + serverName)
         env.put(Context.SECURITY_AUTHENTICATION, "simple")
@@ -48,8 +42,7 @@ case class LdapConnection(
           val ctx = new InitialDirContext(env)
           try f(ctx)
           finally ctx.close()
-        }
-          .flatten
+        }.flatten
           .recoverWith {
             case ldapError ⇒
               logger.debug("LDAP connect error", ldapError)
@@ -57,9 +50,8 @@ case class LdapConnection(
           }
       case (r, _) ⇒ r
     }
-  }
 
-  private def getUserDN(ctx: InitialDirContext, username: String): Try[String] = {
+  private def getUserDN(ctx: InitialDirContext, username: String): Try[String] =
     Try {
       val controls = new SearchControls()
       controls.setSearchScope(SearchControls.SUBTREE_SCOPE)
@@ -68,30 +60,28 @@ case class LdapConnection(
       if (searchResult.hasMore) searchResult.next().getNameInNamespace
       else throw AuthenticationError("User not found in LDAP server")
     }
-  }
 
-  def authenticate(username: String, password: String): Try[Unit] = {
+  def authenticate(username: String, password: String): Try[Unit] =
     connect(bindDN, bindPW) { ctx ⇒
       getUserDN(ctx, username)
+    }.flatMap { userDN ⇒
+      connect(userDN, password)(_ ⇒ Success(()))
     }
-      .flatMap { userDN ⇒ connect(userDN, password)(_ ⇒ Success(())) }
-  }
 
-  def changePassword(username: String, oldPassword: String, newPassword: String): Try[Unit] = {
+  def changePassword(username: String, oldPassword: String, newPassword: String): Try[Unit] =
     connect(bindDN, bindPW) { ctx ⇒
       getUserDN(ctx, username)
-    }
-      .flatMap { userDN ⇒
-        connect(userDN, oldPassword) { ctx ⇒
-          val mods = Array(new ModificationItem(DirContext.REPLACE_ATTRIBUTE, new BasicAttribute("userPassword", newPassword)))
-          Try(ctx.modifyAttributes(userDN, mods))
-        }
+    }.flatMap { userDN ⇒
+      connect(userDN, oldPassword) { ctx ⇒
+        val mods = Array(new ModificationItem(DirContext.REPLACE_ATTRIBUTE, new BasicAttribute("userPassword", newPassword)))
+        Try(ctx.modifyAttributes(userDN, mods))
       }
-  }
+    }
 }
 
 object LdapConnection {
-  def apply(configuration: Configuration): LdapConnection = {
+
+  def apply(configuration: Configuration): LdapConnection =
     (for {
       bindDN ← configuration.getOptional[String]("auth.ldap.bindDN")
       bindPW ← configuration.getOptional[String]("auth.ldap.bindPW")
@@ -103,42 +93,34 @@ object LdapConnection {
 
     } yield LdapConnection(serverNames, useSSL, bindDN, bindPW, baseDN, filter))
       .getOrElse(LdapConnection(Nil, useSSL = false, "", "", "", ""))
-  }
 }
 
 @Singleton
-class LdapAuthSrv(
-    ldapConnection: LdapConnection,
-    userSrv: UserSrv,
-    implicit val ec: ExecutionContext) extends AuthSrv {
+class LdapAuthSrv(ldapConnection: LdapConnection, userSrv: UserSrv, implicit val ec: ExecutionContext) extends AuthSrv {
 
-  @Inject() def this(
-      configuration: Configuration,
-      userSrv: UserSrv,
-      ec: ExecutionContext) = this(
-    LdapConnection(configuration),
-    userSrv,
-    ec)
+  @Inject() def this(configuration: Configuration, userSrv: UserSrv, ec: ExecutionContext) = this(LdapConnection(configuration), userSrv, ec)
 
   private[LdapAuthSrv] lazy val logger = Logger(getClass)
 
-  val name = "ldap"
+  val name                                             = "ldap"
   override val capabilities: Set[AuthCapability.Value] = Set(AuthCapability.changePassword)
 
-  override def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] = {
-    ldapConnection.authenticate(username, password).map { _ ⇒
-      userSrv.getFromId(request, username, name)
-    }
+  override def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] =
+    ldapConnection
+      .authenticate(username, password)
+      .map { _ ⇒
+        userSrv.getFromId(request, username, name)
+      }
       .fold[Future[AuthContext]](Future.failed, identity)
       .recoverWith {
         case t ⇒
           logger.error("LDAP authentication failure", t)
           Future.failed(AuthenticationError("Authentication failure"))
       }
-  }
 
   override def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
-    ldapConnection.changePassword(username, oldPassword, newPassword)
+    ldapConnection
+      .changePassword(username, oldPassword, newPassword)
       .fold(Future.failed, Future.successful)
       .recoverWith {
         case t ⇒

@@ -1,28 +1,28 @@
 package org.elastic4play.database
 
-import javax.inject.{ Inject, Named, Singleton }
+import javax.inject.{Inject, Named, Singleton}
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{ ExecutionContext, Future, Promise }
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 import play.api.inject.ApplicationLifecycle
-import play.api.{ Configuration, Logger }
+import play.api.{Configuration, Logger}
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.{ Sink, Source }
+import akka.stream.scaladsl.{Sink, Source}
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.admin.IndexExistsDefinition
 import com.sksamuel.elastic4s.bulk.RichBulkItemResponse
-import com.sksamuel.elastic4s.cluster.{ ClusterHealthDefinition, ClusterStatsDefinition }
+import com.sksamuel.elastic4s.cluster.{ClusterHealthDefinition, ClusterStatsDefinition}
 import com.sksamuel.elastic4s.delete.DeleteByIdDefinition
-import com.sksamuel.elastic4s.get.{ GetDefinition, RichGetResponse }
+import com.sksamuel.elastic4s.get.{GetDefinition, RichGetResponse}
 import com.sksamuel.elastic4s.index.RichIndexResponse
-import com.sksamuel.elastic4s.indexes.{ CreateIndexDefinition, IndexDefinition }
+import com.sksamuel.elastic4s.indexes.{CreateIndexDefinition, IndexDefinition}
 import com.sksamuel.elastic4s.searches._
 import com.sksamuel.elastic4s.streams.ReactiveElastic.ReactiveElastic
-import com.sksamuel.elastic4s.streams.{ RequestBuilder, ResponseListener }
-import com.sksamuel.elastic4s.update.{ RichUpdateResponse, UpdateDefinition }
-import com.sksamuel.elastic4s.{ ElasticsearchClientUri, TcpClient }
+import com.sksamuel.elastic4s.streams.{RequestBuilder, ResponseListener}
+import com.sksamuel.elastic4s.update.{RichUpdateResponse, UpdateDefinition}
+import com.sksamuel.elastic4s.{ElasticsearchClientUri, TcpClient}
 import com.sksamuel.elastic4s.xpack.security.XPackElasticClient
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse
 import org.elasticsearch.action.admin.cluster.stats.ClusterStatsResponse
@@ -60,14 +60,16 @@ class DBConfiguration(
     lifecycle: ApplicationLifecycle,
     val version: Int,
     implicit val ec: ExecutionContext,
-    implicit val actorSystem: ActorSystem) {
+    implicit val actorSystem: ActorSystem
+) {
 
   @Inject() def this(
       configuration: Configuration,
       lifecycle: ApplicationLifecycle,
       @Named("databaseVersion") version: Int,
       ec: ExecutionContext,
-      actorSystem: ActorSystem) = {
+      actorSystem: ActorSystem
+  ) = {
     this(
       configuration.get[Seq[String]]("search.host"),
       configuration.get[String]("search.cluster"),
@@ -87,12 +89,13 @@ class DBConfiguration(
       lifecycle,
       version,
       ec,
-      actorSystem)
+      actorSystem
+    )
   }
 
   private[DBConfiguration] lazy val logger = Logger(getClass)
 
-  private def xpackConnect(uri: ElasticsearchClientUri, settings: Settings.Builder): Option[TcpClient] = {
+  private def xpackConnect(uri: ElasticsearchClientUri, settings: Settings.Builder): Option[TcpClient] =
     for {
       username ← xpackUsername
       if username.nonEmpty
@@ -108,13 +111,12 @@ class DBConfiguration(
       }
       XPackElasticClient(settings.build(), uri)
     }
-  }
 
-  private def sgConnect(uri: ElasticsearchClientUri, settings: Settings.Builder): Option[TcpClient] = {
+  private def sgConnect(uri: ElasticsearchClientUri, settings: Settings.Builder): Option[TcpClient] =
     for {
-      keystorePath ← sgKeystorePath
-      truststorePath ← sgTruststorePath
-      keystorePassword ← sgKeystorePassword
+      keystorePath       ← sgKeystorePath
+      truststorePath     ← sgTruststorePath
+      keystorePassword   ← sgKeystorePassword
       truststorePassword ← sgTruststorePassword
     } yield {
       settings.put(SSLConfigConstants.SEARCHGUARD_SSL_TRANSPORT_KEYSTORE_FILEPATH, keystorePath)
@@ -125,10 +127,9 @@ class DBConfiguration(
       settings.put(SSLConfigConstants.SEARCHGUARD_SSL_TRANSPORT_ENFORCE_HOSTNAME_VERIFICATION_RESOLVE_HOST_NAME, sgHostVerificationResolveHostname)
       TcpClient.transport(settings.build(), uri, classOf[SearchGuardSSLPlugin])
     }
-  }
 
   private def connect(): TcpClient = {
-    val uri = ElasticsearchClientUri(s"elasticsearch://${searchHost.mkString(",")}")
+    val uri      = ElasticsearchClientUri(s"elasticsearch://${searchHost.mkString(",")}")
     val settings = Settings.builder()
     settings.put("cluster.name", searchCluster)
 
@@ -142,28 +143,40 @@ class DBConfiguration(
     */
   private[database] val client = connect()
   // when application close, close also ElasticSearch connection
-  lifecycle.addStopHook { () ⇒ Future { client.close() } }
+  lifecycle.addStopHook { () ⇒
+    Future { client.close() }
+  }
 
   @Timed("database.index")
   def execute(indexDefinition: IndexDefinition): Future[RichIndexResponse] = client.execute(indexDefinition)
+
   @Timed("database.search")
   def execute(searchDefinition: SearchDefinition): Future[RichSearchResponse] = client.execute(searchDefinition)
+
   @Timed("database.create")
   def execute(createIndexDefinition: CreateIndexDefinition): Future[CreateIndexResponse] = client.execute(createIndexDefinition)
+
   @Timed("database.update")
   def execute(updateDefinition: UpdateDefinition): Future[RichUpdateResponse] = client.execute(updateDefinition)
+
   @Timed("database.search_scroll")
   def execute(searchScrollDefinition: SearchScrollDefinition): Future[RichSearchResponse] = client.execute(searchScrollDefinition)
+
   @Timed("database.index_exists")
   def execute(indexExistsDefinition: IndexExistsDefinition): Future[IndicesExistsResponse] = client.execute(indexExistsDefinition)
+
   @Timed("database.delete")
   def execute(deleteByIdDefinition: DeleteByIdDefinition): Future[DeleteResponse] = client.execute(deleteByIdDefinition)
+
   @Timed("database.get")
   def execute(getDefinition: GetDefinition): Future[RichGetResponse] = client.execute(getDefinition)
+
   @Timed("database.clear_scroll")
   def execute(clearScrollDefinition: ClearScrollDefinition): Future[ClearScrollResult] = client.execute(clearScrollDefinition)
+
   @Timed("database.cluster_health")
   def execute(clusterHealthDefinition: ClusterHealthDefinition): Future[ClusterHealthResponse] = client.execute(clusterHealthDefinition)
+
   @Timed("database.cluster_stats")
   def execute(clusterStatsDefinition: ClusterStatsDefinition): Future[ClusterStatsResponse] = client.execute(clusterStatsDefinition)
 
@@ -174,9 +187,8 @@ class DBConfiguration(
 
   private lazy val sinkListener = new ResponseListener {
     override def onAck(resp: RichBulkItemResponse): Unit = ()
-    override def onFailure(resp: RichBulkItemResponse): Unit = {
+    override def onFailure(resp: RichBulkItemResponse): Unit =
       logger.warn(s"Document index failure ${resp.id}: ${resp.failureMessage}")
-    }
   }
 
   /**
@@ -193,8 +205,13 @@ class DBConfiguration(
       end.failure(t)
       ()
     }
-    Sink.fromSubscriber(client.subscriber[T](failureWait = 1.second, maxAttempts = 10, listener = sinkListener, completionFn = complete, errorFn = failure))
-      .mapMaterializedValue { _ ⇒ end.future }
+    Sink
+      .fromSubscriber(
+        client.subscriber[T](failureWait = 1.second, maxAttempts = 10, listener = sinkListener, completionFn = complete, errorFn = failure)
+      )
+      .mapMaterializedValue { _ ⇒
+        end.future
+      }
   }
 
   /**
@@ -205,24 +222,26 @@ class DBConfiguration(
   /**
     * return a new instance of DBConfiguration that points to the previous version of the index schema
     */
-  def previousVersion: DBConfiguration = new DBConfiguration(
-    searchHost,
-    searchCluster,
-    baseIndexName,
-    xpackUsername,
-    xpackPassword,
-    xpackSSL,
-    xpackCAPath,
-    xpackCertificatePath,
-    xpackKeyPath,
-    sgKeystorePath,
-    sgTruststorePath,
-    sgKeystorePassword,
-    sgTruststorePassword,
-    sgHostVerification,
-    sgHostVerificationResolveHostname,
-    lifecycle,
-    version - 1,
-    ec,
-    actorSystem)
+  def previousVersion: DBConfiguration =
+    new DBConfiguration(
+      searchHost,
+      searchCluster,
+      baseIndexName,
+      xpackUsername,
+      xpackPassword,
+      xpackSSL,
+      xpackCAPath,
+      xpackCertificatePath,
+      xpackKeyPath,
+      sgKeystorePath,
+      sgTruststorePath,
+      sgKeystorePassword,
+      sgTruststorePassword,
+      sgHostVerification,
+      sgHostVerificationResolveHostname,
+      lifecycle,
+      version - 1,
+      ec,
+      actorSystem
+    )
 }

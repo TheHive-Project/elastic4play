@@ -1,12 +1,12 @@
 package org.elastic4play.database
 
-import java.util.{ Map ⇒ JMap }
+import java.util.{Map ⇒ JMap}
 
 import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext.Implicits.{ global ⇒ ec }
+import scala.concurrent.ExecutionContext.Implicits.{global ⇒ ec}
 
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
-import play.api.libs.json.{ JsArray, JsNull, Json }
+import play.api.libs.json.{JsArray, JsNull, Json}
 import play.api.test.PlaySpecification
 
 import org.junit.runner.RunWith
@@ -21,18 +21,19 @@ class DBModifySpec extends PlaySpecification with Mockito {
 
   "DBModify" should {
     "build correct update script" in {
-      val db = mock[DBConfiguration]
+      val db       = mock[DBConfiguration]
       val dbmodify = new DBModify(db, ec)
       val attributes = Json.obj(
-        "obj" → Json.obj("subAttr1" → 1),
-        "arr" → Seq("a", "b", "c"),
-        "num" → 42,
-        "str" → "blah",
-        "bool" → false,
-        "sub.attr.str" → "subValue",
-        "n" → JsNull,
+        "obj"             → Json.obj("subAttr1" → 1),
+        "arr"             → Seq("a", "b", "c"),
+        "num"             → 42,
+        "str"             → "blah",
+        "bool"            → false,
+        "sub.attr.str"    → "subValue",
+        "n"               → JsNull,
         "sub.attr.remove" → JsArray(),
-        "remove" → JsArray())
+        "remove"          → JsArray()
+      )
       val script = dbmodify.buildScript(mock[BaseEntity], attributes)
 
       script.script must_=== """
@@ -45,7 +46,7 @@ class DBModifySpec extends PlaySpecification with Mockito {
         ctx._source["n"]=null;
         ctx._source["sub"]["attr"].remove("remove");
         ctx._source.remove("remove")""".filterNot(c ⇒ "\n ".contains(c))
-      script.params - "param0" - "param1" must_=== Map("param2" → 42, "param3" → "blah", "param4" → false, "param5" → "subValue")
+      script.params - "param0" - "param1" must_=== Map("param2"                              → 42, "param3" → "blah", "param4" → false, "param5" → "subValue")
       mapAsScalaMap(script.params("param0").asInstanceOf[JMap[_, _]]) must_== Map("subAttr1" → 1)
       script.params("param1").asInstanceOf[Array[Any]].toSeq must contain(exactly[Any]("a", "b", "c"))
     }

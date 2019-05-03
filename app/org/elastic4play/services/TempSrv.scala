@@ -3,27 +3,27 @@ package org.elastic4play.services
 import java.io.IOException
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
-import javax.inject.{ Inject, Singleton }
+import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 
 import play.api.Logger
 import play.api.inject.ApplicationLifecycle
-import play.api.mvc.{ Filter, RequestHeader, Result }
+import play.api.mvc.{Filter, RequestHeader, Result}
 
 import akka.stream.Materializer
 
 import org.elastic4play.utils.Instance
 
 @Singleton
-class TempSrv @Inject() (
-    lifecycle: ApplicationLifecycle,
-    implicit val ec: ExecutionContext) {
+class TempSrv @Inject()(lifecycle: ApplicationLifecycle, implicit val ec: ExecutionContext) {
 
   private[TempSrv] lazy val logger = Logger(getClass)
 
   private[TempSrv] val tempDir = Files.createTempDirectory(Paths.get(System.getProperty("java.io.tmpdir")), "").resolve("play-request")
-  lifecycle.addStopHook { () ⇒ Future { delete(tempDir) } }
+  lifecycle.addStopHook { () ⇒
+    Future { delete(tempDir) }
+  }
 
   private[TempSrv] object deleteVisitor extends SimpleFileVisitor[Path] {
     override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
@@ -36,18 +36,17 @@ class TempSrv @Inject() (
       FileVisitResult.CONTINUE
     }
   }
-  private[TempSrv] def delete(directory: Path): Unit = try {
-    if (Files.exists(directory))
-      Files.walkFileTree(directory, deleteVisitor)
-    ()
-  }
-  catch {
-    case t: Throwable ⇒ logger.warn(s"Fail to remove temporary files ($directory) : $t")
-  }
+  private[TempSrv] def delete(directory: Path): Unit =
+    try {
+      if (Files.exists(directory))
+        Files.walkFileTree(directory, deleteVisitor)
+      ()
+    } catch {
+      case t: Throwable ⇒ logger.warn(s"Fail to remove temporary files ($directory) : $t")
+    }
 
-  private def requestTempDir(requestId: String): Path = {
+  private def requestTempDir(requestId: String): Path =
     tempDir.resolve(requestId.replaceAllLiterally(":", "_"))
-  }
 
   def newTemporaryFile(prefix: String, suffix: String)(implicit authContext: AuthContext): Path = {
     val td = requestTempDir(authContext.requestId)
@@ -56,13 +55,11 @@ class TempSrv @Inject() (
     Files.createTempFile(td, prefix, suffix)
   }
 
-  def releaseTemporaryFiles()(implicit authContext: AuthContext): Unit = {
+  def releaseTemporaryFiles()(implicit authContext: AuthContext): Unit =
     releaseTemporaryFiles(authContext.requestId)
-  }
 
-  def releaseTemporaryFiles(request: RequestHeader): Unit = {
+  def releaseTemporaryFiles(request: RequestHeader): Unit =
     releaseTemporaryFiles(Instance.getRequestId(request))
-  }
 
   def releaseTemporaryFiles(requestId: String): Unit = {
     val td = requestTempDir(requestId)
@@ -71,13 +68,9 @@ class TempSrv @Inject() (
   }
 }
 
-class TempFilter @Inject() (
-    tempSrv: TempSrv,
-    implicit val ec: ExecutionContext,
-    implicit val mat: Materializer) extends Filter {
+class TempFilter @Inject()(tempSrv: TempSrv, implicit val ec: ExecutionContext, implicit val mat: Materializer) extends Filter {
 
-  def apply(nextFilter: RequestHeader ⇒ Future[Result])(requestHeader: RequestHeader): Future[Result] = {
+  def apply(nextFilter: RequestHeader ⇒ Future[Result])(requestHeader: RequestHeader): Future[Result] =
     nextFilter(requestHeader)
       .andThen { case _ ⇒ tempSrv.releaseTemporaryFiles(requestHeader) }
-  }
 }

@@ -1,6 +1,6 @@
 package org.elastic4play.models
 
-import play.api.libs.json.{ JsNumber, Json }
+import play.api.libs.json.{JsNumber, Json}
 import play.api.test.PlaySpecification
 
 import org.junit.runner.RunWith
@@ -12,24 +12,12 @@ import org.specs2.runner.JUnitRunner
 class CustomAttributeSpec extends PlaySpecification with Mockito {
   "a custom fields attribute" should {
     "accept valid JSON object" in {
-      val js = Json.obj(
-        "field1" → Json.obj(
-          "number" → 12),
-        "field2" → Json.obj(
-          "string" → "plop"),
-        "field3" → Json.obj(
-          "boolean" → true))
+      val js = Json.obj("field1" → Json.obj("number" → 12), "field2" → Json.obj("string" → "plop"), "field3" → Json.obj("boolean" → true))
       CustomAttributeFormat.checkJsonForCreation(Nil, js) must_=== Good(js)
     }
 
     "refuse invalid JSON object" in {
-      val js = Json.obj(
-        "field1" → Json.obj(
-          "number" → "str"),
-        "field2" → Json.obj(
-          "string" → 12),
-        "field3" → Json.obj(
-          "boolean" → 45))
+      val js     = Json.obj("field1" → Json.obj("number" → "str"), "field2" → Json.obj("string" → 12), "field3" → Json.obj("boolean" → 45))
       val result = CustomAttributeFormat.checkJsonForCreation(Nil, js)
       result.isBad must_=== true
     }

@@ -1,6 +1,6 @@
 package org.elastic4play.controllers
 
-import javax.inject.{ Inject, Singleton }
+import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.ExecutionContext
 
@@ -13,10 +13,8 @@ import org.elastic4play.services.MigrationSrv
   * Migration controller : start migration process
   */
 @Singleton
-class MigrationCtrl @Inject() (
-    migrationSrv: MigrationSrv,
-    components: ControllerComponents,
-    implicit val ec: ExecutionContext) extends AbstractController(components) {
+class MigrationCtrl @Inject()(migrationSrv: MigrationSrv, components: ControllerComponents, implicit val ec: ExecutionContext)
+    extends AbstractController(components) {
 
   @Timed("controllers.MigrationCtrl.migrate")
   def migrate: Action[AnyContent] = Action.async {

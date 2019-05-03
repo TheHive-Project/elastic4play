@@ -1,24 +1,22 @@
 package org.elastic4play.database
 
-import javax.inject.{ Inject, Singleton }
+import javax.inject.{Inject, Singleton}
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.{ExecutionContext, Future}
 
 import com.sksamuel.elastic4s.ElasticDsl.update
 import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
 
-import org.elastic4play.models.{ ModelAttributes, AttributeFormat ⇒ F, AttributeOption ⇒ O }
+import org.elastic4play.models.{ModelAttributes, AttributeFormat ⇒ F, AttributeOption ⇒ O}
 
 class SequenceModel extends ModelAttributes("sequence") {
   val counter = attribute("sequence", F.numberFmt, "Value of the sequence", O.model)
 }
 
 @Singleton
-class DBSequence @Inject() (
-    db: DBConfiguration,
-    implicit val ec: ExecutionContext) {
+class DBSequence @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
 
-  def apply(seqId: String): Future[Int] = {
+  def apply(seqId: String): Future[Int] =
     db.execute {
       update(seqId)
         .in(db.indexName → "sequence")
@@ -31,5 +29,4 @@ class DBSequence @Inject() (
     } map { updateResponse ⇒
       updateResponse.get.sourceAsMap().get("counter").asInstanceOf[Int]
     }
-  }
 }

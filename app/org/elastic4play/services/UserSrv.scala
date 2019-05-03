@@ -5,7 +5,7 @@ import scala.concurrent.Future
 import play.api.libs.json.JsObject
 import play.api.mvc.RequestHeader
 
-import org.elastic4play.{ AuthenticationError, AuthorizationError }
+import org.elastic4play.{AuthenticationError, AuthorizationError}
 
 abstract class Role(val name: String) {
   override def toString: String = name
@@ -43,12 +43,23 @@ trait AuthSrv {
   val name: String
   val capabilities = Set.empty[AuthCapability.Type]
 
-  def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] = Future.failed(AuthenticationError("Authentication using login/password is not supported"))
-  def authenticate(key: String)(implicit request: RequestHeader): Future[AuthContext] = Future.failed(AuthenticationError("Authentication using API key is not supported"))
+  def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] =
+    Future.failed(AuthenticationError("Authentication using login/password is not supported"))
+
+  def authenticate(key: String)(implicit request: RequestHeader): Future[AuthContext] =
+    Future.failed(AuthenticationError("Authentication using API key is not supported"))
   def authenticate()(implicit request: RequestHeader): Future[AuthContext] = Future.failed(AuthenticationError("SSO authentication is not supported"))
-  def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] = Future.failed(AuthorizationError("Change password is not supported"))
-  def setPassword(username: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] = Future.failed(AuthorizationError("Set password is not supported"))
-  def renewKey(username: String)(implicit authContext: AuthContext): Future[String] = Future.failed(AuthorizationError("Renew API key is not supported"))
+
+  def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
+    Future.failed(AuthorizationError("Change password is not supported"))
+
+  def setPassword(username: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
+    Future.failed(AuthorizationError("Set password is not supported"))
+
+  def renewKey(username: String)(implicit authContext: AuthContext): Future[String] =
+    Future.failed(AuthorizationError("Renew API key is not supported"))
   def getKey(username: String)(implicit authContext: AuthContext): Future[String] = Future.failed(AuthorizationError("Get API key is not supported"))
-  def removeKey(username: String)(implicit authContext: AuthContext): Future[Unit] = Future.failed(AuthorizationError("Remove API key is not supported"))
+
+  def removeKey(username: String)(implicit authContext: AuthContext): Future[Unit] =
+    Future.failed(AuthorizationError("Remove API key is not supported"))
 }
