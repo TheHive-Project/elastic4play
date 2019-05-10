@@ -17,16 +17,15 @@ scalaVersion := "2.12.7"
 
 resolvers += "elasticsearch-releases" at "https://artifacts.elastic.co/maven"
 
+val elastic4sVersion = "6.5.1"
 libraryDependencies ++= Seq(
   cacheApi,
-  "com.sksamuel.elastic4s" %% "elastic4s-core" % "5.6.6",
-  "com.sksamuel.elastic4s" %% "elastic4s-streams" % "5.6.6",
-  "com.sksamuel.elastic4s" %% "elastic4s-tcp" % "5.6.6",
-  "com.sksamuel.elastic4s" %% "elastic4s-xpack-security" % "5.6.6",
-  "com.typesafe.akka"      %% "akka-stream-testkit" % "2.5.10" % Test,
+  "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion,
+  "com.sksamuel.elastic4s" %% "elastic4s-http-streams" % elastic4sVersion,
+  "com.sksamuel.elastic4s" %% "elastic4s-http" % elastic4sVersion,
+  "com.typesafe.akka"      %% "akka-stream-testkit" % "2.5.19" % Test,
   "org.scalactic"          %% "scalactic" % "3.0.5",
   "org.bouncycastle"       % "bcprov-jdk15on" % "1.58",
-  "com.floragunn"          % "search-guard-ssl" % "5.6.9-23",
   specs2                   % Test
 )
 

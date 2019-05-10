@@ -2,8 +2,8 @@ package org.elastic4play.models
 
 import play.api.libs.json.{Format, JsString, JsValue}
 
-import com.sksamuel.elastic4s.ElasticDsl.keywordField
-import com.sksamuel.elastic4s.mappings.KeywordFieldDefinition
+import com.sksamuel.elastic4s.http.ElasticDsl.keywordField
+import com.sksamuel.elastic4s.mappings.KeywordField
 import org.scalactic._
 
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
@@ -42,7 +42,7 @@ case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit format
         case _ ⇒ formatError(value)
       }
 
-  override def elasticType(attributeName: String): KeywordFieldDefinition = keywordField(attributeName)
+  override def elasticType(attributeName: String): KeywordField = keywordField(attributeName)
 
   override def definition(dblists: DBLists, attribute: Attribute[T#Value]): Seq[AttributeDefinition] =
     Seq(AttributeDefinition(attribute.attributeName, name, attribute.description, enum.values.map(v ⇒ JsString(v.toString)).toSeq, Nil))

@@ -3,9 +3,9 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.nestedField
-import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
+import com.sksamuel.elastic4s.http.ElasticDsl.nestedField
+import com.sksamuel.elastic4s.mappings.NestedField
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
 import org.scalactic.Accumulation._
 import org.scalactic._
 
@@ -96,9 +96,9 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
     result
   }
 
-  override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName).fields(subAttributes.map(_.elasticMapping))
+  override def elasticType(attributeName: String): NestedField = nestedField(attributeName).fields(subAttributes.map(_.elasticMapping))
 
-  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateDefinition] =
+  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] =
     subAttributes.flatMap(_.elasticTemplate(attributePath))
 
   override def definition(dblists: DBLists, attribute: Attribute[JsObject]): Seq[AttributeDefinition] =

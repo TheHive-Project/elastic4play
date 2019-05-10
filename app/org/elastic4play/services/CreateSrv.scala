@@ -1,7 +1,6 @@
 package org.elastic4play.services
 
 import java.util.Date
-import javax.inject.{Inject, Singleton}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
@@ -10,6 +9,7 @@ import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json.{JsNull, JsObject, JsValue, Json}
 
+import javax.inject.{Inject, Singleton}
 import org.scalactic.Accumulation.convertGenTraversableOnceToValidatable
 import org.scalactic.Every.everyToGenTraversableOnce
 import org.scalactic.{Bad, One}
@@ -46,6 +46,7 @@ class CreateSrv @Inject()(
         case (name, Some(value)) ⇒ name → value
       })
       .fold(attrs ⇒ Future.successful(JsObject(attrs.toSeq)), errors ⇒ Future.failed(AttributeCheckingError(model.modelName, errors)))
+
   private[services] def processAttributes(model: BaseModelDef, parent: Option[BaseEntity], attributes: JsObject)(
       implicit authContext: AuthContext
   ): Future[JsObject] =

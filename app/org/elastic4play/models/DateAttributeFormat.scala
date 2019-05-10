@@ -6,8 +6,8 @@ import scala.util.Try
 
 import play.api.libs.json.{JsNumber, JsString, JsValue}
 
-import com.sksamuel.elastic4s.ElasticDsl.dateField
-import com.sksamuel.elastic4s.mappings.BasicFieldDefinition
+import com.sksamuel.elastic4s.http.ElasticDsl.dateField
+import com.sksamuel.elastic4s.mappings.BasicField
 import org.scalactic._
 
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
@@ -42,7 +42,7 @@ class DateAttributeFormat extends AttributeFormat[Date]("date") {
       }
     }
 
-  override def elasticType(attributeName: String): BasicFieldDefinition = dateField(attributeName).format("epoch_millis||basic_date_time_no_millis")
+  override def elasticType(attributeName: String): BasicField = dateField(attributeName).format("epoch_millis||basic_date_time_no_millis")
 }
 
 object DateAttributeFormat extends DateAttributeFormat

@@ -6,8 +6,9 @@ import scala.concurrent.Future
 import play.api.libs.json.{JsObject, JsString, Json}
 import play.api.test.PlaySpecification
 
-import com.sksamuel.elastic4s.index.RichIndexResponse
-import com.sksamuel.elastic4s.indexes.IndexDefinition
+import com.sksamuel.elastic4s.http.index.IndexResponse
+import com.sksamuel.elastic4s.http.ElasticDsl.IndexHandler
+import com.sksamuel.elastic4s.indexes.IndexRequest
 import common.{Fabricator ⇒ F}
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
@@ -26,22 +27,22 @@ class DBCreateSpec extends PlaySpecification with Mockito {
     val db: DBConfiguration = mock[DBConfiguration]
     val dbcreate            = new DBCreate(db, ec)
 
-    def apply(modelName: String, attributes: JsObject): (JsObject, IndexDefinition) = {
-      val indexResponse = mock[RichIndexResponse]
+    def apply(modelName: String, attributes: JsObject): (JsObject, IndexRequest) = {
+      val indexResponse = mock[IndexResponse]
       indexResponse.id returns (attributes \ "_id").asOpt[String].getOrElse(defaultEntityId)
-      db.execute(any[IndexDefinition]) returns Future.successful(indexResponse)
+      db.execute(any[IndexRequest]) returns Future.successful(indexResponse)
       val attrs  = dbcreate(modelName, attributes).await
-      val captor = capture[IndexDefinition]
+      val captor = capture[IndexRequest]
       there was one(db).execute(captor.capture)
       (attrs, captor.value)
     }
 
-    def apply(parent: BaseEntity, attributes: JsObject): (JsObject, IndexDefinition) = {
-      val indexResponse = mock[RichIndexResponse]
+    def apply(parent: BaseEntity, attributes: JsObject): (JsObject, IndexRequest) = {
+      val indexResponse = mock[IndexResponse]
       indexResponse.id returns (attributes \ "_id").asOpt[String].getOrElse(defaultEntityId)
-      db.execute(any[IndexDefinition]) returns Future.successful(indexResponse)
+      db.execute(any[IndexRequest]) returns Future.successful(indexResponse)
       val attrs  = dbcreate(modelName, Some(parent), attributes).await
-      val captor = capture[IndexDefinition]
+      val captor = capture[IndexRequest]
       there was one(db).execute(captor.capture)
       (attrs, captor.value)
     }

@@ -1,6 +1,6 @@
 package org.elastic4play.services
 
-import com.sksamuel.elastic4s.ElasticDsl.{
+import com.sksamuel.elastic4s.http.ElasticDsl.{
   boolQuery,
   existsQuery,
   hasChildQuery,
@@ -15,8 +15,9 @@ import com.sksamuel.elastic4s.ElasticDsl.{
   termsQuery,
   wildcardQuery
 }
-import com.sksamuel.elastic4s.searches.queries.{BuildableTermsQueryImplicits, QueryDefinition}
-import org.apache.lucene.search.join.ScoreMode
+import com.sksamuel.elastic4s.searches.ScoreMode
+import com.sksamuel.elastic4s.searches.queries.Query
+import com.sksamuel.elastic4s.searches.queries.term.{BuildableTermsQuery, TermsQuery}
 
 import org.elastic4play.models.BaseEntity
 
@@ -58,7 +59,7 @@ object QueryDSL {
   def groupByCaterogy(aggregationName: Option[String], categories: Map[String, QueryDef], selectables: Agg*) =
     new GroupByCategory(aggregationName.getOrElse("categories"), categories, selectables)
 
-  private def nestedField(field: String, q: (String) ⇒ QueryDefinition) =
+  private def nestedField(field: String, q: String ⇒ Query) =
     field
       .split("\\.")
       .init
@@ -69,7 +70,10 @@ object QueryDSL {
         case (queryDef, subName) ⇒ nestedQuery(subName.mkString(".")).query(queryDef).scoreMode(ScoreMode.None)
       }
 
-  implicit class SearchField(field: String) extends BuildableTermsQueryImplicits {
+  implicit class SearchField(field: String) /*extends BuildableTermsQueryImplicits*/ {
+    implicit val stringTermsQueryBuilder = new BuildableTermsQuery[String] {
+      override def build(q: TermsQuery[String]): Any = q
+    }
     private def convertValue(value: Any): Any = value match {
       case _: Enumeration#Value ⇒ value.toString
       case bd: BigDecimal       ⇒ bd.toDouble
@@ -85,7 +89,7 @@ object QueryDSL {
     def ~>=(value: Any)           = QueryDef(nestedField(field, rangeQuery(_).gte(value.toString)))
     def ~<>(value: (Any, Any))    = QueryDef(nestedField(field, rangeQuery(_).gt(value._1.toString).lt(value._2.toString)))
     def ~=<>=(value: (Any, Any))  = QueryDef(nestedField(field, rangeQuery(_).gte(value._1.toString).lte(value._2.toString)))
-    def in(values: AnyRef*)       = QueryDef(nestedField(field, termsQuery(_, values)))
+    def in(values: String*)       = QueryDef(nestedField(field, termsQuery(_, values)))
   }
 
   def ofType(value: String)                                 = QueryDef(termQuery("_type", value))
@@ -97,11 +101,11 @@ object QueryDSL {
   def and(queries: QueryDef*): QueryDef                     = QueryDef(boolQuery().must(queries.map(_.query)))
   def and(queries: Iterable[QueryDef]): QueryDef            = QueryDef(boolQuery().must(queries.map(_.query)))
   def not(query: QueryDef): QueryDef                        = QueryDef(boolQuery.not(query.query))
-  def child(childType: String, query: QueryDef): QueryDef   = QueryDef(hasChildQuery(childType).query(query.query).scoreMode(ScoreMode.None))
-  def parent(parentType: String, query: QueryDef): QueryDef = QueryDef(hasParentQuery(parentType).query(query.query).scoreMode(false))
+  def child(childType: String, query: QueryDef): QueryDef   = QueryDef(hasChildQuery(childType, query.query, ScoreMode.None))
+  def parent(parentType: String, query: QueryDef): QueryDef = QueryDef(hasParentQuery(parentType, query.query, false))
   def withParent(parent: BaseEntity): QueryDef              = withParent(parent.model.modelName, parent.id)
 
   def withParent(parentType: String, parentId: String): QueryDef =
-    QueryDef(hasParentQuery(parentType).query(idsQuery(parentId).types(parentType)).scoreMode(false)) // QueryDef(ParentIdQueryDefinition(parentType, parentId)) FIXME doesn't work yet
+    QueryDef(hasParentQuery(parentType, idsQuery(parentId).types(parentType), false))
   def string(queryString: String): QueryDef = QueryDef(query(queryString))
 }

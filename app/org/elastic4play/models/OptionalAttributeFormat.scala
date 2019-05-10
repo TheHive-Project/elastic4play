@@ -3,7 +3,7 @@ package org.elastic4play.models
 import play.api.libs.json.{JsNull, JsValue}
 
 import com.sksamuel.elastic4s.mappings.FieldDefinition
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
 import org.scalactic._
 
 import org.elastic4play.AttributeError
@@ -30,7 +30,7 @@ case class OptionalAttributeFormat[T](attributeFormat: AttributeFormat[T])
 
   override def elasticType(attributeName: String): FieldDefinition = attributeFormat.elasticType(attributeName)
 
-  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateDefinition] = attributeFormat.elasticTemplate(attributePath)
+  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] = attributeFormat.elasticTemplate(attributePath)
 
   override def definition(dblists: DBLists, attribute: Attribute[Option[T]]): Seq[AttributeDefinition] =
     attributeFormat.definition(dblists, attribute.asInstanceOf[Attribute[T]])

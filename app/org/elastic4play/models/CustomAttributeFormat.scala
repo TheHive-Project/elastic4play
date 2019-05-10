@@ -3,10 +3,10 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.{booleanField, dateField, keywordField, longField, nestedField}
-import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
-import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.http.ElasticDsl.{booleanField, dateField, keywordField, longField, nestedField}
+import com.sksamuel.elastic4s.mappings.NestedField
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
+import com.sksamuel.elastic4s.http.ElasticDsl._
 import org.scalactic._
 
 import org.elastic4play.AttributeError
@@ -64,10 +64,10 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
       case _                 ⇒ formatError(value)
     }
 
-  override def elasticType(attributeName: String): NestedFieldDefinition =
+  override def elasticType(attributeName: String): NestedField =
     nestedField(attributeName)
 
-  override def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateDefinition] =
+  override def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateRequest] =
     dynamicTemplate(attributePath.mkString("_"))
       .mapping(
         dynamicNestedField().fields(

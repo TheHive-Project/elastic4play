@@ -3,8 +3,8 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json.{Format, JsArray, JsNull, JsValue}
 
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
-import com.sksamuel.elastic4s.mappings.{BasicFieldDefinition, FieldDefinition}
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
+import com.sksamuel.elastic4s.mappings.{BasicField, FieldDefinition}
 import org.scalactic._
 
 import org.elastic4play.controllers.InputValue
@@ -29,7 +29,7 @@ abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Forma
 
   def elasticType(attributeName: String): FieldDefinition
 
-  def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateDefinition] = Nil
+  def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] = Nil
 
   protected def formatError(value: InputValue) = Bad(One(InvalidFormatAttributeError("", name, value)))
 
@@ -94,11 +94,11 @@ case class Attribute[T](
   }
 
   def elasticMapping: FieldDefinition = format.elasticType(attributeName) match {
-    case a: BasicFieldDefinition if isSensitive && a.`type` == "String" ⇒ a.index("no")
-    case a                                                              ⇒ a
+    case a: BasicField if isSensitive && a.`type` == "String" ⇒ a.index(false)
+    case a                                                    ⇒ a
   }
 
-  def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateDefinition] =
+  def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateRequest] =
     format.elasticTemplate(attributePath :+ attributeName)
 
   def validateForCreation(value: Option[JsValue]): Option[JsValue] Or Every[AttributeError] = {

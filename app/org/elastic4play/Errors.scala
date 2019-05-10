@@ -17,12 +17,13 @@ case class NotFoundError(message: String)                                       
 case class GetError(message: String)                                                  extends Exception(message)
 case class UpdateError(status: Option[String], message: String, attributes: JsObject) extends ErrorWithObject(message, attributes)
 case class InternalError(message: String)                                             extends Exception(message)
-case class SearchError(message: String, cause: Throwable)                             extends Exception(message, cause)
+case class SearchError(message: String)                                               extends Exception(message)
 case class AuthenticationError(message: String)                                       extends Exception(message)
 case class OAuth2Redirect(redirectUrl: String, params: Map[String, Seq[String]])      extends Exception(redirectUrl)
 case class AuthorizationError(message: String)                                        extends Exception(message)
 case class MultiError(message: String, exceptions: Seq[Exception])
     extends Exception(message + exceptions.map(_.getMessage).mkString(" :\n\t- ", "\n\t- ", ""))
+case object IndexNotFoundException extends Exception
 
 case class AttributeCheckingError(tableName: String, errors: Seq[AttributeError] = Nil) extends Exception(errors.mkString("[", "][", "]")) {
   override def toString: String = errors.mkString("[", "][", "]")

@@ -2,8 +2,8 @@ package org.elastic4play.models
 
 import play.api.libs.json.{JsString, JsValue}
 
-import com.sksamuel.elastic4s.ElasticDsl.keywordField
-import com.sksamuel.elastic4s.mappings.KeywordFieldDefinition
+import com.sksamuel.elastic4s.http.ElasticDsl.keywordField
+import com.sksamuel.elastic4s.mappings.KeywordField
 import org.scalactic._
 
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
@@ -27,5 +27,5 @@ object HashAttributeFormat extends AttributeFormat[String]("hash") {
         case _                                                                    ⇒ formatError(value)
       }
 
-  override def elasticType(attributeName: String): KeywordFieldDefinition = keywordField(attributeName)
+  override def elasticType(attributeName: String): KeywordField = keywordField(attributeName)
 }

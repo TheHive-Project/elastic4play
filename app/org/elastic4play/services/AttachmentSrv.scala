@@ -3,21 +3,13 @@ package org.elastic4play.services
 import java.io.InputStream
 import java.nio.file.Files
 
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{ExecutionContext, Future}
-
-import play.api.Configuration
-import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json.Json.toJsFieldJsValueWrapper
-import play.api.libs.json._
-
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import akka.stream.scaladsl.{FileIO, Sink, Source, StreamConverters}
 import akka.util.ByteString
+import com.sksamuel.elastic4s.http.ElasticDsl.search
 import javax.inject.{Inject, Singleton}
-
 import org.elastic4play.controllers.JsonFormat.{attachmentInputValueReads, fileInputValueFormat}
 import org.elastic4play.controllers.{AttachmentInputValue, FileInputValue, JsonInputValue}
 import org.elastic4play.database.{DBCreate, DBFind, DBRemove}
@@ -25,6 +17,12 @@ import org.elastic4play.models.{AttributeDef, BaseModelDef, EntityDef, ModelDef,
 import org.elastic4play.services.JsonFormat.attachmentFormat
 import org.elastic4play.utils.{Hash, Hasher, Retry}
 import org.elastic4play.{AttributeCheckingError, InvalidFormatAttributeError, MissingAttributeError}
+import play.api.Configuration
+import play.api.libs.json.JsValue.jsValueToJsLookup
+import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import play.api.libs.json._
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{ExecutionContext, Future}
 
 case class Attachment(name: String, hashes: Seq[Hash], size: Long, contentType: String, id: String)
 
@@ -220,9 +218,8 @@ class AttachmentSrv(
     removeChunks().recover { case _ ⇒ () }
   }
 
-  def cleanup: Future[Unit] = {
-    import com.sksamuel.elastic4s.ElasticDsl.{search, RichString}
-    dbFind(Some("all"), Nil)(index ⇒ search(index / attachmentModel.modelName).fetchSource(false))
+  def cleanup: Future[Unit] =
+    dbFind(Some("all"), Nil)(index ⇒ search(index).matchQuery("relations", attachmentModel.modelName).fetchSource(false))
       ._1
       .mapConcat(o ⇒ (o \ "_id").asOpt[String].toList)
       .collect { case id if id.endsWith("_0") ⇒ id.dropRight(2) }
@@ -235,5 +232,4 @@ class AttachmentSrv(
       }
       .runWith(Sink.ignore)
       .map(_ ⇒ ())
-  }
 }

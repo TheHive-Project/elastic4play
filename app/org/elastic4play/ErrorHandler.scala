@@ -1,15 +1,13 @@
 package org.elastic4play
 
+import java.net.ConnectException
+
 import scala.concurrent.Future
 
 import play.api.Logger
 import play.api.http.{HttpErrorHandler, Status, Writeable}
 import play.api.libs.json.{JsNull, JsValue, Json}
 import play.api.mvc.{RequestHeader, ResponseHeader, Result, Results}
-
-import org.elasticsearch.client.transport.NoNodeAvailableException
-import org.elasticsearch.index.IndexNotFoundException
-import org.elasticsearch.index.query.QueryShardException
 
 import org.elastic4play.JsonFormat.attributeCheckingExceptionWrites
 
@@ -35,10 +33,10 @@ class ErrorHandler extends HttpErrorHandler {
         Some(Status.BAD_REQUEST → Json.obj("type" → "NumberFormatException", "message" → ("Invalid format " + nfe.getMessage)))
       case NotFoundError(message)        ⇒ Some(Status.NOT_FOUND   → Json.obj("type" → "NotFoundError", "message" → message))
       case BadRequestError(message)      ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "BadRequest", "message" → message))
-      case SearchError(message, cause)   ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "SearchError", "message" → s"$message (${cause.getMessage})"))
+      case SearchError(message)          ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "SearchError", "message" → s"$message"))
       case ace: AttributeCheckingError   ⇒ Some(Status.BAD_REQUEST → Json.toJson(ace))
       case iae: IllegalArgumentException ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "IllegalArgument", "message" → iae.getMessage))
-      case _: NoNodeAvailableException ⇒
+      case _: ConnectException ⇒
         Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "NoNodeAvailable", "message" → "ElasticSearch cluster is unreachable"))
       case CreateError(_, message, attributes) ⇒
         Some(Status.INTERNAL_SERVER_ERROR → Json.obj("type" → "CreateError", "message" → message, "object" → attributes))
@@ -49,9 +47,8 @@ class ErrorHandler extends HttpErrorHandler {
           case Some((_, j)) ⇒ j
         }
         Some(Status.MULTI_STATUS → Json.obj("type" → "MultiError", "error" → message, "suberrors" → suberrors))
-      case _: IndexNotFoundException ⇒ Some(520 → JsNull)
-      case qse: QueryShardException  ⇒ Some(Status.BAD_REQUEST → Json.obj("type" → "Invalid search query", "message" → qse.getMessage))
-      case t: Throwable              ⇒ Option(t.getCause).flatMap(toErrorResult)
+      case IndexNotFoundException ⇒ Some(520 → JsNull)
+      case t: Throwable           ⇒ Option(t.getCause).flatMap(toErrorResult)
     }
 
   def toResult[C](status: Int, c: C)(implicit writeable: Writeable[C]) = Result(header = ResponseHeader(status), body = writeable.toEntity(c))

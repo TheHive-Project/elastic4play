@@ -1,16 +1,13 @@
 package org.elastic4play.database
 
+import com.sksamuel.elastic4s.RefreshPolicy
+import com.sksamuel.elastic4s.http.ElasticDsl._
 import javax.inject.{Inject, Singleton}
-
-import scala.concurrent.{ExecutionContext, Future}
-
+import org.elastic4play.models.BaseEntity
 import play.api.Logger
 
-import com.sksamuel.elastic4s.ElasticDsl.{delete, RichString}
-import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
-import org.elasticsearch.rest.RestStatus
-
-import org.elastic4play.models.BaseEntity
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Success
 
 @Singleton
 class DBRemove @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
@@ -25,8 +22,6 @@ class DBRemove @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
           .routing(entity.routing)
           .refresh(RefreshPolicy.WAIT_UNTIL)
       }
-      .map { deleteResponse ⇒
-        deleteResponse.status != RestStatus.NOT_FOUND
-      }
+      .transform(r ⇒ Success(r.isSuccess))
   }
 }

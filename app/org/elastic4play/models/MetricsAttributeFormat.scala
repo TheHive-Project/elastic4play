@@ -2,9 +2,9 @@ package org.elastic4play.models
 
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.{dynamicLongField, dynamicTemplate, nestedField}
-import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
+import com.sksamuel.elastic4s.http.ElasticDsl.{dynamicLongField, dynamicTemplate, nestedField}
+import com.sksamuel.elastic4s.mappings.NestedField
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
 import org.scalactic.Accumulation._
 import org.scalactic._
 
@@ -32,9 +32,9 @@ class MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
       OptionalAttributeFormat(NumberAttributeFormat).inputValueToJson(subNames.tail, value) //.map(v ⇒ JsObject(Seq(subNames.head → v)))
     }
 
-  override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName)
+  override def elasticType(attributeName: String): NestedField = nestedField(attributeName)
 
-  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateDefinition] =
+  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] =
     dynamicTemplate(attributePath.mkString("_"))
       .mapping(dynamicLongField())
       .pathMatch(attributePath.mkString(".") + ".*") :: Nil

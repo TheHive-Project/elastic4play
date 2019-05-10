@@ -2,8 +2,8 @@ package org.elastic4play.models
 
 import play.api.libs.json.{JsNumber, JsValue}
 
-import com.sksamuel.elastic4s.ElasticDsl.longField
-import com.sksamuel.elastic4s.mappings.BasicFieldDefinition
+import com.sksamuel.elastic4s.http.ElasticDsl.longField
+import com.sksamuel.elastic4s.mappings.BasicField
 import org.scalactic._
 
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
@@ -30,7 +30,7 @@ class NumberAttributeFormat extends AttributeFormat[Long]("number") {
         case _                           ⇒ formatError(value)
       }
 
-  override def elasticType(attributeName: String): BasicFieldDefinition = longField(attributeName)
+  override def elasticType(attributeName: String): BasicField = longField(attributeName)
 
 }
 

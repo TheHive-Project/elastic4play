@@ -1,19 +1,17 @@
 package org.elastic4play.database
 
 import javax.inject.{Inject, Singleton}
-
 import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.Logger
 import play.api.libs.json._
-
-import com.sksamuel.elastic4s.ElasticDsl.{script, update}
-import com.sksamuel.elastic4s.script.ScriptDefinition
-import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
-
+import com.sksamuel.elastic4s.http.ElasticDsl._
+import com.sksamuel.elastic4s.script.Script
 import org.elastic4play.models.BaseEntity
+
 import scala.collection.JavaConverters._
 import java.util.{Map ⇒ JMap}
+
+import com.sksamuel.elastic4s.RefreshPolicy
 
 case class ModifyConfig(retryOnConflict: Int = 5, refreshPolicy: RefreshPolicy = RefreshPolicy.WAIT_UNTIL, version: Option[Long] = None)
 
@@ -50,7 +48,7 @@ class DBModify @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
     *   Sub attribute can be updated using dot notation ("attr.subattribute").
     * @return ElasticSearch update script
     */
-  private[database] def buildScript(entity: BaseEntity, updateAttributes: JsObject): ScriptDefinition = {
+  private[database] def buildScript(entity: BaseEntity, updateAttributes: JsObject): Script = {
     val attrs = updateAttributes.fields.zipWithIndex
     val updateScript = attrs.map {
       case ((name, JsArray(Seq())), _) ⇒
@@ -81,7 +79,7 @@ class DBModify @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
   def apply(entity: BaseEntity, updateAttributes: JsObject, modifyConfig: ModifyConfig): Future[BaseEntity] =
     db.execute {
         val updateDefinition = update(entity.id)
-          .in(db.indexName → entity.model.modelName)
+          .in(db.indexName / "doc")
           .routing(entity.routing)
           .script(buildScript(entity, updateAttributes))
           .fetchSource(true)
@@ -91,7 +89,7 @@ class DBModify @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
       }
       .map { updateResponse ⇒
         entity.model(
-          Json.parse(updateResponse.get.sourceAsString).as[JsObject] +
+          Json.parse(updateResponse.result).as[JsObject] +
             ("_type"    → JsString(entity.model.modelName)) +
             ("_id"      → JsString(entity.id)) +
             ("_routing" → JsString(entity.routing)) +

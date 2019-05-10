@@ -2,8 +2,8 @@ package org.elastic4play.models
 
 import play.api.libs.json.{JsBoolean, JsValue}
 
-import com.sksamuel.elastic4s.ElasticDsl.booleanField
-import com.sksamuel.elastic4s.mappings.BasicFieldDefinition
+import com.sksamuel.elastic4s.http.ElasticDsl.booleanField
+import com.sksamuel.elastic4s.mappings.BasicField
 import org.scalactic._
 
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
@@ -30,7 +30,7 @@ class BooleanAttributeFormat extends AttributeFormat[Boolean]("boolean") {
         case _                            ⇒ formatError(value)
       }
 
-  override def elasticType(attributeName: String): BasicFieldDefinition = booleanField(attributeName)
+  override def elasticType(attributeName: String): BasicField = booleanField(attributeName)
 }
 
 object BooleanAttributeFormat extends BooleanAttributeFormat
