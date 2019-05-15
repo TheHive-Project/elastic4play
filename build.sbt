@@ -23,7 +23,7 @@ libraryDependencies ++= Seq(
   "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion,
   "com.sksamuel.elastic4s" %% "elastic4s-http-streams" % elastic4sVersion,
   "com.sksamuel.elastic4s" %% "elastic4s-http" % elastic4sVersion,
-  "com.typesafe.akka"      %% "akka-stream-testkit" % "2.5.19" % Test,
+  "com.typesafe.akka"      %% "akka-stream-testkit" % "2.5.21" % Test,
   "org.scalactic"          %% "scalactic" % "3.0.5",
   "org.bouncycastle"       % "bcprov-jdk15on" % "1.58",
   specs2                   % Test
