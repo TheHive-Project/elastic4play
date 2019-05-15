@@ -1,6 +1,15 @@
 # Change Log
 
-## [1.10.0](https://github.com/TheHive-Project/elastic4play/tree/1.10.0)
+## [1.11.0](https://github.com/TheHive-Project/elastic4play/tree/1.11.0) (2019-05-15)
+
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.10.0...1.11.0)
+
+**Implemented enhancements:**
+
+- TCP Client to ES Deprecated - Switch to HTTP [\#34](https://github.com/TheHive-Project/elastic4play/issues/34)
+- Add support of ElasticSearch 6 [\#82](https://github.com/TheHive-Project/elastic4play/issues/82)
+
+## [1.10.0](https://github.com/TheHive-Project/elastic4play/tree/1.10.0) (2019-03-19)
 
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.9.0...1.10.0)
 
