@@ -1,79 +1,79 @@
 package org.elastic4play.services
 
 import scala.util.Try
-import scala.collection.JavaConverters._
 
-import play.api.libs.json.{ JsArray, JsNumber, JsObject }
+import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.{ avgAggregation, dateHistogramAggregation, filterAggregation, matchAllQuery, maxAggregation, minAggregation, nestedAggregation, sumAggregation, termsAggregation, topHitsAggregation }
-import com.sksamuel.elastic4s.script.ScriptDefinition
-import com.sksamuel.elastic4s.searches.RichSearchHit
+import com.sksamuel.elastic4s.http.ElasticDsl.{
+  avgAggregation,
+  dateHistogramAggregation,
+  filterAggregation,
+  matchAllQuery,
+  maxAggregation,
+  minAggregation,
+  nestedAggregation,
+  sumAggregation,
+  termsAggregation,
+  topHitsAggregation
+}
+import com.sksamuel.elastic4s.http.search.HasAggregations
+import com.sksamuel.elastic4s.json.JacksonSupport
+import com.sksamuel.elastic4s.script.Script
+import com.sksamuel.elastic4s.searches.DateHistogramInterval
 import com.sksamuel.elastic4s.searches.aggs._
-import org.elasticsearch.search.aggregations.bucket.filter.Filter
-import org.elasticsearch.search.aggregations.bucket.filters.Filters
-import org.elasticsearch.search.aggregations.bucket.histogram.{ DateHistogramInterval, Histogram }
-import org.elasticsearch.search.aggregations.bucket.terms.Terms
-import org.elasticsearch.search.aggregations.bucket.terms.Terms.Order
-import org.elasticsearch.search.aggregations.bucket.nested.Nested
-import org.elasticsearch.search.aggregations.metrics.avg.Avg
-import org.elasticsearch.search.aggregations.metrics.max.Max
-import org.elasticsearch.search.aggregations.metrics.min.Min
-import org.elasticsearch.search.aggregations.metrics.sum.Sum
-import org.elasticsearch.search.aggregations.metrics.tophits.TopHits
-import org.joda.time.DateTime
 
 import org.elastic4play.BadRequestError
 import org.elastic4play.database.DBUtils
 import org.elastic4play.models.BaseModelDef
 
 abstract class Agg(val aggregationName: String) {
-  def apply(model: BaseModelDef): Seq[AggregationDefinition]
+  def apply(model: BaseModelDef): Seq[Aggregation]
 
-  def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject
+  def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject
 }
 
 abstract class FieldAgg(val fieldName: String, aggregationName: String, query: Option[QueryDef]) extends Agg(aggregationName) {
-  def script(s: String): AggregationDefinition
+  def script(s: String): Aggregation
 
-  def field(f: String): AggregationDefinition
+  def field(f: String): Aggregation
 
-  def getAggregation(fieldName: String, aggregations: RichAggregations, query: Option[QueryDef]): RichAggregations = {
+  def getAggregation(fieldName: String, aggregations: HasAggregations, query: Option[QueryDef]): HasAggregations = {
 
     val agg = query match {
       case None ⇒ aggregations
-      case _    ⇒ RichAggregations(aggregations.aggregations.get[Filter](aggregationName).getAggregations)
+      case _    ⇒ aggregations.filter(aggregationName)
     }
 
     if (fieldName.startsWith("computed")) agg
     else {
       fieldName.split("\\.").init.foldLeft(agg) { (a, _) ⇒
-        RichAggregations(a.getAs[Nested](aggregationName).getAggregations)
+        a.nested(aggregationName)
       }
     }
   }
 
-  def apply(model: BaseModelDef): Seq[AggregationDefinition] = {
+  def apply(model: BaseModelDef): Seq[Aggregation] = {
     val aggs = fieldName.split("\\.") match {
       case Array("computed", c) ⇒
-        val s = model.computedMetrics.getOrElse(
-          c,
-          throw BadRequestError(s"Field $fieldName is unknown in ${model.modelName}"))
+        val s = model.computedMetrics.getOrElse(c, throw BadRequestError(s"Field $fieldName is unknown in ${model.modelName}"))
         Seq(script(s))
       case array ⇒
         if (array(0) != "" && !model.attributes.exists(_.attributeName == array(0))) {
           throw BadRequestError(s"Field $fieldName is unknown in ${model.modelName}")
         }
         // TODO check attribute type
-        Seq(fieldName
-          .split("\\.")
-          .toSeq
-          .init
-          .inits
-          .toSeq
-          .init
-          .foldLeft[AggregationDefinition](field(fieldName)) { (agg, f) ⇒
-            nestedAggregation(aggregationName, f.mkString(".")).subaggs(agg)
-          })
+        Seq(
+          fieldName
+            .split("\\.")
+            .toSeq
+            .init
+            .inits
+            .toSeq
+            .init
+            .foldLeft[Aggregation](field(fieldName)) { (agg, f) ⇒
+              nestedAggregation(aggregationName, f.mkString(".")).subaggs(agg)
+            }
+        )
     }
     query match {
       case None    ⇒ aggs
@@ -83,88 +83,103 @@ abstract class FieldAgg(val fieldName: String, aggregationName: String, query: O
 }
 
 class SelectAvg(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName, query) {
-  def script(s: String): AggregationDefinition = avgAggregation(aggregationName).script(ScriptDefinition(s).lang("groovy"))
+  def script(s: String): Aggregation = avgAggregation(aggregationName).script(Script(s).lang("groovy"))
 
-  def field(f: String): AggregationDefinition = avgAggregation(aggregationName).field(f)
+  def field(f: String): Aggregation = avgAggregation(aggregationName).field(f)
 
-  def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
-    val avg = getAggregation(fieldName, aggregations, query).getAs[Avg](aggregationName)
-    val value = Try(JsNumber(avg.getValue)).toOption.getOrElse(JsNumber(0))
-    JsObject(Seq(avg.getName → value))
+  def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
+    val avg   = getAggregation(fieldName, aggregations, query).avg(aggregationName)
+    val value = Try(JsNumber(avg.value)).toOption.getOrElse(JsNumber(0))
+    JsObject(Seq(avg.name → value))
   }
 }
 
 class SelectMin(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName, query) {
-  def script(s: String): AggregationDefinition = minAggregation(aggregationName).script(ScriptDefinition(s).lang("groovy"))
+  def script(s: String): Aggregation = minAggregation(aggregationName).script(Script(s).lang("groovy"))
 
-  def field(f: String): AggregationDefinition = minAggregation(aggregationName).field(f)
+  def field(f: String): Aggregation = minAggregation(aggregationName).field(f)
 
-  def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
-    val min = getAggregation(fieldName, aggregations, query).getAs[Min](aggregationName)
-    val value = Try(JsNumber(min.getValue)).toOption.getOrElse(JsNumber(0))
-    JsObject(Seq(min.getName → value))
+  def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
+    val min   = getAggregation(fieldName, aggregations, query).min(aggregationName)
+    val value = min.value.fold(JsNumber(0))(m ⇒ JsNumber(m))
+    JsObject(Seq(min.name → value))
   }
 }
 
 class SelectMax(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName, query) {
-  def script(s: String): AggregationDefinition = maxAggregation(aggregationName).script(ScriptDefinition(s).lang("groovy"))
+  def script(s: String): Aggregation = maxAggregation(aggregationName).script(Script(s).lang("groovy"))
 
-  def field(f: String): AggregationDefinition = maxAggregation(aggregationName).field(f)
+  def field(f: String): Aggregation = maxAggregation(aggregationName).field(f)
 
-  def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
-    val max = getAggregation(fieldName, aggregations, query).getAs[Max](aggregationName)
-    val value = Try(JsNumber(max.getValue)).toOption.getOrElse(JsNumber(0))
-    JsObject(Seq(max.getName → value))
+  def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
+    val max   = getAggregation(fieldName, aggregations, query).max(aggregationName)
+    val value = max.value.fold(JsNumber(0))(m ⇒ JsNumber(m))
+    JsObject(Seq(max.name → value))
   }
 }
 
 class SelectSum(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName, query) {
-  def script(s: String): AggregationDefinition = sumAggregation(aggregationName).script(ScriptDefinition(s).lang("groovy"))
+  def script(s: String): Aggregation = sumAggregation(aggregationName).script(Script(s).lang("groovy"))
 
-  def field(f: String): AggregationDefinition = sumAggregation(aggregationName).field(f)
+  def field(f: String): Aggregation = sumAggregation(aggregationName).field(f)
 
-  def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
-    val sum = getAggregation(fieldName, aggregations, query).getAs[Sum](aggregationName)
-    val value = Try(JsNumber(sum.getValue)).toOption.getOrElse(JsNumber(0))
-    JsObject(Seq(sum.getName → value))
+  def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
+    val sum   = getAggregation(fieldName, aggregations, query).sum(aggregationName)
+    val value = JsNumber(sum.value)
+    JsObject(Seq(sum.name → value))
   }
 }
 
 class SelectCount(aggregationName: String, query: Option[QueryDef]) extends FieldAgg("", aggregationName, query) {
-  def script(s: String): AggregationDefinition = ???
+  def script(s: String): Aggregation = ???
 
-  def field(f: String): AggregationDefinition = filterAggregation(aggregationName).query(matchAllQuery)
+  def field(f: String): Aggregation = filterAggregation(aggregationName).query(matchAllQuery)
 
-  def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
-    val count = aggregations.getAs[Filter](aggregationName)
-    JsObject(Seq(count.getName → JsNumber(count.getDocCount)))
+  def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
+    val count = aggregations.filter(aggregationName)
+    JsObject(Seq(count.name → JsNumber(count.docCount)))
   }
 }
 
-class SelectTop(aggregationName: String, size: Int, sortBy: Seq[String], query: Option[QueryDef] = None) extends FieldAgg("", aggregationName, query) {
-  def script(s: String): AggregationDefinition = ???
+class SelectTop(aggregationName: String, size: Int, sortBy: Seq[String], query: Option[QueryDef] = None)
+    extends FieldAgg("", aggregationName, query) {
+  def script(s: String): Aggregation = ???
 
-  def field(f: String): AggregationDefinition = topHitsAggregation(aggregationName).size(size).sortBy(DBUtils.sortDefinition(sortBy))
+  def field(f: String): Aggregation = topHitsAggregation(aggregationName).size(size).sortBy(DBUtils.sortDefinition(sortBy))
 
-  def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
-    val top = aggregations.getAs[TopHits](aggregationName)
-    JsObject(Seq("top" → JsArray(top.getHits.getHits.map(h ⇒ DBUtils.hit2json(RichSearchHit(h))))))
+  def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
+    val hits = aggregations.tophits(aggregationName).hits.map { hit ⇒
+      val id   = JsString(hit.id)
+      val body = Json.parse(JacksonSupport.mapper.writeValueAsString(hit.source)).as[JsObject]
+      val (parent, model) = (body \ "relations" \ "parent").asOpt[JsString] match {
+        case Some(p) ⇒ p      → (body \ "relations" \ "name").as[JsString]
+        case None    ⇒ JsNull → (body \ "relations").as[JsString]
+      }
+      body - "relations" +
+        ("_type"   → model) +
+        ("_parent" → parent) +
+        ("_id"     → id)
+
+    }
+    Json.obj("top" → hits)
   }
 }
 
 class GroupByCategory(aggregationName: String, categories: Map[String, QueryDef], subAggs: Seq[Agg]) extends Agg(aggregationName) {
-  def apply(model: BaseModelDef): Seq[KeyedFiltersAggregationDefinition] = {
-    val filters = categories.mapValues(_.query)
+
+  def apply(model: BaseModelDef): Seq[KeyedFiltersAggregation] = {
+    val filters         = categories.mapValues(_.query)
     val subAggregations = subAggs.flatMap(_.apply(model))
-    Seq(KeyedFiltersAggregationDefinition(aggregationName, filters).subAggregations(subAggregations))
+    Seq(KeyedFiltersAggregation(aggregationName, filters).subAggregations(subAggregations))
   }
 
-  def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
-    val filters = aggregations.getAs[Filters](aggregationName)
+  def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
+    val filters = aggregations.keyedFilters(aggregationName)
     JsObject {
       categories.keys.toSeq.map { cat ⇒
-        val subAggResults = filters.getBucketByKey(cat).getAggregations
-        cat → subAggs.map(_.processResult(model, RichAggregations(subAggResults)))
+        val subAggResults = filters.aggResults(cat)
+        cat → subAggs
+          .map(_.processResult(model, subAggResults))
           .reduceOption(_ ++ _)
           .getOrElse(JsObject.empty)
       }
@@ -173,9 +188,13 @@ class GroupByCategory(aggregationName: String, categories: Map[String, QueryDef]
 }
 
 class GroupByTime(aggregationName: String, fields: Seq[String], interval: String, subAggs: Seq[Agg]) extends Agg(aggregationName) {
-  def apply(model: BaseModelDef): Seq[AggregationDefinition] = {
+
+  def apply(model: BaseModelDef): Seq[Aggregation] =
     fields.map { fieldName ⇒
-      val dateHistoAgg = dateHistogramAggregation(s"${aggregationName}_$fieldName").field(fieldName).interval(new DateHistogramInterval(interval)).subAggregations(subAggs.flatMap(_.apply(model)))
+      val dateHistoAgg = dateHistogramAggregation(s"${aggregationName}_$fieldName")
+        .field(fieldName)
+        .interval(DateHistogramInterval.fromString(interval))
+        .subAggregations(subAggs.flatMap(_.apply(model)))
       fieldName
         .split("\\.")
         .toSeq
@@ -183,27 +202,25 @@ class GroupByTime(aggregationName: String, fields: Seq[String], interval: String
         .inits
         .toSeq
         .init
-        .foldLeft[AggregationDefinition](dateHistoAgg) { (agg, f) ⇒
+        .foldLeft[Aggregation](dateHistoAgg) { (agg, f) ⇒
           nestedAggregation(aggregationName, f.mkString(".")).subaggs(agg)
         }
     }
-  }
 
-  def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
+  def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
     val aggs = fields.map { fieldName ⇒
-
       val agg = fieldName.split("\\.").init.foldLeft(aggregations) { (a, _) ⇒
-        RichAggregations(a.getAs[Nested](aggregationName).getAggregations)
+        a.nested(aggregationName)
       }
 
-      val buckets = agg.getAs[Histogram](s"${aggregationName}_$fieldName").getBuckets
-      fieldName → buckets.asScala.map { bucket ⇒
+      val buckets = agg.histogram(s"${aggregationName}_$fieldName").buckets
+      fieldName → buckets.map { bucket ⇒
         val results = subAggs
-          .map(_.processResult(model, RichAggregations(bucket.getAggregations)))
+          .map(_.processResult(model, bucket))
           .reduceOption(_ ++ _)
           .getOrElse(JsObject.empty)
         // date → obj(key{avg, min} → value)
-        bucket.getKey.asInstanceOf[DateTime].getMillis.toString → results
+        bucket.key → results
       }.toMap
     }.toMap
     val keys = aggs.values.flatMap(_.keys).toSet
@@ -218,55 +235,61 @@ class GroupByTime(aggregationName: String, fields: Seq[String], interval: String
   }
 }
 
-class GroupByField(aggregationName: String, fieldName: String, size: Option[Int], sortBy: Seq[String], subAggs: Seq[Agg]) extends Agg(aggregationName) {
-  private def setSize(agg: TermsAggregationDefinition): TermsAggregationDefinition = {
+class GroupByField(aggregationName: String, fieldName: String, size: Option[Int], sortBy: Seq[String], subAggs: Seq[Agg])
+    extends Agg(aggregationName) {
+  private def setSize(agg: TermsAggregation): TermsAggregation =
     size.fold(agg)(s ⇒ agg.size(s))
-  }
 
-  private def setOrder(agg: TermsAggregationDefinition): TermsAggregationDefinition = {
+  private def setOrder(agg: TermsAggregation): TermsAggregation = {
     val sortDefinition = sortBy
       .flatMap {
-        case "_count" | "+_count"   ⇒ Seq(Order.count(true))
-        case "-_count"              ⇒ Seq(Order.count(false))
-        case "_term" | "+_term"     ⇒ Seq(Order.term(true))
-        case "-_term"               ⇒ Seq(Order.term(false))
-        case f if f.startsWith("+") ⇒ Seq(Order.aggregation(f.drop(1), true))
-        case f if f.startsWith("-") ⇒ Seq(Order.aggregation(f.drop(1), false))
-        case f if f.length() > 0    ⇒ Seq(Order.aggregation(f, true))
+        case "_count" | "+_count"   ⇒ Seq(TermsOrder("_count", true))
+        case "-_count"              ⇒ Seq(TermsOrder("_count", false))
+        case "_term" | "+_term"     ⇒ Seq(TermsOrder("_key", true))
+        case "-_term"               ⇒ Seq(TermsOrder("_key", false))
+        case f if f.startsWith("+") ⇒ Seq(TermsOrder(f.drop(1), true))
+        case f if f.startsWith("-") ⇒ Seq(TermsOrder(f.drop(1), false))
+        case f if f.length() > 0    ⇒ Seq(TermsOrder(f, true))
         case _                      ⇒ Nil
       }
     if (sortDefinition.nonEmpty)
-      agg.order(Order.compound(sortDefinition.asJava))
+      agg.order(sortDefinition)
     else
       agg
   }
 
-  def apply(model: BaseModelDef): Seq[AggregationDefinition] = {
+  def apply(model: BaseModelDef): Seq[Aggregation] = {
     val agg = setSize(setOrder(termsAggregation(s"${aggregationName}_$fieldName").field(fieldName).subAggregations(subAggs.flatMap(_.apply(model)))))
-    Seq(fieldName
-      .split("\\.")
-      .toSeq
-      .init
-      .inits
-      .toSeq
-      .init
-      .foldLeft[AggregationDefinition](agg) { (agg, f) ⇒
-        nestedAggregation(aggregationName, f.mkString(".")).subaggs(agg)
-      })
+    Seq(
+      fieldName
+        .split("\\.")
+        .toSeq
+        .init
+        .inits
+        .toSeq
+        .init
+        .foldLeft[Aggregation](agg) { (agg, f) ⇒
+          nestedAggregation(aggregationName, f.mkString(".")).subaggs(agg)
+        }
+    )
   }
 
-  def processResult(model: BaseModelDef, aggregations: RichAggregations): JsObject = {
-    val buckets = fieldName.split("\\.").init.foldLeft(aggregations) { (a, _) ⇒
-      RichAggregations(a.getAs[Nested](aggregationName).getAggregations)
-    }
-      .getAs[Terms](s"${aggregationName}_$fieldName").getBuckets
+  def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
+    val buckets = fieldName
+      .split("\\.")
+      .init
+      .foldLeft(aggregations) { (a, _) ⇒
+        a.nested(aggregationName)
+      }
+      .terms(s"${aggregationName}_$fieldName")
+      .buckets
     JsObject {
-      buckets.asScala.map { bucket ⇒
+      buckets.map { bucket ⇒
         val results = subAggs
-          .map(_.processResult(model, RichAggregations(bucket.getAggregations)))
+          .map(_.processResult(model, bucket))
           .reduceOption(_ ++ _)
           .getOrElse(JsObject.empty)
-        bucket.getKeyAsString → results
+        bucket.key → results
       }.toMap
     }
   }

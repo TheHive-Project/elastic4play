@@ -6,8 +6,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import play.api.mvc.RequestHeader
 
 object Instance {
-  val id: String = (new VMID).toString
-  private val counter = new AtomicInteger(0)
+  val id: String                                   = (new VMID).toString
+  private val counter                              = new AtomicInteger(0)
   def getRequestId(request: RequestHeader): String = s"$id:${request.id}"
-  def getInternalId: String = s"$id::${counter.incrementAndGet}"
+  def getInternalId: String                        = s"$id::${counter.incrementAndGet}"
 }

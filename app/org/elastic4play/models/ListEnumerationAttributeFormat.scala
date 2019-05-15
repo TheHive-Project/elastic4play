@@ -1,14 +1,14 @@
 package org.elastic4play.models
 
-import play.api.libs.json.{ JsString, JsValue }
+import play.api.libs.json.{JsString, JsValue}
 
-import com.sksamuel.elastic4s.ElasticDsl.keywordField
-import com.sksamuel.elastic4s.mappings.KeywordFieldDefinition
+import com.sksamuel.elastic4s.http.ElasticDsl.keywordField
+import com.sksamuel.elastic4s.mappings.KeywordField
 import org.scalactic._
 
-import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
+import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.services.DBLists
-import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
+import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
 
 case class ListEnumerationAttributeFormat(enumerationName: String)(dblists: DBLists) extends AttributeFormat[String](s"enumeration") {
   def items: Set[String] = dblists("list_" + enumerationName).cachedItems.map(_.mapTo[String]).toSet
@@ -17,7 +17,7 @@ case class ListEnumerationAttributeFormat(enumerationName: String)(dblists: DBLi
     case _                                                    ⇒ formatError(JsonInputValue(value))
   }
 
-  override def fromInputValue(subNames: Seq[String], value: InputValue): String Or Every[AttributeError] = {
+  override def fromInputValue(subNames: Seq[String], value: InputValue): String Or Every[AttributeError] =
     if (subNames.nonEmpty)
       formatError(value)
     else
@@ -26,15 +26,9 @@ case class ListEnumerationAttributeFormat(enumerationName: String)(dblists: DBLi
         case JsonInputValue(JsString(v)) if items.contains(v) ⇒ Good(v)
         case _                                                ⇒ formatError(value)
       }
-  }
 
-  override def elasticType(attributeName: String): KeywordFieldDefinition = keywordField(attributeName)
+  override def elasticType(attributeName: String): KeywordField = keywordField(attributeName)
 
   override def definition(dblists: DBLists, attribute: Attribute[String]): Seq[AttributeDefinition] =
-    Seq(AttributeDefinition(
-      attribute.attributeName,
-      name,
-      attribute.description,
-      items.map(JsString.apply).toSeq,
-      Nil))
+    Seq(AttributeDefinition(attribute.attributeName, name, attribute.description, items.map(JsString.apply).toSeq, Nil))
 }

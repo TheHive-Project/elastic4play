@@ -4,26 +4,25 @@ import java.util.Date
 
 import scala.util.Try
 
-import play.api.libs.json.{ JsNumber, JsString, JsValue }
+import play.api.libs.json.{JsNumber, JsString, JsValue}
 
-import com.sksamuel.elastic4s.ElasticDsl.dateField
-import com.sksamuel.elastic4s.mappings.BasicFieldDefinition
+import com.sksamuel.elastic4s.http.ElasticDsl.dateField
+import com.sksamuel.elastic4s.mappings.BasicField
 import org.scalactic._
 
-import org.elastic4play.controllers.{ InputValue, JsonInputValue, StringInputValue }
-import org.elastic4play.{ AttributeError, InvalidFormatAttributeError }
+import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
+import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
+import java.text.SimpleDateFormat
 
 class DateAttributeFormat extends AttributeFormat[Date]("date") {
-  def parse(d: String): Option[Date] = {
+
+  def parse(d: String): Option[Date] =
     Try {
       val datePattern = "yyyyMMdd'T'HHmmssZ"
-      val df = new java.text.SimpleDateFormat(datePattern)
+      val df          = new SimpleDateFormat(datePattern)
       df.setLenient(false)
       df.parse(d)
-    }
-      .orElse(Try(new Date(d.toLong)))
-      .toOption
-  }
+    }.orElse(Try(new Date(d.toLong))).toOption
 
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
     case JsString(v) if subNames.isEmpty ⇒ parse(v).map(_ ⇒ Good(value)).getOrElse(formatError(JsonInputValue(value)))
@@ -31,7 +30,7 @@ class DateAttributeFormat extends AttributeFormat[Date]("date") {
     case _                               ⇒ formatError(JsonInputValue(value))
   }
 
-  override def fromInputValue(subNames: Seq[String], value: InputValue): Date Or Every[AttributeError] = {
+  override def fromInputValue(subNames: Seq[String], value: InputValue): Date Or Every[AttributeError] =
     if (subNames.nonEmpty)
       formatError(value)
     else {
@@ -42,9 +41,8 @@ class DateAttributeFormat extends AttributeFormat[Date]("date") {
         case _                           ⇒ formatError(value)
       }
     }
-  }
 
-  override def elasticType(attributeName: String): BasicFieldDefinition = dateField(attributeName).format("epoch_millis||basic_date_time_no_millis")
+  override def elasticType(attributeName: String): BasicField = dateField(attributeName).format("epoch_millis||basic_date_time_no_millis")
 }
 
 object DateAttributeFormat extends DateAttributeFormat

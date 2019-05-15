@@ -1,41 +1,34 @@
 package org.elastic4play.database
 
-import javax.inject.{ Inject, Singleton }
+import scala.concurrent.{blocking, ExecutionContext, Future}
 
-import scala.collection.JavaConverters.asScalaSetConverter
-import scala.concurrent.{ ExecutionContext, Future, blocking }
+import play.api.{Configuration, Logger}
 
-import play.api.{ Configuration, Logger }
+import com.sksamuel.elastic4s.http.ElasticDsl._
+import com.sksamuel.elastic4s.indexes.CreateIndexRequest
+import javax.inject.{Inject, Singleton}
 
-import com.sksamuel.elastic4s.ElasticDsl.{ RichFuture, clusterHealth, index, mapping, search }
-import com.sksamuel.elastic4s.cluster.ClusterStatsDefinition
-import com.sksamuel.elastic4s.indexes.CreateIndexDefinition
-
-import org.elastic4play.models.{ ChildModelDef, ModelAttributes, ModelDef }
+import org.elastic4play.models.{ChildModelDef, ModelAttributes}
+import org.elastic4play.utils.Collection
 
 @Singleton
-class DBIndex(
-    db: DBConfiguration,
-    nbShards: Int,
-    nbReplicas: Int,
-    settings: Map[String, Any],
-    implicit val ec: ExecutionContext) {
+class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map[String, Any], implicit val ec: ExecutionContext) {
 
-  @Inject def this(
-      configuration: Configuration,
-      db: DBConfiguration,
-      ec: ExecutionContext) = this(
-    db,
-    configuration.getOptional[Int]("search.nbshards").getOrElse(5),
-    configuration.getOptional[Int]("search.nbreplicas").getOrElse(1),
-    configuration.getOptional[Configuration]("search.settings")
-      .fold(Map.empty[String, Any]) { settings ⇒
-        settings
-          .entrySet
-          .toMap
-          .mapValues(_.unwrapped)
-      },
-    ec)
+  @Inject def this(configuration: Configuration, db: DBConfiguration, ec: ExecutionContext) =
+    this(
+      db,
+      configuration.getOptional[Int]("search.nbshards").getOrElse(5),
+      configuration.getOptional[Int]("search.nbreplicas").getOrElse(1),
+      configuration
+        .getOptional[Configuration]("search.settings")
+        .fold(Map.empty[String, Any]) { settings ⇒
+          settings
+            .entrySet
+            .toMap
+            .mapValues(_.unwrapped)
+        },
+      ec
+    )
 
   private[DBIndex] lazy val logger = Logger(getClass)
 
@@ -46,34 +39,32 @@ class DBIndex(
     * @return a future which is completed when index creation is finished
     */
   def createIndex(models: Iterable[ModelAttributes]): Future[Unit] = {
-    val modelsMapping = models
+    val mappingTemplates = Collection.distinctBy(models.flatMap(_.attributes).flatMap(_.elasticTemplate()))(_.name)
+    val fields           = models.flatMap(_.attributes.filterNot(_.attributeName == "_id").map(_.elasticMapping)).toSeq
+    val relationsField = models
       .map {
-        case model: ModelDef[_, _] ⇒
-          mapping(model.modelName)
-            .fields(model.attributes.filterNot(_.attributeName == "_id").map(_.elasticMapping))
-            .dateDetection(false)
-            .numericDetection(false)
-            .templates(model.attributes.flatMap(_.elasticTemplate()))
-        case model: ChildModelDef[_, _, _, _] ⇒
-          mapping(model.modelName)
-            .fields(model.attributes.filterNot(_.attributeName == "_id").map(_.elasticMapping))
-            .parent(model.parentModel.modelName)
-            .dateDetection(false)
-            .numericDetection(false)
-            .templates(model.attributes.flatMap(_.elasticTemplate()))
+        case child: ChildModelDef[_, _, _, _] ⇒ child.parentModel.modelName → Seq(child.modelName)
+        case model                            ⇒ model.modelName             → Nil
       }
-      .toSeq
-    db
-      .execute {
-        val createIndexDefinition = CreateIndexDefinition(db.indexName)
-          .mappings(modelsMapping)
+      .groupBy(_._1)
+      .foldLeft(joinField("relations")) {
+        case (join, (parent, child)) ⇒ join.relation(parent, child.flatMap(_._2).toSeq)
+      }
+    val modelMapping = mapping("doc")
+      .fields(fields :+ relationsField)
+      .dateDetection(false)
+      .numericDetection(false)
+      .templates(mappingTemplates)
+    db.execute {
+        val createIndexDefinition = CreateIndexRequest(db.indexName)
+          .mappings(modelMapping)
           .shards(nbShards)
           .replicas(nbReplicas)
-        settings.foldLeft(createIndexDefinition) {
+        settings.foldLeft(createIndexDefinition.indexSetting("mapping.single_type", true)) {
           case (cid, (key, value)) ⇒ cid.indexSetting(key, value)
         }
       }
-      .map { _ ⇒ () }
+      .map(_ ⇒ ())
   }
 
   /**
@@ -81,15 +72,13 @@ class DBIndex(
     *
     * @return future of true if the index exists
     */
-  def getIndexStatus: Future[Boolean] = {
-    db
-      .execute {
-        index.exists(db.indexName)
+  def getIndexStatus: Future[Boolean] =
+    db.execute {
+        indexExists(db.indexName)
       }
       .map {
         _.isExists
       }
-  }
 
   /**
     * Tests whether the index exists
@@ -107,9 +96,8 @@ class DBIndex(
     * @return document count
     */
   def getSize(modelName: String): Future[Long] =
-    db
-      .execute {
-        search(db.indexName → modelName).matchAllQuery().size(0)
+    db.execute {
+        search(db.indexName).matchQuery("relations", modelName).size(0)
       }
       .map {
         _.totalHits
@@ -124,16 +112,21 @@ class DBIndex(
     *
     * @return cluster status
     */
-  def getClusterStatus: Future[Int] = {
-    db
-      .execute {
+  def getClusterStatus: Future[Int] =
+    db.execute {
         clusterHealth(db.indexName)
       }
       .map {
-        _.getStatus.value().toInt
+        _.status match {
+          case "green"  ⇒ 0
+          case "yellow" ⇒ 1
+          case "red"    ⇒ 2
+          case status ⇒
+            logger.error(s"unknown cluster status: $status")
+            2
+        }
       }
       .recover { case _ ⇒ 2 }
-  }
 
   def clusterStatus: Int = blocking {
     getClusterStatus.await
@@ -148,12 +141,5 @@ class DBIndex(
 
   def clusterStatusName: String = blocking {
     getClusterStatusName.await
-  }
-
-  def clusterVersions: Future[Seq[String]] = {
-    db.execute(ClusterStatsDefinition())
-      .map { clusterStatsResponse ⇒
-        clusterStatsResponse.getNodesStats.getVersions.asScala.toSeq.map(_.toString)
-      }
   }
 }

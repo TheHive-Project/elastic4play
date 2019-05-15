@@ -3,16 +3,16 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.nestedField
-import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
+import com.sksamuel.elastic4s.http.ElasticDsl.nestedField
+import com.sksamuel.elastic4s.mappings.NestedField
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
 import org.scalactic.Accumulation._
 import org.scalactic._
 
 import org.elastic4play.controllers.JsonFormat.inputValueFormat
-import org.elastic4play.controllers.{ InputValue, JsonInputValue }
+import org.elastic4play.controllers.{InputValue, JsonInputValue}
 import org.elastic4play.services.DBLists
-import org.elastic4play.{ AttributeError, UnknownAttributeError }
+import org.elastic4play.{AttributeError, UnknownAttributeError}
 
 case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends AttributeFormat[JsObject]("nested") {
   private[ObjectAttributeFormat] lazy val logger = Logger(getClass)
@@ -22,30 +22,36 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
   override def checkJsonForCreation(subNames: Seq[String], value: JsValue): JsObject Or Every[AttributeError] = {
     val result = value match {
       case obj: JsObject if subNames.isEmpty ⇒
-        subAttributes.validatedBy { attr ⇒
-          attr.validateForCreation((value \ attr.attributeName).asOpt[JsValue])
-        }
-          .map { _ ⇒ obj }
+        subAttributes
+          .validatedBy { attr ⇒
+            attr.validateForCreation((value \ attr.attributeName).asOpt[JsValue])
+          }
+          .map { _ ⇒
+            obj
+          }
       case _ ⇒ formatError(JsonInputValue(value))
     }
     logger.debug(s"checkJsonForCreation($subNames, $value) ⇒ $result")
     result
   }
 
-  override def checkJsonForUpdate(subNames: Seq[String], value: JsValue): JsObject Or Every[AttributeError] = {
+  override def checkJsonForUpdate(subNames: Seq[String], value: JsValue): JsObject Or Every[AttributeError] =
     value match {
       case obj: JsObject if subNames.isEmpty ⇒
-        obj.fields.validatedBy {
-          case (_name, v) ⇒
-            subAttributes
-              .find(_.attributeName == _name)
-              .map(_.validateForUpdate(subNames, v))
-              .getOrElse(Bad(One(UnknownAttributeError(_name, v))))
-        }
-          .map { _ ⇒ obj }
+        obj
+          .fields
+          .validatedBy {
+            case (_name, v) ⇒
+              subAttributes
+                .find(_.attributeName == _name)
+                .map(_.validateForUpdate(subNames, v))
+                .getOrElse(Bad(One(UnknownAttributeError(_name, v))))
+          }
+          .map { _ ⇒
+            obj
+          }
       case _ ⇒ formatError(JsonInputValue(value))
     }
-  }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): JsObject Or Every[AttributeError] = {
     val result = subNames
@@ -56,9 +62,14 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
           .map { subAttribute ⇒
             value.jsonValue match {
               case jsvalue @ (JsNull | JsArray(Seq())) ⇒ Good(JsObject(Seq(subName → jsvalue)))
-              case _ ⇒ subAttribute.format.inputValueToJson(subNames.tail, value)
-                .map(v ⇒ JsObject(Seq(subName → v)))
-                .badMap { errors ⇒ errors.map(e ⇒ e.withName(name + "." + e.name)) }
+              case _ ⇒
+                subAttribute
+                  .format
+                  .inputValueToJson(subNames.tail, value)
+                  .map(v ⇒ JsObject(Seq(subName → v)))
+                  .badMap { errors ⇒
+                    errors.map(e ⇒ e.withName(name + "." + e.name))
+                  }
             }
           }
           .getOrElse(Bad(One(UnknownAttributeError(name, value.jsonValue))))
@@ -70,11 +81,14 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
               .validatedBy {
                 case (_, jsvalue) if jsvalue == JsNull || jsvalue == JsArray(Nil) ⇒ Good(jsvalue)
                 case (_name, jsvalue) ⇒
-                  subAttributes.find(_.attributeName == _name)
+                  subAttributes
+                    .find(_.attributeName == _name)
                     .map(_.format.fromInputValue(Nil, JsonInputValue(jsvalue)))
                     .getOrElse(Bad(One(UnknownAttributeError(_name, Json.toJson(value)))))
               }
-              .map { _ ⇒ v }
+              .map { _ ⇒
+                v
+              }
           case _ ⇒ formatError(value)
         }
       }
@@ -82,9 +96,9 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
     result
   }
 
-  override def elasticType(attributeName: String): NestedFieldDefinition = nestedField(attributeName).fields(subAttributes.map(_.elasticMapping))
+  override def elasticType(attributeName: String): NestedField = nestedField(attributeName).fields(subAttributes.map(_.elasticMapping))
 
-  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateDefinition] =
+  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] =
     subAttributes.flatMap(_.elasticTemplate(attributePath))
 
   override def definition(dblists: DBLists, attribute: Attribute[JsObject]): Seq[AttributeDefinition] =

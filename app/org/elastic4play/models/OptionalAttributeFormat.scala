@@ -1,17 +1,18 @@
 package org.elastic4play.models
 
-import play.api.libs.json.{ JsNull, JsValue }
+import play.api.libs.json.{JsNull, JsValue}
 
 import com.sksamuel.elastic4s.mappings.FieldDefinition
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
 import org.scalactic._
 
 import org.elastic4play.AttributeError
-import org.elastic4play.controllers.{ InputValue, JsonInputValue, NullInputValue }
+import org.elastic4play.controllers.{InputValue, JsonInputValue, NullInputValue}
 import org.elastic4play.models.JsonFormat.optionFormat
 import org.elastic4play.services.DBLists
 
-case class OptionalAttributeFormat[T](attributeFormat: AttributeFormat[T]) extends AttributeFormat[Option[T]]("optional-" + attributeFormat.name)(optionFormat(attributeFormat.jsFormat)) {
+case class OptionalAttributeFormat[T](attributeFormat: AttributeFormat[T])
+    extends AttributeFormat[Option[T]]("optional-" + attributeFormat.name)(optionFormat(attributeFormat.jsFormat)) {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = value match {
     case JsNull if subNames.isEmpty ⇒ Good(value)
     case _                          ⇒ attributeFormat.checkJson(subNames, value)
@@ -29,7 +30,7 @@ case class OptionalAttributeFormat[T](attributeFormat: AttributeFormat[T]) exten
 
   override def elasticType(attributeName: String): FieldDefinition = attributeFormat.elasticType(attributeName)
 
-  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateDefinition] = attributeFormat.elasticTemplate(attributePath)
+  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] = attributeFormat.elasticTemplate(attributePath)
 
   override def definition(dblists: DBLists, attribute: Attribute[Option[T]]): Seq[AttributeDefinition] =
     attributeFormat.definition(dblists, attribute.asInstanceOf[Attribute[T]])

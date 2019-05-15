@@ -3,14 +3,14 @@ package org.elastic4play.models
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.ElasticDsl.{ booleanField, dateField, keywordField, longField, nestedField }
-import com.sksamuel.elastic4s.mappings.NestedFieldDefinition
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateDefinition
-import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.http.ElasticDsl.{booleanField, dateField, keywordField, longField, nestedField}
+import com.sksamuel.elastic4s.mappings.NestedField
+import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
+import com.sksamuel.elastic4s.http.ElasticDsl._
 import org.scalactic._
 
 import org.elastic4play.AttributeError
-import org.elastic4play.controllers.{ InputValue, JsonInputValue }
+import org.elastic4play.controllers.{InputValue, JsonInputValue}
 import org.elastic4play.services.DBLists
 
 class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
@@ -19,8 +19,9 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = fromInputValue(subNames, JsonInputValue(value))
 
   override def checkJsonForCreation(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = {
-    val result = if (subNames.isEmpty && objectIsValid(value)) Good(value)
-    else formatError(JsonInputValue(value))
+    val result =
+      if (subNames.isEmpty && objectIsValid(value)) Good(value)
+      else formatError(JsonInputValue(value))
     logger.debug(s"checkJsonForCreation($subNames, $value) ⇒ $result")
     result
   }
@@ -57,42 +58,38 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
     result
   }
 
-  override def fromInputValue(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] = {
+  override def fromInputValue(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] =
     value match {
       case JsonInputValue(v) ⇒ checkJsonForUpdate(subNames, v)
       case _                 ⇒ formatError(value)
     }
-  }
 
-  override def elasticType(attributeName: String): NestedFieldDefinition =
+  override def elasticType(attributeName: String): NestedField =
     nestedField(attributeName)
 
-  override def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateDefinition] =
+  override def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateRequest] =
     dynamicTemplate(attributePath.mkString("_"))
-      .mapping(dynamicNestedField().fields(
-        longField("number"),
-        keywordField("string"),
-        dateField("date").format("epoch_millis||basic_date_time_no_millis"),
-        booleanField("boolean"),
-        longField("order")))
+      .mapping(
+        dynamicNestedField().fields(
+          longField("number"),
+          keywordField("string"),
+          dateField("date").format("epoch_millis||basic_date_time_no_millis"),
+          booleanField("boolean"),
+          longField("order")
+        )
+      )
       .pathMatch(attributePath.mkString(".") + ".*") :: Nil
 
-  override def definition(dblists: DBLists, attribute: Attribute[JsValue]): Seq[AttributeDefinition] = {
+  override def definition(dblists: DBLists, attribute: Attribute[JsValue]): Seq[AttributeDefinition] =
     dblists("custom_fields").cachedItems.flatMap { item ⇒
       val itemObj = item.mapTo[JsObject]
       for {
-        fieldName ← (itemObj \ "reference").asOpt[String]
-        tpe ← (itemObj \ "type").asOpt[String]
+        fieldName   ← (itemObj \ "reference").asOpt[String]
+        tpe         ← (itemObj \ "type").asOpt[String]
         description ← (itemObj \ "description").asOpt[String]
-        options ← (itemObj \ "options").asOpt[Seq[JsString]]
-      } yield AttributeDefinition(
-        s"${attribute.attributeName}.$fieldName.$tpe",
-        tpe,
-        description,
-        options,
-        Nil)
+        options     ← (itemObj \ "options").asOpt[Seq[JsString]]
+      } yield AttributeDefinition(s"${attribute.attributeName}.$fieldName.$tpe", tpe, description, options, Nil)
     }
-  }
 }
 
 object CustomAttributeFormat extends CustomAttributeFormat
