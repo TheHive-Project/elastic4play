@@ -114,7 +114,7 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
     db.execute(searchRequest)
       .recoverWith {
         case t if t == IndexNotFoundException ⇒ Future.failed(t)
-        case t                                ⇒ Future.failed(SearchError("Invalid search query", t))
+        case t                                ⇒ Future.failed(SearchError("Invalid search query"))
       }
   }
 }
@@ -173,7 +173,7 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
               val callback = getAsyncCallback[Try[SearchResponse]] {
                 case Success(searchResponse) if searchResponse.isTimedOut ⇒
                   logger.warn("Search timeout")
-                  failStage(SearchError("Request terminated early or timed out", null))
+                  failStage(SearchError("Request terminated early or timed out"))
                 case Success(searchResponse) if searchResponse.isEmpty ⇒
                   completeStage()
                 case Success(searchResponse) if skip > 0 ⇒
@@ -190,7 +190,7 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
                   pushNextHit()
                 case Failure(error) ⇒
                   logger.warn("Search error", error)
-                  failStage(SearchError("Request terminated early or timed out", error))
+                  failStage(SearchError("Request terminated early or timed out"))
               }
               val futureSearchResponse = scrollId.flatMap(s ⇒ db.execute(searchScroll(s).keepAlive(keepAliveStr)))
               scrollId = futureSearchResponse.map(_.scrollId.get)

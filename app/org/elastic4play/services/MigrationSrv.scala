@@ -1,27 +1,27 @@
 package org.elastic4play.services
 
-import javax.inject.{Inject, Singleton}
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-import play.api.{Configuration, Logger}
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json._
+import play.api.{Configuration, Logger}
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Materializer}
 import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Materializer}
 import com.sksamuel.elastic4s.http.ElasticDsl._
 import com.typesafe.config.Config
+import javax.inject.{Inject, Singleton}
 
 import org.elastic4play.InternalError
 import org.elastic4play.database._
 
 case class MigrationEvent(modelName: String, current: Long, total: Long) extends EventMessage
-case object EndOfMigrationEvent                                          extends EventMessage
+
+case object EndOfMigrationEvent extends EventMessage
 
 object IndexType extends Enumeration {
   val indexWithMappingTypes, indexWithoutMappingTypes = Value
@@ -115,6 +115,7 @@ class MigrationSrv @Inject()(
           ("_version" → JsNumber(hit.version))
       }
     }
+
     override def count(tableName: String): Future[Long] =
       db.execute {
           search(db.indexName / tableName).matchAllQuery().size(0)
@@ -123,6 +124,7 @@ class MigrationSrv @Inject()(
           _.totalHits
         }
         .recover { case _ ⇒ 0L }
+
     override def getEntity(tableName: String, entityId: String): Future[JsObject] = currentdbget(tableName, entityId)
   }
 
@@ -170,7 +172,10 @@ class MigrationSrv @Inject()(
     val r = entities
       .zipWith(count) { (entity, current) ⇒
         eventSrv.publish(MigrationEvent(modelName, current.toLong, total))
-        entity
+        (entity \ "_type").asOpt[JsString].fold(entity) { t ⇒
+          val relations = (entity \ "_parent").asOpt[JsString].fold[JsValue](t)(p ⇒ Json.obj("name" → t, "parent" → p))
+          entity - "_type" - "_parent" + ("relations" → relations)
+        }
       }
       .runWith(dbcreate.sink())
     r.onComplete { x ⇒
@@ -230,6 +235,7 @@ class MigrationSrv @Inject()(
   def isMigrating: Boolean = !migrationProcess.isCompleted
   def isReady: Boolean     = dbindex.indexStatus && migrationProcess.isCompleted
 }
+
 /* Operation applied to the previous state of the database to get next version */
 trait Operation extends ((String ⇒ Source[JsObject, NotUsed]) ⇒ (String ⇒ Source[JsObject, NotUsed]))
 
@@ -259,7 +265,8 @@ object Operation {
     })
 
   def mapEntity(tables: String*)(transform: JsObject ⇒ JsObject): Operation = mapEntity(tables.contains, transform)
-  def apply(table: String)(transform: JsObject ⇒ JsObject): Operation       = mapEntity(_ == table, transform)
+
+  def apply(table: String)(transform: JsObject ⇒ JsObject): Operation = mapEntity(_ == table, transform)
 
   def removeEntity(tableFilter: String ⇒ Boolean, filter: JsObject ⇒ Boolean): Operation =
     Operation((f: String ⇒ Source[JsObject, NotUsed]) ⇒ {
@@ -268,7 +275,8 @@ object Operation {
     })
 
   def removeEntity(tables: String*)(filter: JsObject ⇒ Boolean): Operation = removeEntity(tables.contains, filter)
-  def removeEntity(table: String)(filter: JsObject ⇒ Boolean): Operation   = removeEntity(_ == table, filter)
+
+  def removeEntity(table: String)(filter: JsObject ⇒ Boolean): Operation = removeEntity(_ == table, filter)
 
   def renameAttribute(tableFilter: String ⇒ Boolean, newName: String, oldNamePath: Seq[String]): Operation =
     Operation((f: String ⇒ Source[JsObject, NotUsed]) ⇒ {
@@ -283,6 +291,7 @@ object Operation {
 
   def renameAttribute(tables: Seq[String], newName: String, oldNamePath: String*): Operation =
     renameAttribute(a ⇒ tables.contains(a), newName, oldNamePath)
+
   def renameAttribute(table: String, newName: String, oldNamePath: String*): Operation = renameAttribute(_ == table, newName, oldNamePath)
 
   def rename(value: JsObject, newName: String, path: Seq[String]): JsObject =
@@ -310,6 +319,7 @@ object Operation {
 
   def mapAttribute(tables: Seq[String], attribute: String)(transform: JsValue ⇒ JsValue): Operation =
     mapAttribute(a ⇒ tables.contains(a), attribute, transform)
+
   def mapAttribute(table: String, attribute: String)(transform: JsValue ⇒ JsValue): Operation = mapAttribute(_ == table, attribute, transform)
 
   def removeAttribute(tableFilter: String ⇒ Boolean, attributes: String*): Operation =
@@ -320,8 +330,10 @@ object Operation {
           y - a
         }
     )
+
   def removeAttribute(tables: Seq[String], attributes: String*): Operation = removeAttribute(a ⇒ tables.contains(a), attributes: _*)
-  def removeAttribute(table: String, attributes: String*): Operation       = removeAttribute(_ == table, attributes: _*)
+
+  def removeAttribute(table: String, attributes: String*): Operation = removeAttribute(_ == table, attributes: _*)
 
   def addAttribute(tableFilter: String ⇒ Boolean, attributes: (String, JsValue)*): Operation =
     mapEntity(
@@ -331,8 +343,10 @@ object Operation {
           y + a
         }
     )
+
   def addAttribute(tables: Seq[String], attributes: (String, JsValue)*): Operation = addAttribute(t ⇒ tables.contains(t), attributes: _*)
-  def addAttribute(table: String, attributes: (String, JsValue)*): Operation       = addAttribute(_ == table, attributes: _*)
+
+  def addAttribute(table: String, attributes: (String, JsValue)*): Operation = addAttribute(_ == table, attributes: _*)
 
   def addAttributeIfAbsent(tableFilter: String ⇒ Boolean, attributes: (String, JsValue)*): Operation =
     mapEntity(tableFilter, { x ⇒
@@ -345,5 +359,6 @@ object Operation {
     })
 
   def addAttributeIfAbsent(tables: Seq[String], attributes: (String, JsValue)*): Operation = addAttribute(t ⇒ tables.contains(t), attributes: _*)
-  def addAttributeIfAbsent(table: String, attributes: (String, JsValue)*): Operation       = addAttribute(_ == table, attributes: _*)
+
+  def addAttributeIfAbsent(table: String, attributes: (String, JsValue)*): Operation = addAttribute(_ == table, attributes: _*)
 }

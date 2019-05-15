@@ -22,7 +22,10 @@ import com.sksamuel.elastic4s.streams.ReactiveElastic.ReactiveElastic
 import com.sksamuel.elastic4s.streams.{RequestBuilder, ResponseListener}
 import javax.inject.{Inject, Named, Singleton}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
+import org.apache.http.auth.{AuthScope, UsernamePasswordCredentials}
+import org.apache.http.client.CredentialsProvider
 import org.apache.http.client.config.RequestConfig
+import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.elasticsearch.client.RestClientBuilder.{HttpClientConfigCallback, RequestConfigCallback}
 
@@ -43,8 +46,8 @@ class DBConfiguration @Inject()(
 ) {
   private[DBConfiguration] lazy val logger = Logger(getClass)
 
-  def requestConfig: RequestConfigCallback = (requestConfigBuilder: RequestConfig.Builder) ⇒ {
-    config.getOptional[Boolean]("search.authenticationEnabled").foreach(requestConfigBuilder.setAuthenticationEnabled)
+  def requestConfigCallback: RequestConfigCallback = (requestConfigBuilder: RequestConfig.Builder) ⇒ {
+    requestConfigBuilder.setAuthenticationEnabled(credentialsProviderMaybe.isDefined)
     config.getOptional[Boolean]("search.circularRedirectsAllowed").foreach(requestConfigBuilder.setCircularRedirectsAllowed)
     config.getOptional[Int]("search.connectionRequestTimeout").foreach(requestConfigBuilder.setConnectionRequestTimeout)
     config.getOptional[Int]("search.connectTimeout").foreach(requestConfigBuilder.setConnectTimeout)
@@ -62,53 +65,66 @@ class DBConfiguration @Inject()(
     requestConfigBuilder
   }
 
-  def httpClientConfig: HttpClientConfigCallback = (httpClientBuilder: HttpAsyncClientBuilder) ⇒ {
-    config.getOptional[String]("search.keyStore.path").map { keyStore ⇒
-      val keyStorePath     = Paths.get(keyStore)
-      val keyStoreType     = config.getOptional[String]("search.keyStore.type").getOrElse(KeyStore.getDefaultType)
-      val keyStorePassword = config.getOptional[String]("search.keyStore.password").getOrElse("").toCharArray
-      val keyInputStream   = Files.newInputStream(keyStorePath)
-      val keyManagers = try {
-        val keyStore = KeyStore.getInstance(keyStoreType)
-        keyStore.load(keyInputStream, keyStorePassword)
-        val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm)
-        kmf.init(keyStore, keyStorePassword)
-        kmf.getKeyManagers
-      } finally {
-        keyInputStream.close()
-      }
-
-      val trustManagers = config
-        .getOptional[String]("search.trustStore.path")
-        .map { trustStorePath ⇒
-          val keyStoreType       = config.getOptional[String]("search.keyStore.type").getOrElse(KeyStore.getDefaultType)
-          val trustStorePassword = config.getOptional[String]("search.trustStore.password").getOrElse("").toCharArray
-          val trustInputStream   = Files.newInputStream(Paths.get(trustStorePath))
-          try {
-            val keyStore = KeyStore.getInstance(keyStoreType)
-            keyStore.load(trustInputStream, trustStorePassword)
-            val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
-            tmf.init(keyStore)
-            tmf.getTrustManagers
-          } finally {
-            trustInputStream.close()
-          }
-        }
-        .getOrElse(Array.empty)
-
-      // Configure the SSL context to use TLS
-      val sslContext = SSLContext.getInstance("TLS")
-      sslContext.init(keyManagers, trustManagers, null)
-
-      httpClientBuilder.setSSLContext(sslContext)
+  lazy val credentialsProviderMaybe: Option[CredentialsProvider] =
+    for {
+      user     ← config.getOptional[String]("search.user")
+      password ← config.getOptional[String]("search.password")
+    } yield {
+      val provider    = new BasicCredentialsProvider
+      val credentials = new UsernamePasswordCredentials(user, password)
+      provider.setCredentials(AuthScope.ANY, credentials)
+      provider
     }
+
+  lazy val sslContextMaybe: Option[SSLContext] = config.getOptional[String]("search.keyStore.path").map { keyStore ⇒
+    val keyStorePath     = Paths.get(keyStore)
+    val keyStoreType     = config.getOptional[String]("search.keyStore.type").getOrElse(KeyStore.getDefaultType)
+    val keyStorePassword = config.getOptional[String]("search.keyStore.password").getOrElse("").toCharArray
+    val keyInputStream   = Files.newInputStream(keyStorePath)
+    val keyManagers = try {
+      val keyStore = KeyStore.getInstance(keyStoreType)
+      keyStore.load(keyInputStream, keyStorePassword)
+      val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm)
+      kmf.init(keyStore, keyStorePassword)
+      kmf.getKeyManagers
+    } finally {
+      keyInputStream.close()
+    }
+
+    val trustManagers = config
+      .getOptional[String]("search.trustStore.path")
+      .map { trustStorePath ⇒
+        val keyStoreType       = config.getOptional[String]("search.trustStore.type").getOrElse(KeyStore.getDefaultType)
+        val trustStorePassword = config.getOptional[String]("search.trustStore.password").getOrElse("").toCharArray
+        val trustInputStream   = Files.newInputStream(Paths.get(trustStorePath))
+        try {
+          val keyStore = KeyStore.getInstance(keyStoreType)
+          keyStore.load(trustInputStream, trustStorePassword)
+          val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
+          tmf.init(keyStore)
+          tmf.getTrustManagers
+        } finally {
+          trustInputStream.close()
+        }
+      }
+      .getOrElse(Array.empty)
+
+    // Configure the SSL context to use TLS
+    val sslContext = SSLContext.getInstance("TLS")
+    sslContext.init(keyManagers, trustManagers, null)
+    sslContext
+  }
+
+  def httpClientConfig: HttpClientConfigCallback = (httpClientBuilder: HttpAsyncClientBuilder) ⇒ {
+    sslContextMaybe.foreach(httpClientBuilder.setSSLContext)
+    credentialsProviderMaybe.foreach(httpClientBuilder.setDefaultCredentialsProvider)
     httpClientBuilder
   }
 
   /**
     * Underlying ElasticSearch client
     */
-  private[database] val client = ElasticClient(ElasticProperties(config.get[String]("search.uri")), requestConfig, httpClientConfig)
+  private[database] val client = ElasticClient(ElasticProperties(config.get[String]("search.uri")), requestConfigCallback, httpClientConfig)
   // when application close, close also ElasticSearch connection
   lifecycle.addStopHook { () ⇒
     Future {

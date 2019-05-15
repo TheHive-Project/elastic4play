@@ -13,7 +13,6 @@ import com.sksamuel.elastic4s.indexes.IndexRequest
 import com.sksamuel.elastic4s.streams.RequestBuilder
 import javax.inject.{Inject, Singleton}
 
-import org.elastic4play.CreateError
 import org.elastic4play.models.BaseEntity
 
 /**
