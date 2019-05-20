@@ -1,17 +1,24 @@
 # Change Log
 
-## [1.11.0](https://github.com/TheHive-Project/elastic4play/tree/1.11.0) (2019-05-15)
+## [1.11.1](https://github.com/TheHive-Project/elastic4play/tree/HEAD) (2019-05-20)
 
-[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.10.0...1.11.0)
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.11.0...1.11.1)
+
+**Fixed bugs:**
+
+- Query operator withParent doesn't work [\#83](https://github.com/TheHive-Project/elastic4play/issues/83)
+- Index creation fails on ElasticSearch 6 [\#84](https://github.com/TheHive-Project/elastic4play/issues/84)
+
+## [1.11.0](https://github.com/TheHive-Project/elastic4play/tree/1.11.0) (2019-05-15)
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.10...1.11.0)
 
 **Implemented enhancements:**
 
 - TCP Client to ES Deprecated - Switch to HTTP [\#34](https://github.com/TheHive-Project/elastic4play/issues/34)
 - Add support of ElasticSearch 6 [\#82](https://github.com/TheHive-Project/elastic4play/issues/82)
 
-## [1.10.0](https://github.com/TheHive-Project/elastic4play/tree/1.10.0) (2019-03-19)
-
-[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.9.0...1.10.0)
+## [1.10](https://github.com/TheHive-Project/elastic4play/tree/1.10) (2019-03-18)
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.9.0...1.10)
 
 **Implemented enhancements:**
 
