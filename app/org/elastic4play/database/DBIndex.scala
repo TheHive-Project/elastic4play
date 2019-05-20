@@ -8,6 +8,7 @@ import com.sksamuel.elastic4s.http.ElasticDsl._
 import com.sksamuel.elastic4s.indexes.CreateIndexRequest
 import javax.inject.{Inject, Singleton}
 
+import org.elastic4play.InternalError
 import org.elastic4play.models.{ChildModelDef, ModelAttributes}
 import org.elastic4play.utils.Collection
 
@@ -50,21 +51,28 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
       .foldLeft(joinField("relations")) {
         case (join, (parent, child)) ⇒ join.relation(parent, child.flatMap(_._2).toSeq)
       }
-    val modelMapping = mapping("doc")
-      .fields(fields :+ relationsField)
-      .dateDetection(false)
-      .numericDetection(false)
-      .templates(mappingTemplates)
-    db.execute {
-        val createIndexDefinition = CreateIndexRequest(db.indexName)
-          .mappings(modelMapping)
-          .shards(nbShards)
-          .replicas(nbReplicas)
-        settings.foldLeft(createIndexDefinition.indexSetting("mapping.single_type", true)) {
+
+    for {
+      majorVersion ← nodeMajorVersion
+      modelMapping = mapping("doc")
+        .fields(fields :+ relationsField)
+        .dateDetection(false)
+        .numericDetection(false)
+        .templates(mappingTemplates)
+      createIndexRequest = CreateIndexRequest(db.indexName)
+        .mappings(modelMapping)
+        .shards(nbShards)
+        .replicas(nbReplicas)
+      createIndexRequestWithSettings = majorVersion match {
+        case 5 ⇒ createIndexRequest.indexSetting("mapping.single_type", true)
+        case _ ⇒ createIndexRequest
+      }
+      _ ← db.execute {
+        settings.foldLeft(createIndexRequestWithSettings) {
           case (cid, (key, value)) ⇒ cid.indexSetting(key, value)
         }
       }
-      .map(_ ⇒ ())
+    } yield ()
   }
 
   /**
@@ -127,6 +135,21 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
         }
       }
       .recover { case _ ⇒ 2 }
+
+  def nodeVersions: Future[Seq[String]] =
+    db.execute {
+        nodeInfo()
+      }
+      .map(_.nodes.values.map(_.version).toSeq.distinct)
+
+  def nodeMajorVersion: Future[Int] =
+    nodeVersions.flatMap { v ⇒
+      val majorVersions = v.map(_.takeWhile(_ != '.')).distinct.map(_.toInt)
+      if (majorVersions.size == 1)
+        Future.successful(majorVersions.head)
+      else
+        Future.failed(InternalError(s"The ElasticSearch cluster contains node with different major versions ($v)"))
+    }
 
   def clusterStatus: Int = blocking {
     getClusterStatus.await
