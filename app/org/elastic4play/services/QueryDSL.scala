@@ -92,7 +92,7 @@ object QueryDSL {
     def in(values: String*)       = QueryDef(nestedField(field, termsQuery(_, values)))
   }
 
-  def ofType(value: String)                                 = QueryDef(termQuery("_type", value))
+  def ofType(value: String)                                 = QueryDef(termQuery("relations", value))
   def withId(entityIds: String*): QueryDef                  = QueryDef(idsQuery(entityIds))
   def any: QueryDef                                         = QueryDef(matchAllQuery)
   def contains(field: String): QueryDef                     = QueryDef(nestedField(field, existsQuery))
@@ -106,6 +106,6 @@ object QueryDSL {
   def withParent(parent: BaseEntity): QueryDef              = withParent(parent.model.modelName, parent.id)
 
   def withParent(parentType: String, parentId: String): QueryDef =
-    QueryDef(hasParentQuery(parentType, idsQuery(parentId).types(parentType), false))
+    QueryDef(hasParentQuery(parentType, idsQuery(parentId), false))
   def string(queryString: String): QueryDef = QueryDef(query(queryString))
 }
