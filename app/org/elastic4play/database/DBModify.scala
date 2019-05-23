@@ -2,16 +2,19 @@ package org.elastic4play.database
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+
 import play.api.Logger
 import play.api.libs.json._
+
 import com.sksamuel.elastic4s.http.ElasticDsl._
 import com.sksamuel.elastic4s.script.Script
-import org.elastic4play.models.BaseEntity
 
+import org.elastic4play.models.BaseEntity
 import scala.collection.JavaConverters._
 import java.util.{Map ⇒ JMap}
 
 import com.sksamuel.elastic4s.RefreshPolicy
+import com.sksamuel.elastic4s.json.JacksonSupport
 
 case class ModifyConfig(retryOnConflict: Int = 5, refreshPolicy: RefreshPolicy = RefreshPolicy.WAIT_UNTIL, version: Option[Long] = None)
 
@@ -89,7 +92,7 @@ class DBModify @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
       }
       .map { updateResponse ⇒
         entity.model(
-          Json.parse(updateResponse.result).as[JsObject] +
+          Json.parse(JacksonSupport.mapper.writeValueAsString(updateResponse.source)).as[JsObject] +
             ("_type"    → JsString(entity.model.modelName)) +
             ("_id"      → JsString(entity.id)) +
             ("_routing" → JsString(entity.routing)) +
