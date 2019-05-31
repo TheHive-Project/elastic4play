@@ -59,16 +59,19 @@ object QueryDSL {
   def groupByCaterogy(aggregationName: Option[String], categories: Map[String, QueryDef], selectables: Agg*) =
     new GroupByCategory(aggregationName.getOrElse("categories"), categories, selectables)
 
-  private def nestedField(field: String, q: String ⇒ Query) =
-    field
-      .split("\\.")
-      .init
-      .inits
-      .toSeq
-      .init
-      .foldLeft(q(field)) {
-        case (queryDef, subName) ⇒ nestedQuery(subName.mkString(".")).query(queryDef).scoreMode(ScoreMode.None)
-      }
+  private def nestedField(field: String, q: String ⇒ Query) = field match {
+    case "_type" ⇒ q("relations")
+    case _ ⇒
+      field
+        .split("\\.")
+        .init
+        .inits
+        .toSeq
+        .init
+        .foldLeft(q(field)) {
+          case (queryDef, subName) ⇒ nestedQuery(subName.mkString(".")).query(queryDef).scoreMode(ScoreMode.None)
+        }
+  }
 
   implicit class SearchField(field: String) /*extends BuildableTermsQueryImplicits*/ {
     implicit val stringTermsQueryBuilder = new BuildableTermsQuery[String] {

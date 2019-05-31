@@ -18,7 +18,7 @@ class DBRemove @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
     logger.debug(s"Remove ${entity.model.modelName} ${entity.id}")
     db.execute {
         delete(entity.id)
-          .from(db.indexName / entity.model.modelName)
+          .from(db.indexName / "doc")
           .routing(entity.routing)
           .refresh(RefreshPolicy.WAIT_UNTIL)
       }

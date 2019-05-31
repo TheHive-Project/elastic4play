@@ -200,6 +200,8 @@ class AttachmentSrv(
 
   def getHashes(id: String): Future[Seq[Hash]] = extraHashers.fromSource(source(id))
 
+  def getSize(id: String): Future[Int] = source(id).map(_.size).runReduce(_ + _)
+
   def attachmentUseCount(attachmentId: String): Future[Long] = {
     import org.elastic4play.services.QueryDSL._
     findSrv(None, "attachment.id" ~= attachmentId, Some("0-0"), Nil)._2

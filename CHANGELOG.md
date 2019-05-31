@@ -1,7 +1,19 @@
 # Change Log
 
-## [1.11.2](https://github.com/TheHive-Project/elastic4play/tree/1.11.2) (2019-05-23)
+## [1.11.3](https://github.com/TheHive-Project/elastic4play/tree/1.11.3) (2019-05-31)
 
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.11.2...1.11.3)
+
+**Implemented enhancements:**
+
+- Update PlayFramework to 2.6.23 [\#87](https://github.com/TheHive-Project/elastic4play/issues/87)
+- Add method to compute the size of attachment [\#89](https://github.com/TheHive-Project/elastic4play/issues/89)
+
+**Fixed bugs:**
+
+- Map _type field to join field [\#88](https://github.com/TheHive-Project/elastic4play/issues/88)
+
+## [1.11.2](https://github.com/TheHive-Project/elastic4play/tree/1.11.2) (2019-05-23)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.11.1...1.11.2)
 
 **Fixed bugs:**
