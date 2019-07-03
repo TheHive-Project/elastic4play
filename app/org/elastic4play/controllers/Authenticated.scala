@@ -93,7 +93,7 @@ class Authenticated(
     * Cookie is signed by Play framework (it cannot be modified by user)
     */
   def setSessingUser(result: Result, authContext: AuthContext)(implicit request: RequestHeader): Result =
-    if (authContext.authMethod != "key")
+    if (authContext.authMethod != "key" && authContext.authMethod != "init")
       result.addingToSession(
         sessionUsername → authContext.userId,
         "expire"        → (now + maxSessionInactivity.toMillis).toString,
