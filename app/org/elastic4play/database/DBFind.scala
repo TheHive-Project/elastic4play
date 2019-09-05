@@ -149,8 +149,8 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
           }
         }
 
-        val firstCallback: AsyncCallback[SearchResponse] = getAsyncCallback[SearchResponse] {
-          case searchResponse if skip > 0 ⇒
+        val firstCallback: AsyncCallback[Try[SearchResponse]] = getAsyncCallback[Try[SearchResponse]] {
+          case Success(searchResponse) if skip > 0 ⇒
             if (searchResponse.hits.size <= skip)
               skip -= searchResponse.hits.size
             else {
@@ -159,10 +159,13 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
             }
             firstResultProcessed = true
             onPull()
-          case searchResponse ⇒
+          case Success(searchResponse) ⇒
             queue ++= searchResponse.hits.hits
             firstResultProcessed = true
             onPull()
+          case Failure(error) =>
+            logger.warn("Search error", error)
+            failStage(error)
         }
 
         override def onPull(): Unit =
@@ -198,7 +201,7 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
             } else {
               pushNextHit()
             }
-          } else firstResults.foreach(firstCallback.invoke)
+          } else firstResults.onComplete(firstCallback.invoke)
       }
     )
     override def postStop(): Unit =

@@ -83,7 +83,7 @@ abstract class FieldAgg(val fieldName: String, aggregationName: String, query: O
 }
 
 class SelectAvg(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName, query) {
-  def script(s: String): Aggregation = avgAggregation(aggregationName).script(Script(s).lang("groovy"))
+  def script(s: String): Aggregation = avgAggregation(aggregationName).script(Script(s).lang("painless"))
 
   def field(f: String): Aggregation = avgAggregation(aggregationName).field(f)
 
@@ -95,7 +95,7 @@ class SelectAvg(aggregationName: String, fieldName: String, query: Option[QueryD
 }
 
 class SelectMin(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName, query) {
-  def script(s: String): Aggregation = minAggregation(aggregationName).script(Script(s).lang("groovy"))
+  def script(s: String): Aggregation = minAggregation(aggregationName).script(Script(s).lang("painless"))
 
   def field(f: String): Aggregation = minAggregation(aggregationName).field(f)
 
@@ -107,7 +107,7 @@ class SelectMin(aggregationName: String, fieldName: String, query: Option[QueryD
 }
 
 class SelectMax(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName, query) {
-  def script(s: String): Aggregation = maxAggregation(aggregationName).script(Script(s).lang("groovy"))
+  def script(s: String): Aggregation = maxAggregation(aggregationName).script(Script(s).lang("painless"))
 
   def field(f: String): Aggregation = maxAggregation(aggregationName).field(f)
 
@@ -119,7 +119,7 @@ class SelectMax(aggregationName: String, fieldName: String, query: Option[QueryD
 }
 
 class SelectSum(aggregationName: String, fieldName: String, query: Option[QueryDef]) extends FieldAgg(fieldName, aggregationName, query) {
-  def script(s: String): Aggregation = sumAggregation(aggregationName).script(Script(s).lang("groovy"))
+  def script(s: String): Aggregation = sumAggregation(aggregationName).script(Script(s).lang("painless"))
 
   def field(f: String): Aggregation = sumAggregation(aggregationName).field(f)
 
