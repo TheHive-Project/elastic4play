@@ -1,7 +1,15 @@
 # Change Log
 
-## [1.11.4](https://github.com/TheHive-Project/elastic4play/tree/1.11.4) (2019-07-10)
+## [1.11.5](https://github.com/TheHive-Project/elastic4play/tree/HEAD) (2019-09-05)
 
+[Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.11.4...1.11.5)
+
+**Fixed bugs:**
+
+- Replace groovy script by painless [\#92](https://github.com/TheHive-Project/elastic4play/issues/92)
+- Errors on streamed search are not correctly reported and induce timeouts [\#91](https://github.com/TheHive-Project/elastic4play/issues/91)
+
+## [1.11.4](https://github.com/TheHive-Project/elastic4play/tree/1.11.4) (2019-07-10)
 [Full Changelog](https://github.com/TheHive-Project/elastic4play/compare/1.11.3...1.11.4)
 
 **Fixed bugs:**
