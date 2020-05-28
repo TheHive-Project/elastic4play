@@ -62,7 +62,7 @@ trait AttributeDef {
 abstract class ModelAttributes(val modelName: String) extends AttributeDef {
   type A[B] = Attribute[B]
   private var _attributes: Seq[Attribute[_]] = Nil
-  def attributes                             = _attributes
+  def attributes: Seq[Attribute[_]]          = _attributes
 
   /* attribute creation helper */
   def attribute[T](
@@ -101,13 +101,17 @@ abstract class ModelAttributes(val modelName: String) extends AttributeDef {
     attr
   }
 
-  val createdBy =
+  val createdBy: Attribute[String] =
     attribute("createdBy", AttributeFormat.userFmt, "user who created this entity", None, AttributeOption.model, AttributeOption.readonly)
 
-  val createdAt =
+  val createdAt: Attribute[Date] =
     attribute("createdAt", AttributeFormat.dateFmt, "user who created this entity", new Date, AttributeOption.model, AttributeOption.readonly)
-  val updatedBy = optionalAttribute("updatedBy", AttributeFormat.userFmt, "user who created this entity", None, AttributeOption.model)
-  val updatedAt = optionalAttribute("updatedAt", AttributeFormat.dateFmt, "user who created this entity", AttributeOption.model)
+
+  val updatedBy: Attribute[Option[String]] =
+    optionalAttribute("updatedBy", AttributeFormat.userFmt, "user who created this entity", None, AttributeOption.model)
+
+  val updatedAt: Attribute[Option[Date]] =
+    optionalAttribute("updatedAt", AttributeFormat.dateFmt, "user who created this entity", AttributeOption.model)
 }
 
 abstract class BaseModelDef(modelName: String, val label: String, val path: String) extends ModelAttributes(modelName) {
@@ -146,14 +150,14 @@ abstract class BaseModelDef(modelName: String, val label: String, val path: Stri
 }
 
 class BaseEntity(val model: BaseModelDef, val attributes: JsObject) {
-  val id            = (attributes \ "_id").as[String]
-  val routing       = (attributes \ "_routing").as[String]
-  lazy val parentId = (attributes \ "_parent").asOpt[String]
-  val version       = (attributes \ "_version").as[Long]
-  def createdBy     = (attributes \ "createdBy").as[String]
-  def createdAt     = (attributes \ "createdAt").as[Date]
-  def updatedBy     = (attributes \ "updatedBy").as[String]
-  def updatedAt     = (attributes \ "updatedAt").as[Date]
+  val id: String                    = (attributes \ "_id").as[String]
+  val routing: String               = (attributes \ "_routing").as[String]
+  lazy val parentId: Option[String] = (attributes \ "_parent").asOpt[String]
+  val version: Long                 = (attributes \ "_version").as[Long]
+  def createdBy: String             = (attributes \ "createdBy").as[String]
+  def createdAt: Date               = (attributes \ "createdAt").as[Date]
+  def updatedBy: String             = (attributes \ "updatedBy").as[String]
+  def updatedAt: Date               = (attributes \ "updatedAt").as[Date]
 
   @inline
   final private def removeProtectedAttributes(attrs: JsObject) = JsObject {
@@ -166,12 +170,12 @@ class BaseEntity(val model: BaseModelDef, val attributes: JsObject) {
       }
   }
 
-  def toJson =
+  def toJson: JsObject =
     removeProtectedAttributes(attributes) +
       ("id" → JsString(id))
 
   /* compute auxiliary data */
-  override def toString = Json.prettyPrint(toJson)
+  override def toString: String = Json.prettyPrint(toJson)
 }
 
 abstract class EntityDef[M <: BaseModelDef, E <: BaseEntity](model: M, attributes: JsObject) extends BaseEntity(model, attributes) with AttributeDef {

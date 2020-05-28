@@ -1,18 +1,16 @@
 package org.elastic4play.models
 
-import play.api.Logger
-import play.api.libs.json._
-
-import com.sksamuel.elastic4s.http.ElasticDsl.nestedField
-import com.sksamuel.elastic4s.mappings.NestedField
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
-import org.scalactic.Accumulation._
-import org.scalactic._
-
+import com.sksamuel.elastic4s.ElasticDsl.nestedField
+import com.sksamuel.elastic4s.requests.mappings.NestedField
+import com.sksamuel.elastic4s.requests.mappings.dynamictemplate.DynamicTemplateRequest
 import org.elastic4play.controllers.JsonFormat.inputValueFormat
 import org.elastic4play.controllers.{InputValue, JsonInputValue}
 import org.elastic4play.services.DBLists
 import org.elastic4play.{AttributeError, UnknownAttributeError}
+import org.scalactic.Accumulation._
+import org.scalactic._
+import play.api.Logger
+import play.api.libs.json._
 
 case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends AttributeFormat[JsObject]("nested") {
   private[ObjectAttributeFormat] lazy val logger = Logger(getClass)

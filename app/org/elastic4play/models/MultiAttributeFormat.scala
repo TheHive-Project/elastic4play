@@ -1,16 +1,14 @@
 package org.elastic4play.models
 
-import play.api.libs.json.{JsArray, JsValue}
-
-import com.sksamuel.elastic4s.mappings.FieldDefinition
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
-import org.scalactic.Accumulation._
-import org.scalactic._
-
+import com.sksamuel.elastic4s.requests.mappings.FieldDefinition
+import com.sksamuel.elastic4s.requests.mappings.dynamictemplate.DynamicTemplateRequest
 import org.elastic4play.AttributeError
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.models.JsonFormat.multiFormat
 import org.elastic4play.services.DBLists
+import org.scalactic.Accumulation._
+import org.scalactic._
+import play.api.libs.json.{JsArray, JsValue}
 
 case class MultiAttributeFormat[T](attributeFormat: AttributeFormat[T])
     extends AttributeFormat[Seq[T]]("multi-" + attributeFormat.name)(multiFormat(attributeFormat.jsFormat)) {

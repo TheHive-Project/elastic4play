@@ -51,7 +51,7 @@ class ErrorHandler extends HttpErrorHandler {
       case t: Throwable           ⇒ Option(t.getCause).flatMap(toErrorResult)
     }
 
-  def toResult[C](status: Int, c: C)(implicit writeable: Writeable[C]) = Result(header = ResponseHeader(status), body = writeable.toEntity(c))
+  def toResult[C](status: Int, c: C)(implicit writeable: Writeable[C]): Result = Result(header = ResponseHeader(status), body = writeable.toEntity(c))
 
   def onServerError(request: RequestHeader, exception: Throwable): Future[Result] = {
     val (status, body) = toErrorResult(exception).getOrElse(

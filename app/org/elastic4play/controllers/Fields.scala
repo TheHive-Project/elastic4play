@@ -57,8 +57,8 @@ case class FileInputValue(name: String, filepath: Path, contentType: String) ext
   * Define an attachment that is already in datastore. This type can't be from HTTP request.
   */
 case class AttachmentInputValue(name: String, hashes: Seq[Hash], size: Long, contentType: String, id: String) extends InputValue {
-  def jsonValue: JsObject = Json.obj("name" → name, "hashes" → hashes.map(_.toString()), "size" → size, "contentType" → contentType, "id" → id)
-  def toAttachment        = Attachment(name, hashes, size, contentType, id)
+  def jsonValue: JsObject      = Json.obj("name" → name, "hashes" → hashes.map(_.toString()), "size" → size, "contentType" → contentType, "id" → id)
+  def toAttachment: Attachment = Attachment(name, hashes, size, contentType, id)
 }
 
 object AttachmentInputValue {
@@ -150,7 +150,7 @@ class Fields(private val fields: Map[String, InputValue]) {
   /**
     * Extract all field values
     */
-  def mapValues(f: (InputValue) ⇒ InputValue) = new Fields(fields.mapValues(f))
+  def mapValues(f: InputValue ⇒ InputValue) = new Fields(fields.mapValues(f))
 
   /**
     * Returns a copy of this class with a new field (or replacing existing field)

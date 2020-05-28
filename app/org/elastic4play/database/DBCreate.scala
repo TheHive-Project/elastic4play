@@ -1,18 +1,15 @@
 package org.elastic4play.database
 
 import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.Logger
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json._
-
 import akka.stream.scaladsl.Sink
-import com.sksamuel.elastic4s.RefreshPolicy
-import com.sksamuel.elastic4s.http.ElasticDsl._
-import com.sksamuel.elastic4s.indexes.IndexRequest
+import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.requests.common.RefreshPolicy
+import com.sksamuel.elastic4s.requests.indexes.IndexRequest
 import com.sksamuel.elastic4s.streams.RequestBuilder
 import javax.inject.{Inject, Singleton}
-
 import org.elastic4play.models.BaseEntity
 
 /**
@@ -58,7 +55,7 @@ class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
 
     db.execute {
         addId(id).andThen(addRouting(routing)) {
-          indexInto(db.indexName / "doc").source(docSource.toString).refresh(RefreshPolicy.WAIT_UNTIL)
+          indexInto(db.indexName).source(docSource.toString).refresh(RefreshPolicy.WAIT_FOR)
         }
       }
       .map(
@@ -103,7 +100,7 @@ class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
       val routing   = (attributes \ "_routing").asOpt[String] orElse id
       val docSource = JsObject(attributes.fields.filterNot(_._1.startsWith("_")))
       addId(id).andThen(addRouting(routing)) {
-        indexInto(db.indexName, "doc").source(docSource.toString)
+        indexInto(db.indexName).source(docSource.toString)
       }
     }
   }

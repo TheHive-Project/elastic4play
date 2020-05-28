@@ -25,7 +25,7 @@ object RetryOnError {
 }
 
 object Retry {
-  val logger = Logger(getClass)
+  val logger: Logger = Logger(getClass)
 
   def exceptionCheck(exceptions: Seq[Class[_]])(t: Throwable): Boolean =
     exceptions.exists(_.isAssignableFrom(t.getClass)) || Option(t.getCause).exists(exceptionCheck(exceptions))

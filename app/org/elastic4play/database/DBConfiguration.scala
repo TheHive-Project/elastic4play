@@ -3,21 +3,13 @@ package org.elastic4play.database
 import java.nio.file.{Files, Paths}
 import java.security.KeyStore
 
-import scala.collection.JavaConverters._
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{ExecutionContext, Future, Promise}
-
-import play.api.inject.ApplicationLifecycle
-import play.api.libs.json.JsObject
-import play.api.{Configuration, Logger}
-
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Sink, Source}
-import com.sksamuel.elastic4s.http._
-import com.sksamuel.elastic4s.http.bulk.BulkResponseItem
-import com.sksamuel.elastic4s.http.search.SearchHit
-import com.sksamuel.elastic4s.searches._
+import com.sksamuel.elastic4s._
+import com.sksamuel.elastic4s.http.JavaClient
+import com.sksamuel.elastic4s.requests.bulk.BulkResponseItem
+import com.sksamuel.elastic4s.requests.searches.{SearchHit, SearchRequest}
 import com.sksamuel.elastic4s.streams.ReactiveElastic.ReactiveElastic
 import com.sksamuel.elastic4s.streams.{RequestBuilder, ResponseListener}
 import javax.inject.{Inject, Named, Singleton}
@@ -27,9 +19,15 @@ import org.apache.http.client.CredentialsProvider
 import org.apache.http.client.config.RequestConfig
 import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
-import org.elasticsearch.client.RestClientBuilder.{HttpClientConfigCallback, RequestConfigCallback}
-
 import org.elastic4play.{ConflictError, IndexNotFoundException, InternalError, SearchError}
+import org.elasticsearch.client.RestClientBuilder.{HttpClientConfigCallback, RequestConfigCallback}
+import play.api.inject.ApplicationLifecycle
+import play.api.libs.json.JsObject
+import play.api.{Configuration, Logger}
+
+import scala.collection.JavaConverters._
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
   * This class is a wrapper of ElasticSearch client from Elastic4s
@@ -124,7 +122,10 @@ class DBConfiguration @Inject()(
   /**
     * Underlying ElasticSearch client
     */
-  private[database] val client = ElasticClient(ElasticProperties(config.get[String]("search.uri")), requestConfigCallback, httpClientConfig)
+  private[database] val client: ElasticClient = {
+    val props = ElasticProperties(config.get[String]("search.uri"))
+    ElasticClient(JavaClient(props, requestConfigCallback, httpClientConfig))
+  }
   // when application close, close also ElasticSearch connection
   lifecycle.addStopHook { () ⇒
     Future {

@@ -1,14 +1,11 @@
 package org.elastic4play.database
 
+import com.sksamuel.elastic4s.ElasticDsl._
 import javax.inject.{Inject, Singleton}
-
-import scala.concurrent.{ExecutionContext, Future}
-
+import org.elastic4play.NotFoundError
 import play.api.libs.json.JsObject
 
-import com.sksamuel.elastic4s.http.ElasticDsl._
-
-import org.elastic4play.NotFoundError
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class DBGet @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {

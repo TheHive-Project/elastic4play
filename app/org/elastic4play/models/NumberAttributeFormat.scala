@@ -1,13 +1,11 @@
 package org.elastic4play.models
 
-import play.api.libs.json.{JsNumber, JsValue}
-
-import com.sksamuel.elastic4s.http.ElasticDsl.longField
-import com.sksamuel.elastic4s.mappings.BasicField
-import org.scalactic._
-
+import com.sksamuel.elastic4s.ElasticDsl.longField
+import com.sksamuel.elastic4s.requests.mappings.BasicField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
+import org.scalactic._
+import play.api.libs.json.{JsNumber, JsValue}
 
 class NumberAttributeFormat extends AttributeFormat[Long]("number") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {

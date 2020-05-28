@@ -1,13 +1,10 @@
 package org.elastic4play.database
 
 import scala.concurrent.{blocking, ExecutionContext, Future}
-
 import play.api.{Configuration, Logger}
-
-import com.sksamuel.elastic4s.http.ElasticDsl._
-import com.sksamuel.elastic4s.indexes.CreateIndexRequest
+import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.requests.indexes.CreateIndexRequest
 import javax.inject.{Inject, Singleton}
-
 import org.elastic4play.InternalError
 import org.elastic4play.models.{ChildModelDef, ModelAttributes}
 import org.elastic4play.utils.Collection
@@ -54,13 +51,12 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
 
     for {
       majorVersion ← nodeMajorVersion
-      modelMapping = mapping("doc")
-        .fields(fields :+ relationsField)
+      modelMapping = properties(fields :+ relationsField)
         .dateDetection(false)
         .numericDetection(false)
         .templates(mappingTemplates)
       createIndexRequest = CreateIndexRequest(db.indexName)
-        .mappings(modelMapping)
+        .mapping(modelMapping)
         .shards(nbShards)
         .replicas(nbReplicas)
       createIndexRequestWithSettings = majorVersion match {

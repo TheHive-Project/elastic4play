@@ -3,17 +3,15 @@ package org.elastic4play
 import java.nio.file.{Files, Paths}
 import java.security.KeyStore
 
+import javax.net.ssl._
 import play.api.Logger
-import play.core.ApplicationProvider
 import play.core.server.ServerConfig
 import play.server.api.SSLEngineProvider
 
-import javax.net.ssl._
+class ClientAuthSSLEngineProvider(serverConfig: ServerConfig) extends SSLEngineProvider {
 
-class ClientAuthSSLEngineProvider(serverConfig: ServerConfig, appProvider: ApplicationProvider) extends SSLEngineProvider {
-
-  lazy val logger    = Logger(getClass)
-  private val config = serverConfig.configuration
+  lazy val logger: Logger = Logger(getClass)
+  private val config      = serverConfig.configuration
 
   def readKeyManagers(): Array[KeyManager] = {
     val keyStorePath     = Paths.get(config.get[String]("play.server.https.keyStore.path"))
@@ -50,21 +48,11 @@ class ClientAuthSSLEngineProvider(serverConfig: ServerConfig, appProvider: Appli
       }
       .getOrElse(Array.empty)
 
-  def createSSLContext(applicationProvider: ApplicationProvider): SSLContext = {
-    val keyManagers   = readKeyManagers()
-    val trustManagers = readTrustManagers()
-
-    // Configure the SSL context to use TLS
-    val sslContext = SSLContext.getInstance("TLS")
-    sslContext.init(keyManagers, trustManagers, null)
-    sslContext
-  }
-
   override def createSSLEngine(): SSLEngine = {
-    val sslContext = createSSLContext(appProvider)
+    val sslCtx = sslContext()
 
     // Start off with a clone of the default SSL parameters...
-    val sslParameters = sslContext.getDefaultSSLParameters
+    val sslParameters = sslCtx.getDefaultSSLParameters
 
     // Tells the server to ignore client's cipher suite preference.
     // http://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#cipher_suite_preference
@@ -76,8 +64,18 @@ class ClientAuthSSLEngineProvider(serverConfig: ServerConfig, appProvider: Appli
     sslParameters.setWantClientAuth(wantClientAuth)
 
     // Clone and modify the default SSL parameters.
-    val engine = sslContext.createSSLEngine
+    val engine = sslCtx.createSSLEngine
     engine.setSSLParameters(sslParameters)
     engine
+  }
+
+  override def sslContext(): SSLContext = {
+    val keyManagers   = readKeyManagers()
+    val trustManagers = readTrustManagers()
+
+    // Configure the SSL context to use TLS
+    val sslContext = SSLContext.getInstance("TLS")
+    sslContext.init(keyManagers, trustManagers, null)
+    sslContext
   }
 }

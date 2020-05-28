@@ -3,7 +3,7 @@ package org.elastic4play.models
 import play.api.libs.json._
 
 object JsonFormat {
-  implicit val baseModelEntityWrites: Writes[BaseEntity] = Writes((entity: BaseEntity) ⇒ entity.toJson)
+  implicit def baseModelEntityWrites[E <: BaseEntity]: Writes[E] = Writes((entity: BaseEntity) ⇒ entity.toJson)
 
   implicit def multiFormat[T](implicit jsFormat: Format[T]): Format[Seq[T]] = Format(Reads.seq(jsFormat), Writes.seq(jsFormat))
 

@@ -1,15 +1,13 @@
 package org.elastic4play.models
 
-import play.api.libs.json.JsValue
-
-import com.sksamuel.elastic4s.http.ElasticDsl.binaryField
-import com.sksamuel.elastic4s.mappings.BasicField
-import org.scalactic._
-
+import com.sksamuel.elastic4s.ElasticDsl.binaryField
+import com.sksamuel.elastic4s.requests.mappings.BasicField
 import org.elastic4play.controllers.{InputValue, JsonInputValue}
 import org.elastic4play.models.JsonFormat.binaryFormats
 import org.elastic4play.services.DBLists
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
+import org.scalactic._
+import play.api.libs.json.JsValue
 
 class BinaryAttributeFormat extends AttributeFormat[Array[Byte]]("binary")(binaryFormats) {
   override def checkJson(subNames: Seq[String], value: JsValue): Bad[One[InvalidFormatAttributeError]] = formatError(JsonInputValue(value))

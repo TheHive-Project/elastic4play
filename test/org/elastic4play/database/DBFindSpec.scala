@@ -1,26 +1,21 @@
 package org.elastic4play.database
 
-import scala.concurrent.ExecutionContext.Implicits.{global ⇒ ec}
-import scala.concurrent.Future
-import scala.concurrent.duration._
-
+import akka.actor.ActorSystem
+import akka.stream.Materializer
+import akka.stream.testkit.scaladsl.TestSink
+import com.sksamuel.elastic4s.ElasticDsl.SearchHandler
+import com.sksamuel.elastic4s.requests.searches.{SearchHit, SearchHits, SearchRequest, SearchResponse, Total}
+import org.elastic4play.utils._
+import org.junit.runner.RunWith
+import org.specs2.mock.Mockito
+import org.specs2.runner.JUnitRunner
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.PlaySpecification
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.testkit.scaladsl.TestSink
-import com.sksamuel.elastic4s.http.search.{SearchHit, SearchHits, SearchResponse}
-import com.sksamuel.elastic4s.http.ElasticDsl.{SearchHandler, SearchScrollHandler}
-import com.sksamuel.elastic4s.http.Handler
-import com.sksamuel.elastic4s.searches._
-import common.{Fabricator ⇒ F}
-import org.junit.runner.RunWith
-import org.specs2.mock.Mockito
-import org.specs2.runner.JUnitRunner
-
-import org.elastic4play.utils._
+import scala.concurrent.ExecutionContext.Implicits.{global ⇒ ec}
+import scala.concurrent.Future
+import scala.concurrent.duration._
 
 @RunWith(classOf[JUnitRunner])
 class DBFindSpec extends PlaySpecification with Mockito {
@@ -137,7 +132,7 @@ class DBFindSpec extends PlaySpecification with Mockito {
       //db.execute(searchDef) returns Future.successful(results)
       doReturn(Future.successful(results)).when(db).execute(searchDef)
       results.totalHits returns 42
-      results.hits returns SearchHits(24, 0, hits)
+      results.hits returns SearchHits(Total(24, "eq"), 0, hits)
 
       val (src, total) = dbfind.searchWithoutScroll(searchDef, offset, limit)
       src

@@ -1,19 +1,17 @@
 package org.elastic4play.services
 
-import scala.concurrent.{ExecutionContext, Future}
-
-import play.api.libs.json.JsObject
-import play.api.libs.json.JsValue.jsValueToJsLookup
-
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import com.sksamuel.elastic4s.http.ElasticDsl._
-import com.sksamuel.elastic4s.searches.queries.Query
+import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.requests.searches.queries.Query
 import javax.inject.{Inject, Singleton}
-
 import org.elastic4play.database.{DBConfiguration, DBFind}
 import org.elastic4play.models.{AbstractModelDef, BaseEntity, BaseModelDef}
 import org.elastic4play.services.QueryDSL._
+import play.api.libs.json.JsObject
+import play.api.libs.json.JsValue.jsValueToJsLookup
+
+import scala.concurrent.{ExecutionContext, Future}
 
 case class QueryDef(query: Query)
 

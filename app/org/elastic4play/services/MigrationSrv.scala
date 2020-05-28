@@ -1,37 +1,29 @@
 package org.elastic4play.services
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
-
+import akka.NotUsed
+import akka.actor.ActorSystem
+import akka.stream.Materializer
+import akka.stream.scaladsl.{Sink, Source}
+import com.sksamuel.elastic4s.ElasticDsl._
+import javax.inject.{Inject, Singleton}
+import org.elastic4play.InternalError
+import org.elastic4play.database._
+import play.api.Logger
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json._
-import play.api.{Configuration, Logger}
 
-import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.stream.scaladsl.{Sink, Source}
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Materializer}
-import com.sksamuel.elastic4s.http.ElasticDsl._
-import com.typesafe.config.Config
-import javax.inject.{Inject, Singleton}
-
-import org.elastic4play.InternalError
-import org.elastic4play.database._
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 case class MigrationEvent(modelName: String, current: Long, total: Long) extends EventMessage
 
 case object EndOfMigrationEvent extends EventMessage
 
-object IndexType extends Enumeration {
-  val indexWithMappingTypes, indexWithoutMappingTypes = Value
-}
-
 trait MigrationOperations {
   val operations: PartialFunction[DatabaseState, Seq[Operation]]
   def beginMigration(version: Int): Future[Unit]
   def endMigration(version: Int): Future[Unit]
-  def indexType(version: Int): IndexType.Value
 }
 
 /* DatabaseState is the state of a specific version of the database.
@@ -45,29 +37,22 @@ abstract class DatabaseState {
 }
 
 object DatabaseState {
-  def unapply(s: DatabaseState) = Some(s.version)
+  def unapply(s: DatabaseState): Option[Int] = Some(s.version)
 }
 
 @Singleton
 class MigrationSrv @Inject()(
-    configuration: Configuration,
     migration: MigrationOperations,
     db: DBConfiguration,
     dbcreate: DBCreate,
     dbfind: DBFind,
-    dbget: DBGet,
-    dblists: DBLists,
     dbindex: DBIndex,
     modelSrv: ModelSrv,
     eventSrv: EventSrv,
     implicit val system: ActorSystem,
-    implicit val ec: ExecutionContext
+    implicit val ec: ExecutionContext,
+    implicit val mat: Materializer
 ) {
-
-  implicit val mat: Materializer = {
-    val materializerSettings = configuration.getOptional[Config]("migration.stream").map(ActorMaterializerSettings.apply)
-    ActorMaterializer(materializerSettings, None)
-  }
 
   private[MigrationSrv] lazy val logger = Logger(getClass)
 
@@ -85,7 +70,7 @@ class MigrationSrv @Inject()(
   }
 
   /* Last version of database */
-  class OriginStateES6(db: DBConfiguration) extends DatabaseState {
+  class OriginState(db: DBConfiguration) extends DatabaseState {
     private val currentdbfind     = dbfind.switchTo(db)
     private lazy val currentdbget = new DBGet(db, ec)
     override def version: Int     = db.version
@@ -93,48 +78,6 @@ class MigrationSrv @Inject()(
       currentdbfind.apply(Some("all"), Nil)(indexName ⇒ search(indexName).matchQuery("relations", tableName))._1
     override def count(tableName: String): Future[Long]                           = new DBIndex(db, 0, 0, Map.empty, ec).getSize(tableName)
     override def getEntity(tableName: String, entityId: String): Future[JsObject] = currentdbget(tableName, entityId)
-  }
-
-  class OriginStateES5(db: DBConfiguration) extends DatabaseState {
-    private val currentdbfind     = dbfind.switchTo(db)
-    private lazy val currentdbget = new DBGet(db, ec)
-    override def version: Int     = db.version
-    override def source(tableName: String): Source[JsObject, NotUsed] = {
-      val searchQuery = search(db.indexName / tableName).storedFields("_source", "_routing", "_parent").start(0).version(true)
-      Source.fromGraph(new SearchWithScroll(db, searchQuery, currentdbfind.keepAliveStr, 0, Int.MaxValue)).map { hit ⇒
-        val id = JsString(hit.id)
-        Json.parse(hit.sourceAsString).as[JsObject] +
-          ("_type" → JsString(hit.`type`)) +
-          ("_routing" → hit
-            .routing
-            .fold(id)(JsString.apply)) + //fields.routget("_routing").map(r ⇒ JsString(r.java.getValue[String])).getOrElse(id)) +
-          ("_parent" → hit
-            .parent
-            .fold[JsValue](JsNull)(JsString.apply)) + //hit.fields.get("_parent").map(r ⇒ JsString(r.java.getValue[String])).getOrElse(JsNull)) +
-          ("_id"      → id) +
-          ("_version" → JsNumber(hit.version))
-      }
-    }
-
-    override def count(tableName: String): Future[Long] =
-      db.execute {
-          search(db.indexName / tableName).matchAllQuery().size(0)
-        }
-        .map {
-          _.totalHits
-        }
-        .recover { case _ ⇒ 0L }
-
-    override def getEntity(tableName: String, entityId: String): Future[JsObject] = currentdbget(tableName, entityId)
-  }
-
-  object OriginState {
-
-    def apply(db: DBConfiguration) =
-      migration.indexType(db.version) match {
-        case IndexType.`indexWithoutMappingTypes` ⇒ new OriginStateES6(db)
-        case IndexType.indexWithMappingTypes      ⇒ new OriginStateES5(db)
-      }
   }
 
   /* If there is no database, use empty one */
@@ -148,8 +91,8 @@ class MigrationSrv @Inject()(
   def migrationPath(db: DBConfiguration): Future[(Int, DatabaseState)] =
     new DBIndex(db, 0, 0, Map.empty, ec).getIndexStatus.flatMap {
       case true ⇒
-        logger.info(s"Initiate database migration from version ${db.version} (${migration.indexType(db.version)})")
-        Future.successful(db.version → OriginState(db))
+        logger.info(s"Initiate database migration from version ${db.version}")
+        Future.successful(db.version → new OriginState(db))
       case false if db.version == 1 ⇒
         logger.info("Create a new empty database")
         Future.successful(0 → EmptyState)
@@ -241,9 +184,7 @@ trait Operation extends ((String ⇒ Source[JsObject, NotUsed]) ⇒ (String ⇒ 
 
 object Operation {
 
-  def apply(o: (String ⇒ Source[JsObject, NotUsed]) ⇒ String ⇒ Source[JsObject, NotUsed]) = new Operation {
-    def apply(f: String ⇒ Source[JsObject, NotUsed]): String ⇒ Source[JsObject, NotUsed] = o(f)
-  }
+  def apply(o: (String ⇒ Source[JsObject, NotUsed]) ⇒ String ⇒ Source[JsObject, NotUsed]): Operation = (f: String ⇒ Source[JsObject, NotUsed]) ⇒ o(f)
 
   def renameEntity(previous: String, next: String): Operation =
     Operation((f: String ⇒ Source[JsObject, NotUsed]) ⇒ {

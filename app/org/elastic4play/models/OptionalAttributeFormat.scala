@@ -1,15 +1,13 @@
 package org.elastic4play.models
 
-import play.api.libs.json.{JsNull, JsValue}
-
-import com.sksamuel.elastic4s.mappings.FieldDefinition
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
-import org.scalactic._
-
+import com.sksamuel.elastic4s.requests.mappings.FieldDefinition
+import com.sksamuel.elastic4s.requests.mappings.dynamictemplate.DynamicTemplateRequest
 import org.elastic4play.AttributeError
 import org.elastic4play.controllers.{InputValue, JsonInputValue, NullInputValue}
 import org.elastic4play.models.JsonFormat.optionFormat
 import org.elastic4play.services.DBLists
+import org.scalactic._
+import play.api.libs.json.{JsNull, JsValue}
 
 case class OptionalAttributeFormat[T](attributeFormat: AttributeFormat[T])
     extends AttributeFormat[Option[T]]("optional-" + attributeFormat.name)(optionFormat(attributeFormat.jsFormat)) {

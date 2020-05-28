@@ -44,7 +44,7 @@ package object utils {
       else
         obj + (name → writes.writes(value))
 
-    def mapValues(f: JsValue ⇒ JsValue) =
+    def mapValues(f: JsValue ⇒ JsValue): JsObject =
       JsObject(obj.fields.map {
         case (key, value) ⇒ key → f(value)
       })
@@ -56,12 +56,12 @@ package object utils {
         .reduceOption(_ deepMerge _)
         .getOrElse(JsObject.empty)
 
-    def collectValues(pf: PartialFunction[JsValue, JsValue]) =
+    def collectValues(pf: PartialFunction[JsValue, JsValue]): JsObject =
       JsObject(obj.fields.collect {
         case (key, value) if pf.isDefinedAt(value) ⇒ key → pf(value)
       })
 
-    def collect(pf: PartialFunction[(String, JsValue), (String, JsValue)]) = JsObject(obj.fields.collect(pf))
+    def collect(pf: PartialFunction[(String, JsValue), (String, JsValue)]): JsObject = JsObject(obj.fields.collect(pf))
   }
 
   implicit class RichOr[G, B](or: Or[G, B]) {

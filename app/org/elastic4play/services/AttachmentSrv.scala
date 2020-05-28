@@ -8,7 +8,7 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import akka.stream.scaladsl.{FileIO, Sink, Source, StreamConverters}
 import akka.util.ByteString
-import com.sksamuel.elastic4s.http.ElasticDsl.search
+import com.sksamuel.elastic4s.ElasticDsl.search
 import javax.inject.{Inject, Singleton}
 import org.elastic4play.controllers.JsonFormat.{attachmentInputValueReads, fileInputValueFormat}
 import org.elastic4play.controllers.{AttachmentInputValue, FileInputValue, JsonInputValue}
@@ -21,6 +21,7 @@ import play.api.Configuration
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json._
+
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -91,8 +92,8 @@ class AttachmentSrv(
       mat
     )
 
-  val mainHasher   = Hasher(mainHash)
-  val extraHashers = Hasher(mainHash +: extraHashes: _*)
+  val mainHasher: Hasher   = Hasher(mainHash)
+  val extraHashers: Hasher = Hasher(mainHash +: extraHashes: _*)
 
   /**
     * Handles attachments : send to datastore and build an object with hash and filename

@@ -1,25 +1,23 @@
 package org.elastic4play.database
 
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import java.util.{Map ⇒ JMap}
 
+import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.JacksonSupport
+import com.sksamuel.elastic4s.requests.common.RefreshPolicy
+import com.sksamuel.elastic4s.requests.script.Script
+import javax.inject.{Inject, Singleton}
+import org.elastic4play.models.BaseEntity
 import play.api.Logger
 import play.api.libs.json._
 
-import com.sksamuel.elastic4s.http.ElasticDsl._
-import com.sksamuel.elastic4s.script.Script
-
-import org.elastic4play.models.BaseEntity
 import scala.collection.JavaConverters._
-import java.util.{Map ⇒ JMap}
+import scala.concurrent.{ExecutionContext, Future}
 
-import com.sksamuel.elastic4s.RefreshPolicy
-import com.sksamuel.elastic4s.json.JacksonSupport
-
-case class ModifyConfig(retryOnConflict: Int = 5, refreshPolicy: RefreshPolicy = RefreshPolicy.WAIT_UNTIL, version: Option[Long] = None)
+case class ModifyConfig(retryOnConflict: Int = 5, refreshPolicy: RefreshPolicy = RefreshPolicy.WAIT_FOR, version: Option[Long] = None)
 
 object ModifyConfig {
-  def default: ModifyConfig = ModifyConfig(5, RefreshPolicy.WAIT_UNTIL, None)
+  def default: ModifyConfig = ModifyConfig(5, RefreshPolicy.WAIT_FOR, None)
 }
 
 @Singleton
@@ -81,8 +79,7 @@ class DBModify @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
     */
   def apply(entity: BaseEntity, updateAttributes: JsObject, modifyConfig: ModifyConfig): Future[BaseEntity] =
     db.execute {
-        val updateDefinition = update(entity.id)
-          .in(db.indexName / "doc")
+        val updateDefinition = updateById(db.indexName, entity.id)
           .routing(entity.routing)
           .script(buildScript(entity, updateAttributes))
           .fetchSource(true)

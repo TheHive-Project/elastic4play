@@ -1,17 +1,16 @@
 package org.elastic4play.services
 
-import scala.concurrent.ExecutionContext.Implicits.{global ⇒ ec}
+import java.util.{Date, UUID}
 
+import scala.concurrent.ExecutionContext.Implicits.{global ⇒ ec}
 import play.api.libs.json._
 import play.api.test.PlaySpecification
-
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
 import org.specs2.runner.JUnitRunner
-
 import org.elastic4play.controllers.JsonInputValue
 import org.elastic4play.database.DBModify
-import org.elastic4play.models.{EntityDef, ModelDef, AttributeFormat ⇒ F}
+import org.elastic4play.models.{Attribute, EntityDef, ModelDef, AttributeFormat ⇒ F}
 import org.elastic4play.utils.RichFuture
 import org.elastic4play.{AttributeCheckingError, InvalidFormatAttributeError, UnknownAttributeError}
 
@@ -19,23 +18,23 @@ import org.elastic4play.{AttributeCheckingError, InvalidFormatAttributeError, Un
 class UpdateSrvSpec extends PlaySpecification with Mockito {
 
   class TestModel extends ModelDef[TestModel, TestEntity]("testModel", "TestModel", "/test") {
-    val textAttribute    = attribute("textAttribute", F.textFmt, "textAttribute")
-    val stringAttribute  = attribute("stringAttribute", F.stringFmt, "stringAttribute")
-    val dateAttribute    = attribute("dateAttribute", F.dateFmt, "dateAttribute")
-    val booleanAttribute = attribute("booleanAttribute", F.booleanFmt, "booleanAttribute")
-    val uuidAttribute    = attribute("uuidAttribute", F.uuidFmt, "uuidAttribute")
-    val hashAttribute    = attribute("hashAttribute", F.hashFmt, "hashAttribute")
-    val metricAttribute  = attribute("metricAttribute", F.metricsFmt, "metricAttribute")
-    val multiAttibute    = multiAttribute("multiAttribute", F.stringFmt, "multiAttribute")
+    val textAttribute: Attribute[String]      = attribute("textAttribute", F.textFmt, "textAttribute")
+    val stringAttribute: Attribute[String]    = attribute("stringAttribute", F.stringFmt, "stringAttribute")
+    val dateAttribute: Attribute[Date]        = attribute("dateAttribute", F.dateFmt, "dateAttribute")
+    val booleanAttribute: Attribute[Boolean]  = attribute("booleanAttribute", F.booleanFmt, "booleanAttribute")
+    val uuidAttribute: Attribute[UUID]        = attribute("uuidAttribute", F.uuidFmt, "uuidAttribute")
+    val hashAttribute: Attribute[String]      = attribute("hashAttribute", F.hashFmt, "hashAttribute")
+    val metricAttribute: Attribute[JsValue]   = attribute("metricAttribute", F.metricsFmt, "metricAttribute")
+    val multiAttibute: Attribute[Seq[String]] = multiAttribute("multiAttribute", F.stringFmt, "multiAttribute")
   }
   class TestEntity(model: TestModel, attributes: JsObject) extends EntityDef[TestModel, TestEntity](model, attributes)
-  val fieldsSrv     = mock[FieldsSrv]
-  val dbModify      = mock[DBModify]
-  val eventSrv      = mock[EventSrv]
-  val getSrv        = mock[GetSrv]
-  val attachmentSrv = mock[AttachmentSrv]
-  val updateSrv     = new UpdateSrv(fieldsSrv, dbModify, getSrv, attachmentSrv, eventSrv, ec)
-  val model         = new TestModel
+  val fieldsSrv: FieldsSrv         = mock[FieldsSrv]
+  val dbModify: DBModify           = mock[DBModify]
+  val eventSrv: EventSrv           = mock[EventSrv]
+  val getSrv: GetSrv               = mock[GetSrv]
+  val attachmentSrv: AttachmentSrv = mock[AttachmentSrv]
+  val updateSrv                    = new UpdateSrv(fieldsSrv, dbModify, getSrv, attachmentSrv, eventSrv, ec)
+  val model                        = new TestModel
 
   "UpdateSrv.checkAttributes" should {
     "return attributes if there is correct" in {

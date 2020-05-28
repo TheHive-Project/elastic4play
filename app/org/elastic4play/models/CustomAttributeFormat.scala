@@ -1,17 +1,14 @@
 package org.elastic4play.models
 
-import play.api.Logger
-import play.api.libs.json._
-
-import com.sksamuel.elastic4s.http.ElasticDsl.{booleanField, dateField, keywordField, longField, nestedField}
-import com.sksamuel.elastic4s.mappings.NestedField
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
-import com.sksamuel.elastic4s.http.ElasticDsl._
-import org.scalactic._
-
+import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.requests.mappings.NestedField
+import com.sksamuel.elastic4s.requests.mappings.dynamictemplate.DynamicTemplateRequest
 import org.elastic4play.AttributeError
 import org.elastic4play.controllers.{InputValue, JsonInputValue}
 import org.elastic4play.services.DBLists
+import org.scalactic._
+import play.api.Logger
+import play.api.libs.json._
 
 class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
   private[CustomAttributeFormat] lazy val logger = Logger(getClass)

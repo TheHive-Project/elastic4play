@@ -4,14 +4,15 @@ import akka.NotUsed
 import akka.stream.scaladsl.Source
 import akka.stream.stage.{AsyncCallback, GraphStage, GraphStageLogic, OutHandler}
 import akka.stream.{Attributes, Materializer, Outlet, SourceShape}
-import com.sksamuel.elastic4s.http.ElasticDsl._
-import com.sksamuel.elastic4s.http.search.{SearchHit, SearchResponse}
-import com.sksamuel.elastic4s.searches.SearchRequest
+import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.requests.searches.{SearchHit, SearchRequest, SearchResponse}
+//import com.sksamuel.elastic4s.search.{SearchHit, SearchResponse}
+//import com.sksamuel.elastic4s.searches.SearchRequest
 import javax.inject.{Inject, Singleton}
-
 import org.elastic4play.{IndexNotFoundException, SearchError}
 import play.api.libs.json._
 import play.api.{Configuration, Logger}
+
 import scala.collection.mutable
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
@@ -26,7 +27,7 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
   @Inject def this(configuration: Configuration, db: DBConfiguration, ec: ExecutionContext, mat: Materializer) =
     this(configuration.get[Int]("search.pagesize"), configuration.getMillis("search.keepalive").millis, db, ec, mat)
 
-  val keepAliveStr                = keepAlive.toMillis + "ms"
+  val keepAliveStr: String        = keepAlive.toMillis + "ms"
   private[DBFind] lazy val logger = Logger(getClass)
 
   /**
@@ -68,7 +69,7 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
     val resp  = db.execute(searchRequest.start(offset).limit(limit))
     val total = resp.map(_.totalHits)
     val src = Source
-      .fromFuture(resp)
+      .future(resp)
       .mapConcat { resp ⇒
         resp.hits.hits.toList
       }
@@ -90,7 +91,7 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
     val searchRequest   = query(db.indexName).start(offset).sortBy(sortDef).version(true)
 
     logger.debug(
-      s"search in ${searchRequest.indexesTypes.indexes.mkString(",")} / ${searchRequest.indexesTypes.types.mkString(",")} ${db.client.show(searchRequest)}"
+      s"search in ${searchRequest.indexes.values.mkString(",")} ${db.client.show(searchRequest)}"
     )
     val (src, total) = if (limit > 2 * pageSize) {
       searchWithScroll(searchRequest, offset, limit)
@@ -108,13 +109,13 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
   def apply(query: String ⇒ SearchRequest): Future[SearchResponse] = {
     val searchRequest = query(db.indexName)
     logger.debug(
-      s"search in ${searchRequest.indexesTypes.indexes.mkString(",")} / ${searchRequest.indexesTypes.types.mkString(",")} ${db.client.show(searchRequest)}"
+      s"search in ${searchRequest.indexes.values.mkString(",")} ${db.client.show(searchRequest)}"
     )
 
     db.execute(searchRequest)
       .recoverWith {
         case t if t == IndexNotFoundException ⇒ Future.failed(t)
-        case t                                ⇒ Future.failed(SearchError("Invalid search query"))
+        case _                                ⇒ Future.failed(SearchError("Invalid search query"))
       }
   }
 }
@@ -163,7 +164,7 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
             queue ++= searchResponse.hits.hits
             firstResultProcessed = true
             onPull()
-          case Failure(error) =>
+          case Failure(error) ⇒
             logger.warn("Search error", error)
             failStage(error)
         }

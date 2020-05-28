@@ -1,16 +1,14 @@
 package org.elastic4play.models
 
-import play.api.libs.json._
-
-import com.sksamuel.elastic4s.http.ElasticDsl.{dynamicLongField, dynamicTemplate, nestedField}
-import com.sksamuel.elastic4s.mappings.NestedField
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
-import org.scalactic.Accumulation._
-import org.scalactic._
-
+import com.sksamuel.elastic4s.ElasticDsl.{dynamicLongField, dynamicTemplate, nestedField}
+import com.sksamuel.elastic4s.requests.mappings.NestedField
+import com.sksamuel.elastic4s.requests.mappings.dynamictemplate.DynamicTemplateRequest
 import org.elastic4play.AttributeError
 import org.elastic4play.controllers.{InputValue, JsonInputValue}
 import org.elastic4play.services.DBLists
+import org.scalactic.Accumulation._
+import org.scalactic._
+import play.api.libs.json._
 
 class MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = fromInputValue(subNames, JsonInputValue(value))

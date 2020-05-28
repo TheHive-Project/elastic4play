@@ -1,15 +1,13 @@
 package org.elastic4play.models
 
+import com.sksamuel.elastic4s.requests.mappings.dynamictemplate.DynamicTemplateRequest
+import com.sksamuel.elastic4s.requests.mappings.{BasicField, FieldDefinition}
+import org.elastic4play.controllers.InputValue
+import org.elastic4play.services.{Attachment, DBLists}
+import org.elastic4play.{AttributeError, InvalidFormatAttributeError, MissingAttributeError, UpdateReadOnlyAttributeError}
+import org.scalactic._
 import play.api.Logger
 import play.api.libs.json.{Format, JsArray, JsNull, JsValue}
-
-import com.sksamuel.elastic4s.mappings.dynamictemplate.DynamicTemplateRequest
-import com.sksamuel.elastic4s.mappings.{BasicField, FieldDefinition}
-import org.scalactic._
-
-import org.elastic4play.controllers.InputValue
-import org.elastic4play.services.DBLists
-import org.elastic4play.{AttributeError, InvalidFormatAttributeError, MissingAttributeError, UpdateReadOnlyAttributeError}
 
 case class AttributeDefinition(name: String, `type`: String, description: String, values: Seq[JsValue], labels: Seq[String])
 
@@ -31,33 +29,33 @@ abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Forma
 
   def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] = Nil
 
-  protected def formatError(value: InputValue) = Bad(One(InvalidFormatAttributeError("", name, value)))
+  protected def formatError(value: InputValue): Bad[One[InvalidFormatAttributeError]] = Bad(One(InvalidFormatAttributeError("", name, value)))
 
   def definition(dblists: DBLists, attribute: Attribute[T]): Seq[AttributeDefinition] =
     Seq(AttributeDefinition(attribute.attributeName, name, attribute.description, Nil, Nil))
 }
 
 object AttributeFormat {
-  val dateFmt       = DateAttributeFormat
-  val textFmt       = TextAttributeFormat
-  val stringFmt     = StringAttributeFormat
-  val userFmt       = UserAttributeFormat
-  val booleanFmt    = BooleanAttributeFormat
-  val numberFmt     = NumberAttributeFormat
-  val attachmentFmt = AttachmentAttributeFormat
-  val metricsFmt    = MetricsAttributeFormat
-  val customFields  = CustomAttributeFormat
-  val uuidFmt       = UUIDAttributeFormat
-  val hashFmt       = HashAttributeFormat
-  val binaryFmt     = BinaryAttributeFormat
-  val rawFmt        = RawAttributeFormat
+  val dateFmt: DateAttributeFormat               = DateAttributeFormat
+  val textFmt: TextAttributeFormat               = TextAttributeFormat
+  val stringFmt: StringAttributeFormat           = StringAttributeFormat
+  val userFmt: UserAttributeFormat               = UserAttributeFormat
+  val booleanFmt: BooleanAttributeFormat         = BooleanAttributeFormat
+  val numberFmt: NumberAttributeFormat           = NumberAttributeFormat
+  val attachmentFmt: AttributeFormat[Attachment] = AttachmentAttributeFormat
+  val metricsFmt: MetricsAttributeFormat         = MetricsAttributeFormat
+  val customFields: CustomAttributeFormat        = CustomAttributeFormat
+  val uuidFmt: UUIDAttributeFormat               = UUIDAttributeFormat
+  val hashFmt: AttributeFormat[String]           = HashAttributeFormat
+  val binaryFmt: BinaryAttributeFormat           = BinaryAttributeFormat
+  val rawFmt: RawAttributeFormat                 = RawAttributeFormat
 
   def enumFmt[T <: Enumeration](e: T)(implicit format: Format[T#Value]): EnumerationAttributeFormat[T] = EnumerationAttributeFormat[T](e)
 
   def listEnumFmt(enumerationName: String)(dblists: DBLists): ListEnumerationAttributeFormat =
     ListEnumerationAttributeFormat(enumerationName)(dblists)
 
-  def objectFmt(subAttributes: Seq[Attribute[_]]) = ObjectAttributeFormat(subAttributes)
+  def objectFmt(subAttributes: Seq[Attribute[_]]): ObjectAttributeFormat = ObjectAttributeFormat(subAttributes)
 }
 
 object AttributeOption extends Enumeration with HiveEnumeration {

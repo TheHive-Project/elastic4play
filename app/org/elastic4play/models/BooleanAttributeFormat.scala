@@ -1,13 +1,11 @@
 package org.elastic4play.models
 
-import play.api.libs.json.{JsBoolean, JsValue}
-
-import com.sksamuel.elastic4s.http.ElasticDsl.booleanField
-import com.sksamuel.elastic4s.mappings.BasicField
-import org.scalactic._
-
+import com.sksamuel.elastic4s.ElasticDsl.booleanField
+import com.sksamuel.elastic4s.requests.mappings.BasicField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
+import org.scalactic._
+import play.api.libs.json.{JsBoolean, JsValue}
 
 class BooleanAttributeFormat extends AttributeFormat[Boolean]("boolean") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {

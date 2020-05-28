@@ -1,14 +1,12 @@
 package org.elastic4play.models
 
-import play.api.libs.json.{Format, JsString, JsValue}
-
-import com.sksamuel.elastic4s.http.ElasticDsl.keywordField
-import com.sksamuel.elastic4s.mappings.KeywordField
-import org.scalactic._
-
+import com.sksamuel.elastic4s.ElasticDsl.keywordField
+import com.sksamuel.elastic4s.requests.mappings.KeywordField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.services.DBLists
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
+import org.scalactic._
+import play.api.libs.json.{Format, JsString, JsValue}
 
 case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit format: Format[T#Value]) extends AttributeFormat[T#Value](s"enumeration") {
 

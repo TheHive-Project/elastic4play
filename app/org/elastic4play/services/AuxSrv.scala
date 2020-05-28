@@ -1,20 +1,17 @@
 package org.elastic4play.services
 
-import scala.concurrent.{ExecutionContext, Future}
-
-import play.api.Logger
-import play.api.libs.json.JsObject
-
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
 import javax.inject.{Inject, Singleton}
-
 import org.elastic4play.InternalError
-import org.elastic4play.database.DBConfiguration
 import org.elastic4play.models.{AttributeOption, BaseEntity, ChildModelDef}
+import play.api.Logger
+import play.api.libs.json.JsObject
+
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class AuxSrv @Inject()(db: DBConfiguration, findSrv: FindSrv, modelSrv: ModelSrv, implicit val ec: ExecutionContext, implicit val mat: Materializer) {
+class AuxSrv @Inject()(findSrv: FindSrv, modelSrv: ModelSrv, implicit val ec: ExecutionContext, implicit val mat: Materializer) {
 
   import org.elastic4play.services.QueryDSL._
 

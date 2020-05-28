@@ -1,18 +1,16 @@
 package org.elastic4play.models
 
+import java.text.SimpleDateFormat
 import java.util.Date
 
-import scala.util.Try
-
-import play.api.libs.json.{JsNumber, JsString, JsValue}
-
-import com.sksamuel.elastic4s.http.ElasticDsl.dateField
-import com.sksamuel.elastic4s.mappings.BasicField
-import org.scalactic._
-
+import com.sksamuel.elastic4s.ElasticDsl.dateField
+import com.sksamuel.elastic4s.requests.mappings.BasicField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
-import java.text.SimpleDateFormat
+import org.scalactic._
+import play.api.libs.json.{JsNumber, JsString, JsValue}
+
+import scala.util.Try
 
 class DateAttributeFormat extends AttributeFormat[Date]("date") {
 
