@@ -28,17 +28,44 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
     case _                ⇒ false
   }
 
-  private def objectFieldsIsValid(v: JsValue) = v match {
+  private def objectFieldsIsValid(v: JsValue): Boolean = v match {
     case JsObject(fields) ⇒ fields.forall(fieldIsValid)
     case _                ⇒ false
   }
 
   private def fieldIsValid(f: (String, JsValue)): Boolean = f match {
-    case ("number", _: JsNumber | JsNull)   ⇒ true
-    case ("string", _: JsString | JsNull)   ⇒ true
-    case ("date", JsString(d))              ⇒ DateAttributeFormat.parse(d).isDefined
-    case ("date", JsNull)                   ⇒ true
-    case ("date", _: JsNumber | JsNull)     ⇒ true
+    case ("number", _: JsNumber | JsNull) ⇒ true
+    case ("number", arr: JsArray) ⇒ arr.validate[IndexedSeq[JsNumber]] match {
+      case success: JsSuccess[IndexedSeq[JsNumber]] ⇒ true
+      case failure: JsError ⇒ arr.value.forall(elem ⇒ elem.validate[JsNumber] match {
+        case success: JsSuccess[JsNumber] ⇒ true
+        case failure: JsError             ⇒ if (elem == JsNull) true else false
+      })
+    }
+
+    case ("string", _: JsString | JsNull) ⇒ true
+    case ("string", arr: JsArray) ⇒ arr.validate[IndexedSeq[JsString]] match {
+      case success: JsSuccess[IndexedSeq[JsString]] ⇒ true
+      case failure: JsError ⇒ arr.value.forall(elem ⇒ elem.validate[JsString] match {
+        case success: JsSuccess[JsString] ⇒ true
+        case failure: JsError             ⇒ if (elem == JsNull) true else false
+      })
+    }
+
+    case ("date", JsString(d))          ⇒ DateAttributeFormat.parse(d).isDefined
+    case ("date", JsNull)               ⇒ true
+    case ("date", _: JsNumber | JsNull) ⇒ true
+    case ("date", arr: JsArray) ⇒ arr.validate[IndexedSeq[JsString]] match {
+      case success: JsSuccess[IndexedSeq[JsString]] ⇒ success.get.map(elem ⇒ elem.value).forall(value ⇒ DateAttributeFormat.parse(value).isDefined)
+      case failure: JsError ⇒ arr.validate[IndexedSeq[JsNumber]] match {
+        case success: JsSuccess[IndexedSeq[JsNumber]] ⇒ true
+        case failure: JsError ⇒ arr.value.forall(elem ⇒ elem.validate[JsNumber] match {
+          case success: JsSuccess[JsNumber] ⇒ true
+          case failure: JsError             ⇒ if (elem == JsNull) true else false
+        })
+      }
+    }
+
     case ("boolean", _: JsBoolean | JsNull) ⇒ true
     case ("order", _: JsNumber | JsNull)    ⇒ true
     case _                                  ⇒ false
