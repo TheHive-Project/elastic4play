@@ -20,7 +20,7 @@ object DBUtils {
     utils
       .Collection
       .distinctBy(byFieldList)(_._1)
-      .map(_._2) :+ fieldSort("_id").order(SortOrder.DESC)
+      .map(_._2) :+ fieldSort("_doc").order(SortOrder.DESC)
   }
 
   /**
