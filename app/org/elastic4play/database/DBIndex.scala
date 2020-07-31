@@ -59,6 +59,7 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
         .mapping(modelMapping)
         .shards(nbShards)
         .replicas(nbReplicas)
+        .includeTypeName(false)
       createIndexRequestWithSettings = majorVersion match {
         case 5 ⇒ createIndexRequest.indexSetting("mapping.single_type", true)
         case _ ⇒ createIndexRequest
