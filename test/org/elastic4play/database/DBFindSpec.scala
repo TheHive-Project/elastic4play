@@ -24,10 +24,6 @@ class DBFindSpec extends PlaySpecification with Mockito {
   implicit lazy val mat: Materializer = app.materializer
   implicit lazy val as: ActorSystem   = app.actorSystem
 
-  class DBFindWrapper {}
-  //
-  //  case class DBFindStub() {
-
   val pageSize                  = 5
   val keepAlive: FiniteDuration = 1.minute
 
