@@ -35,7 +35,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
   * It add timed annotation in order to measure storage metrics
   */
 @Singleton
-class DBConfiguration @Inject()(
+class DBConfiguration @Inject() (
     config: Configuration,
     lifecycle: ApplicationLifecycle,
     @Named("databaseVersion") val version: Int,
@@ -44,7 +44,7 @@ class DBConfiguration @Inject()(
 ) {
   private[DBConfiguration] lazy val logger = Logger(getClass)
 
-  def requestConfigCallback: RequestConfigCallback = (requestConfigBuilder: RequestConfig.Builder) ⇒ {
+  def requestConfigCallback: RequestConfigCallback = (requestConfigBuilder: RequestConfig.Builder) => {
     requestConfigBuilder.setAuthenticationEnabled(credentialsProviderMaybe.isDefined)
     config.getOptional[Boolean]("search.circularRedirectsAllowed").foreach(requestConfigBuilder.setCircularRedirectsAllowed)
     config.getOptional[Int]("search.connectionRequestTimeout").foreach(requestConfigBuilder.setConnectionRequestTimeout)
@@ -55,18 +55,18 @@ class DBConfiguration @Inject()(
     //    config.getOptional[InetAddress]("search.localAddress").foreach(requestConfigBuilder.setLocalAddress)
     config.getOptional[Int]("search.maxRedirects").foreach(requestConfigBuilder.setMaxRedirects)
     //    config.getOptional[Boolean]("search.proxy").foreach(requestConfigBuilder.setProxy)
-    config.getOptional[Seq[String]]("search.proxyPreferredAuthSchemes").foreach(v ⇒ requestConfigBuilder.setProxyPreferredAuthSchemes(v.asJava))
+    config.getOptional[Seq[String]]("search.proxyPreferredAuthSchemes").foreach(v => requestConfigBuilder.setProxyPreferredAuthSchemes(v.asJava))
     config.getOptional[Boolean]("search.redirectsEnabled").foreach(requestConfigBuilder.setRedirectsEnabled)
     config.getOptional[Boolean]("search.relativeRedirectsAllowed").foreach(requestConfigBuilder.setRelativeRedirectsAllowed)
     config.getOptional[Int]("search.socketTimeout").foreach(requestConfigBuilder.setSocketTimeout)
-    config.getOptional[Seq[String]]("search.targetPreferredAuthSchemes").foreach(v ⇒ requestConfigBuilder.setTargetPreferredAuthSchemes(v.asJava))
+    config.getOptional[Seq[String]]("search.targetPreferredAuthSchemes").foreach(v => requestConfigBuilder.setTargetPreferredAuthSchemes(v.asJava))
     requestConfigBuilder
   }
 
   lazy val credentialsProviderMaybe: Option[CredentialsProvider] =
     for {
-      user     ← config.getOptional[String]("search.user")
-      password ← config.getOptional[String]("search.password")
+      user     <- config.getOptional[String]("search.user")
+      password <- config.getOptional[String]("search.password")
     } yield {
       val provider    = new BasicCredentialsProvider
       val credentials = new UsernamePasswordCredentials(user, password)
@@ -74,24 +74,25 @@ class DBConfiguration @Inject()(
       provider
     }
 
-  lazy val sslContextMaybe: Option[SSLContext] = config.getOptional[String]("search.keyStore.path").map { keyStore ⇒
+  lazy val sslContextMaybe: Option[SSLContext] = config.getOptional[String]("search.keyStore.path").map { keyStore =>
     val keyStorePath     = Paths.get(keyStore)
     val keyStoreType     = config.getOptional[String]("search.keyStore.type").getOrElse(KeyStore.getDefaultType)
     val keyStorePassword = config.getOptional[String]("search.keyStore.password").getOrElse("").toCharArray
     val keyInputStream   = Files.newInputStream(keyStorePath)
-    val keyManagers = try {
-      val keyStore = KeyStore.getInstance(keyStoreType)
-      keyStore.load(keyInputStream, keyStorePassword)
-      val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm)
-      kmf.init(keyStore, keyStorePassword)
-      kmf.getKeyManagers
-    } finally {
-      keyInputStream.close()
-    }
+    val keyManagers =
+      try {
+        val keyStore = KeyStore.getInstance(keyStoreType)
+        keyStore.load(keyInputStream, keyStorePassword)
+        val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm)
+        kmf.init(keyStore, keyStorePassword)
+        kmf.getKeyManagers
+      } finally {
+        keyInputStream.close()
+      }
 
     val trustManagers = config
       .getOptional[String]("search.trustStore.path")
-      .map { trustStorePath ⇒
+      .map { trustStorePath =>
         val keyStoreType       = config.getOptional[String]("search.trustStore.type").getOrElse(KeyStore.getDefaultType)
         val trustStorePassword = config.getOptional[String]("search.trustStore.password").getOrElse("").toCharArray
         val trustInputStream   = Files.newInputStream(Paths.get(trustStorePath))
@@ -113,7 +114,7 @@ class DBConfiguration @Inject()(
     sslContext
   }
 
-  def httpClientConfig: HttpClientConfigCallback = (httpClientBuilder: HttpAsyncClientBuilder) ⇒ {
+  def httpClientConfig: HttpClientConfigCallback = (httpClientBuilder: HttpAsyncClientBuilder) => {
     sslContextMaybe.foreach(httpClientBuilder.setSSLContext)
     credentialsProviderMaybe.foreach(httpClientBuilder.setDefaultCredentialsProvider)
     httpClientBuilder
@@ -127,7 +128,7 @@ class DBConfiguration @Inject()(
     ElasticClient(JavaClient(props, requestConfigCallback, httpClientConfig))
   }
   // when application close, close also ElasticSearch connection
-  lifecycle.addStopHook { () ⇒
+  lifecycle.addStopHook { () =>
     Future {
       client.close()
     }
@@ -140,17 +141,17 @@ class DBConfiguration @Inject()(
   ): Future[U] = {
     logger.debug(s"Elasticsearch request: ${client.show(t)}")
     client.execute(t).flatMap {
-      case RequestSuccess(_, _, _, r) ⇒ Future.successful(r)
-      case RequestFailure(_, _, _, error) ⇒
+      case RequestSuccess(_, _, _, r) => Future.successful(r)
+      case RequestFailure(_, _, _, error) =>
         val exception = error.`type` match {
-          case "index_not_found_exception"         ⇒ IndexNotFoundException
-          case "version_conflict_engine_exception" ⇒ ConflictError(error.reason, JsObject.empty)
-          case "search_phase_execution_exception"  ⇒ SearchError(error.reason)
-          case _                                   ⇒ InternalError(s"Unknown error: $error")
+          case "index_not_found_exception"         => IndexNotFoundException
+          case "version_conflict_engine_exception" => ConflictError(error.reason, JsObject.empty)
+          case "search_phase_execution_exception"  => SearchError(error.reason)
+          case _                                   => InternalError(s"Unknown error: $error")
         }
         exception match {
-          case _: ConflictError ⇒
-          case _                ⇒ logger.error(s"ElasticSearch request failure: ${client.show(t)}\n => $error")
+          case _: ConflictError =>
+          case _                => logger.error(s"ElasticSearch request failure: ${client.show(t)}\n => $error")
         }
         Future.failed(exception)
     }
@@ -172,12 +173,12 @@ class DBConfiguration @Inject()(
         logger.warn(s"Document index failure ${resp.id}: ${resp.error.fold("unexpected")(_.toString)}\n$original")
     }
     val end = Promise[Unit]
-    val complete = () ⇒ {
+    val complete = () => {
       if (!end.isCompleted)
         end.success(())
       ()
     }
-    val failure = (t: Throwable) ⇒ {
+    val failure = (t: Throwable) => {
       end.failure(t)
       ()
     }
@@ -197,7 +198,7 @@ class DBConfiguration @Inject()(
           maxAttempts = 10
         )
       )
-      .mapMaterializedValue { _ ⇒
+      .mapMaterializedValue { _ =>
         end.future
       }
   }

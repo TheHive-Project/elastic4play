@@ -15,16 +15,16 @@ import akka.stream.scaladsl.Source
 
 import org.elastic4play.ErrorHandler
 
-class Renderer @Inject()(errorHandler: ErrorHandler, implicit val ec: ExecutionContext, implicit val mat: Materializer) {
+class Renderer @Inject() (errorHandler: ErrorHandler, implicit val ec: ExecutionContext, implicit val mat: Materializer) {
 
   def toMultiOutput[A](status: Int, objects: Seq[Try[A]])(implicit writes: Writes[A]): Result = {
 
     val (success, failure) = objects.foldLeft((Seq.empty[JsValue], Seq.empty[JsValue])) {
-      case ((artifacts, errors), Success(a)) ⇒ (Json.toJson(a) +: artifacts, errors)
-      case ((artifacts, errors), Failure(e)) ⇒
+      case ((artifacts, errors), Success(a)) => (Json.toJson(a) +: artifacts, errors)
+      case ((artifacts, errors), Failure(e)) =>
         val errorJson = errorHandler.toErrorResult(e) match {
-          case Some((_, j)) ⇒ j
-          case None         ⇒ Json.obj("type" → e.getClass.getName, "error" → e.getMessage)
+          case Some((_, j)) => j
+          case None         => Json.obj("type" -> e.getClass.getName, "error" -> e.getMessage)
         }
         (artifacts, errorJson +: errors)
 
@@ -34,7 +34,7 @@ class Renderer @Inject()(errorHandler: ErrorHandler, implicit val ec: ExecutionC
     else if (success.isEmpty)
       toOutput(Status.BAD_REQUEST, failure)
     else
-      toOutput(Status.MULTI_STATUS, Json.obj("success" → success, "failure" → failure))
+      toOutput(Status.MULTI_STATUS, Json.obj("success" -> success, "failure" -> failure))
   }
 
   def toOutput[C](status: Int, content: C)(implicit writes: Writes[C]): Result = {
@@ -44,12 +44,12 @@ class Renderer @Inject()(errorHandler: ErrorHandler, implicit val ec: ExecutionC
   }
 
   def toOutput[C](status: Int, src: Source[C, _], total: Future[Long])(implicit writes: Writes[C]): Future[Result] = {
-    val stringSource = src.map(s ⇒ Json.toJson(s).toString).intersperse("[", ",", "]")
-    total.map { t ⇒
+    val stringSource = src.map(s => Json.toJson(s).toString).intersperse("[", ",", "]")
+    total.map { t =>
       new Results.Status(status)
         .chunked(stringSource)
         .as("application/json")
-        .withHeaders("X-Total" → t.toString)
+        .withHeaders("X-Total" -> t.toString)
     }
   }
 }

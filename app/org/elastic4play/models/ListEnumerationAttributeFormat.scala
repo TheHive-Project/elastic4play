@@ -11,8 +11,8 @@ import play.api.libs.json.{JsString, JsValue}
 case class ListEnumerationAttributeFormat(enumerationName: String)(dblists: DBLists) extends AttributeFormat[String](s"enumeration") {
   def items: Set[String] = dblists("list_" + enumerationName).cachedItems.map(_.mapTo[String]).toSet
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
-    case JsString(v) if subNames.isEmpty && items.contains(v) ⇒ Good(value)
-    case _                                                    ⇒ formatError(JsonInputValue(value))
+    case JsString(v) if subNames.isEmpty && items.contains(v) => Good(value)
+    case _                                                    => formatError(JsonInputValue(value))
   }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): String Or Every[AttributeError] =
@@ -20,9 +20,9 @@ case class ListEnumerationAttributeFormat(enumerationName: String)(dblists: DBLi
       formatError(value)
     else
       value match {
-        case StringInputValue(Seq(v)) if items.contains(v)    ⇒ Good(v)
-        case JsonInputValue(JsString(v)) if items.contains(v) ⇒ Good(v)
-        case _                                                ⇒ formatError(value)
+        case StringInputValue(Seq(v)) if items.contains(v)    => Good(v)
+        case JsonInputValue(JsString(v)) if items.contains(v) => Good(v)
+        case _                                                => formatError(value)
       }
 
   override def elasticType(attributeName: String): KeywordField = keywordField(attributeName)

@@ -10,7 +10,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
 
 @Singleton
-class DBRemove @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBRemove @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
 
   lazy val logger: Logger = Logger(getClass)
 
@@ -21,6 +21,6 @@ class DBRemove @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
           .routing(entity.routing)
           .refresh(RefreshPolicy.WAIT_FOR)
       }
-      .transform(r ⇒ Success(r.isSuccess))
+      .transform(r => Success(r.isSuccess))
   }
 }

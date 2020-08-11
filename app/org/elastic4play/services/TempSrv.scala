@@ -16,12 +16,12 @@ import akka.stream.Materializer
 import org.elastic4play.utils.Instance
 
 @Singleton
-class TempSrv @Inject()(lifecycle: ApplicationLifecycle, implicit val ec: ExecutionContext) {
+class TempSrv @Inject() (lifecycle: ApplicationLifecycle, implicit val ec: ExecutionContext) {
 
   private[TempSrv] lazy val logger = Logger(getClass)
 
   private[TempSrv] val tempDir = Files.createTempDirectory(Paths.get(System.getProperty("java.io.tmpdir")), "").resolve("play-request")
-  lifecycle.addStopHook { () ⇒
+  lifecycle.addStopHook { () =>
     Future { delete(tempDir) }
   }
 
@@ -42,7 +42,7 @@ class TempSrv @Inject()(lifecycle: ApplicationLifecycle, implicit val ec: Execut
         Files.walkFileTree(directory, deleteVisitor)
       ()
     } catch {
-      case t: Throwable ⇒ logger.warn(s"Fail to remove temporary files ($directory) : $t")
+      case t: Throwable => logger.warn(s"Fail to remove temporary files ($directory) : $t")
     }
 
   private def requestTempDir(requestId: String): Path =
@@ -68,9 +68,9 @@ class TempSrv @Inject()(lifecycle: ApplicationLifecycle, implicit val ec: Execut
   }
 }
 
-class TempFilter @Inject()(tempSrv: TempSrv, implicit val ec: ExecutionContext, implicit val mat: Materializer) extends Filter {
+class TempFilter @Inject() (tempSrv: TempSrv, implicit val ec: ExecutionContext, implicit val mat: Materializer) extends Filter {
 
-  def apply(nextFilter: RequestHeader ⇒ Future[Result])(requestHeader: RequestHeader): Future[Result] =
+  def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] =
     nextFilter(requestHeader)
-      .andThen { case _ ⇒ tempSrv.releaseTemporaryFiles(requestHeader) }
+      .andThen { case _ => tempSrv.releaseTemporaryFiles(requestHeader) }
 }

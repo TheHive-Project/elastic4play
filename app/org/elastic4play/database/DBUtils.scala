@@ -11,9 +11,9 @@ object DBUtils {
   def sortDefinition(sortBy: Seq[String]): Seq[Sort] = {
     val byFieldList: Seq[(String, Sort)] = sortBy
       .map {
-        case f if f.startsWith("+") ⇒ f.drop(1) → fieldSort(f.drop(1)).order(SortOrder.ASC)
-        case f if f.startsWith("-") ⇒ f.drop(1) → fieldSort(f.drop(1)).order(SortOrder.DESC)
-        case f if f.length() > 0    ⇒ f         → fieldSort(f)
+        case f if f.startsWith("+") => f.drop(1) -> fieldSort(f.drop(1)).order(SortOrder.ASC)
+        case f if f.startsWith("-") => f.drop(1) -> fieldSort(f.drop(1)).order(SortOrder.DESC)
+        case f if f.length() > 0    => f         -> fieldSort(f)
       }
     // then remove duplicates
     // Same as : val fieldSortDefs = byFieldList.groupBy(_._1).map(_._2.head).values.toSeq
@@ -31,14 +31,14 @@ object DBUtils {
     val id   = JsString(hit.id)
     val body = Json.parse(hit.sourceAsString).as[JsObject]
     val (parent, model) = (body \ "relations" \ "parent").asOpt[JsString] match {
-      case Some(p) ⇒ p      → (body \ "relations" \ "name").as[JsString]
-      case None    ⇒ JsNull → (body \ "relations").as[JsString]
+      case Some(p) => p      -> (body \ "relations" \ "name").as[JsString]
+      case None    => JsNull -> (body \ "relations").as[JsString]
     }
     body - "relations" +
-      ("_type"    → model) +
-      ("_routing" → hit.routing.fold(id)(JsString.apply)) +
-      ("_parent"  → parent) +
-      ("_id"      → id) +
-      ("_version" → JsNumber(hit.version))
+      ("_type"    -> model) +
+      ("_routing" -> hit.routing.fold(id)(JsString.apply)) +
+      ("_parent"  -> parent) +
+      ("_id"      -> id) +
+      ("_version" -> JsNumber(hit.version))
   }
 }

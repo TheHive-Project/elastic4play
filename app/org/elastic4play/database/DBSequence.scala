@@ -3,7 +3,7 @@ package org.elastic4play.database
 import com.sksamuel.elastic4s.ElasticDsl._
 import com.sksamuel.elastic4s.requests.common.RefreshPolicy
 import javax.inject.{Inject, Singleton}
-import org.elastic4play.models.{Attribute, ModelAttributes, AttributeFormat ⇒ F, AttributeOption ⇒ O}
+import org.elastic4play.models.{Attribute, ModelAttributes, AttributeFormat => F, AttributeOption => O}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -12,17 +12,17 @@ class SequenceModel extends ModelAttributes("sequence") {
 }
 
 @Singleton
-class DBSequence @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBSequence @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
 
   def apply(seqId: String): Future[Int] =
     db.execute {
       updateById(db.indexName, s"sequence_$seqId")
-        .upsert("sequenceCounter" → 1, "relations" → "sequence")
+        .upsert("sequenceCounter" -> 1, "relations" -> "sequence")
         .script("ctx._source.sequenceCounter += 1")
         .retryOnConflict(5)
         .fetchSource(true)
         .refresh(RefreshPolicy.WAIT_FOR)
-    } map { updateResponse ⇒
+    } map { updateResponse =>
       updateResponse.source("sequenceCounter").asInstanceOf[Int]
     }
 }

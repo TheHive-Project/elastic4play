@@ -57,9 +57,9 @@ object QueryDSL {
   def groupByCaterogy(aggregationName: Option[String], categories: Map[String, QueryDef], selectables: Agg*) =
     new GroupByCategory(aggregationName.getOrElse("categories"), categories, selectables)
 
-  private def nestedField(field: String, q: String ⇒ Query) = field match {
-    case "_type" ⇒ q("relations")
-    case _ ⇒
+  private def nestedField(field: String, q: String => Query) = field match {
+    case "_type" => q("relations")
+    case _ =>
       field
         .split("\\.")
         .init
@@ -67,15 +67,15 @@ object QueryDSL {
         .toSeq
         .init
         .foldLeft(q(field)) {
-          case (queryDef, subName) ⇒ nestedQuery(subName.mkString("."), queryDef).scoreMode(ScoreMode.None)
+          case (queryDef, subName) => nestedQuery(subName.mkString("."), queryDef).scoreMode(ScoreMode.None)
         }
   }
 
   implicit class SearchField(field: String) {
     private def convertValue(value: Any): Any = value match {
-      case _: Enumeration#Value ⇒ value.toString
-      case bd: BigDecimal       ⇒ bd.toDouble
-      case _                    ⇒ value
+      case _: Enumeration#Value => value.toString
+      case bd: BigDecimal       => bd.toDouble
+      case _                    => value
     }
     def ~=(value: Any): QueryDef           = QueryDef(nestedField(field, termQuery(_, convertValue(value))))
     def ~=~(value: Any): QueryDef          = QueryDef(nestedField(field, wildcardQuery(_, convertValue(value))))

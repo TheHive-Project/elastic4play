@@ -8,7 +8,7 @@ import play.api.libs.json.JsObject
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class DBGet @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBGet @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
 
   /**
     * Retrieve entities from ElasticSearch
@@ -17,7 +17,6 @@ class DBGet @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
     * @param id identifier of the entity to retrieve
     * @return the entity
     */
-
   def apply(modelName: String, id: String): Future[JsObject] =
     db.execute {
         // Search by id is not possible on child entity without routing information ⇒ id query
@@ -26,12 +25,12 @@ class DBGet @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
           .size(1)
           .version(true)
       }
-      .map { searchResponse ⇒
+      .map { searchResponse =>
         searchResponse
           .hits
           .hits
           .headOption
-          .fold[JsObject](throw NotFoundError(s"$modelName $id not found")) { hit ⇒
+          .fold[JsObject](throw NotFoundError(s"$modelName $id not found")) { hit =>
             DBUtils.hit2json(hit)
           }
       }

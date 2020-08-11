@@ -17,7 +17,7 @@ import org.elastic4play.models.BaseEntity
   * This service doesn't check any attribute conformity (according to model)
   */
 @Singleton
-class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBCreate @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
 
   private[DBCreate] lazy val logger = Logger(getClass)
 
@@ -58,36 +58,35 @@ class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
           indexInto(db.indexName).source(docSource.toString).refresh(RefreshPolicy.WAIT_FOR)
         }
       }
-      .map(
-        indexResponse ⇒
-          attributes +
-            ("_type"    → JsString(modelName)) +
-            ("_id"      → JsString(indexResponse.id)) +
-            ("_parent"  → parentId.fold[JsValue](JsNull)(JsString)) +
-            ("_routing" → JsString(routing.getOrElse(indexResponse.id))) +
-            ("_version" → JsNumber(indexResponse.version))
+      .map(indexResponse =>
+        attributes +
+          ("_type"    -> JsString(modelName)) +
+          ("_id"      -> JsString(indexResponse.id)) +
+          ("_parent"  -> parentId.fold[JsValue](JsNull)(JsString)) +
+          ("_routing" -> JsString(routing.getOrElse(indexResponse.id))) +
+          ("_version" -> JsNumber(indexResponse.version))
       )
   }
 
   /**
     * add id information in index definition
     */
-  private def addId(id: Option[String]): IndexRequest ⇒ IndexRequest = id match {
-    case Some(i) ⇒ _ id i createOnly true
-    case None    ⇒ identity
+  private def addId(id: Option[String]): IndexRequest => IndexRequest = id match {
+    case Some(i) => _ id i createOnly true
+    case None    => identity
   }
 
   /**
     * add routing information in index definition
     */
-  private def addRouting(routing: Option[String]): IndexRequest ⇒ IndexRequest = routing match {
-    case Some(r) ⇒ _ routing r
-    case None    ⇒ identity
+  private def addRouting(routing: Option[String]): IndexRequest => IndexRequest = routing match {
+    case Some(r) => _ routing r
+    case None    => identity
   }
 
   private def addParent(modelName: String, parent: Option[BaseEntity], entity: JsObject): JsObject = parent match {
-    case Some(p) ⇒ entity + ("relations" → Json.obj("name" → modelName, "parent" → p.id))
-    case None    ⇒ entity + ("relations" → JsString(modelName))
+    case Some(p) => entity + ("relations" -> Json.obj("name" -> modelName, "parent" -> p.id))
+    case None    => entity + ("relations" -> JsString(modelName))
   }
 
   /**

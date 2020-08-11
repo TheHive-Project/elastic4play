@@ -21,13 +21,13 @@ case class Hasher(algorithms: String*) {
     fromSource(FileIO.fromPath(path))
 
   def fromSource(source: Source[ByteString, Any])(implicit mat: Materializer, ec: ExecutionContext): Future[Seq[Hash]] = {
-    val mds = algorithms.map(algo ⇒ MessageDigest.getInstance(algo))
+    val mds = algorithms.map(algo => MessageDigest.getInstance(algo))
     source
-      .runForeach { bs ⇒
-        mds.foreach(md ⇒ md.update(bs.toByteBuffer))
+      .runForeach { bs =>
+        mds.foreach(md => md.update(bs.toByteBuffer))
       }
-      .map { _ ⇒
-        mds.map(md ⇒ Hash(md.digest()))
+      .map { _ =>
+        mds.map(md => Hash(md.digest()))
       }
   }
 
@@ -35,8 +35,8 @@ case class Hasher(algorithms: String*) {
     fromByteArray(data.getBytes(Charset.forName("UTF8")))
 
   def fromByteArray(data: Array[Byte]): Seq[Hash] = {
-    val mds = algorithms.map(algo ⇒ MessageDigest.getInstance(algo))
-    mds.map(md ⇒ Hash(md.digest(data)))
+    val mds = algorithms.map(algo => MessageDigest.getInstance(algo))
+    mds.map(md => Hash(md.digest(data)))
   }
 
 }
@@ -56,23 +56,23 @@ class MultiHash(algorithms: String)(implicit mat: Materializer, ec: ExecutionCon
   def addFile[A](source: Source[ByteString, A]): Future[A] = {
     md.update(0.asInstanceOf[Byte])
     source
-      .toMat(Sink.foreach { bs ⇒
+      .toMat(Sink.foreach { bs =>
         md.update(bs.toByteBuffer)
-      })((a, done) ⇒ done.map(_ ⇒ a))
+      })((a, done) => done.map(_ => a))
       .run()
   }
   def digest: Hash = Hash(md.digest())
 }
 
 case class Hash(data: Array[Byte]) {
-  override def toString: String = data.map(b ⇒ "%02x".format(b)).mkString
+  override def toString: String = data.map(b => "%02x".format(b)).mkString
 }
 
 object Hash {
 
   def apply(s: String): Hash = Hash {
     s.grouped(2)
-      .map { cc ⇒
+      .map { cc =>
         (Character.digit(cc(0), 16) << 4 | Character.digit(cc(1), 16)).toByte
       }
       .toArray

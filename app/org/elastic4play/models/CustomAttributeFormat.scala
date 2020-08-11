@@ -24,32 +24,32 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
   }
 
   private def objectIsValid(v: JsValue) = v match {
-    case JsObject(fields) ⇒ fields.values.forall(objectFieldsIsValid)
-    case _                ⇒ false
+    case JsObject(fields) => fields.values.forall(objectFieldsIsValid)
+    case _                => false
   }
 
   private def objectFieldsIsValid(v: JsValue) = v match {
-    case JsObject(fields) ⇒ fields.forall(fieldIsValid)
-    case _                ⇒ false
+    case JsObject(fields) => fields.forall(fieldIsValid)
+    case _                => false
   }
 
   private def fieldIsValid(f: (String, JsValue)): Boolean = f match {
-    case ("number", _: JsNumber | JsNull)   ⇒ true
-    case ("string", _: JsString | JsNull)   ⇒ true
-    case ("date", JsString(d))              ⇒ DateAttributeFormat.parse(d).isDefined
-    case ("date", JsNull)                   ⇒ true
-    case ("date", _: JsNumber | JsNull)     ⇒ true
-    case ("boolean", _: JsBoolean | JsNull) ⇒ true
-    case ("order", _: JsNumber | JsNull)    ⇒ true
-    case _                                  ⇒ false
+    case ("number", _: JsNumber | JsNull)   => true
+    case ("string", _: JsString | JsNull)   => true
+    case ("date", JsString(d))              => DateAttributeFormat.parse(d).isDefined
+    case ("date", JsNull)                   => true
+    case ("date", _: JsNumber | JsNull)     => true
+    case ("boolean", _: JsBoolean | JsNull) => true
+    case ("order", _: JsNumber | JsNull)    => true
+    case _                                  => false
   }
 
   override def checkJsonForUpdate(subNames: Seq[String], value: JsValue): Or[JsValue, Every[AttributeError]] = {
     val result = (subNames, value) match {
-      case (Nil, _)         ⇒ checkJsonForCreation(subNames, value)
-      case (Seq(_), v)      ⇒ if (objectFieldsIsValid(v)) Good(value) else formatError(JsonInputValue(value))
-      case (Seq(_, tpe), v) ⇒ if (fieldIsValid(tpe → v)) Good(value) else formatError(JsonInputValue(value))
-      case _                ⇒ formatError(JsonInputValue(value))
+      case (Nil, _)         => checkJsonForCreation(subNames, value)
+      case (Seq(_), v)      => if (objectFieldsIsValid(v)) Good(value) else formatError(JsonInputValue(value))
+      case (Seq(_, tpe), v) => if (fieldIsValid(tpe -> v)) Good(value) else formatError(JsonInputValue(value))
+      case _                => formatError(JsonInputValue(value))
     }
     logger.debug(s"checkJsonForUpdate($subNames, $value) ⇒ $result")
     result
@@ -57,8 +57,8 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] =
     value match {
-      case JsonInputValue(v) ⇒ checkJsonForUpdate(subNames, v)
-      case _                 ⇒ formatError(value)
+      case JsonInputValue(v) => checkJsonForUpdate(subNames, v)
+      case _                 => formatError(value)
     }
 
   override def elasticType(attributeName: String): NestedField =
@@ -78,13 +78,13 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
       .pathMatch(attributePath.mkString(".") + ".*") :: Nil
 
   override def definition(dblists: DBLists, attribute: Attribute[JsValue]): Seq[AttributeDefinition] =
-    dblists("custom_fields").cachedItems.flatMap { item ⇒
+    dblists("custom_fields").cachedItems.flatMap { item =>
       val itemObj = item.mapTo[JsObject]
       for {
-        fieldName   ← (itemObj \ "reference").asOpt[String]
-        tpe         ← (itemObj \ "type").asOpt[String]
-        description ← (itemObj \ "description").asOpt[String]
-        options     ← (itemObj \ "options").asOpt[Seq[JsString]]
+        fieldName   <- (itemObj \ "reference").asOpt[String]
+        tpe         <- (itemObj \ "type").asOpt[String]
+        description <- (itemObj \ "description").asOpt[String]
+        options     <- (itemObj \ "options").asOpt[Seq[JsString]]
       } yield AttributeDefinition(s"${attribute.attributeName}.$fieldName.$tpe", tpe, description, options, Nil)
     }
 }

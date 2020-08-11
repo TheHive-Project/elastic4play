@@ -21,7 +21,7 @@ abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Forma
     checkJson(subNames, value)
 
   def inputValueToJson(subNames: Seq[String], value: InputValue): JsValue Or Every[AttributeError] =
-    fromInputValue(subNames, value).map(v ⇒ jsFormat.writes(v))
+    fromInputValue(subNames, value).map(v => jsFormat.writes(v))
 
   def fromInputValue(subNames: Seq[String], value: InputValue): T Or Every[AttributeError]
 
@@ -68,17 +68,17 @@ case class Attribute[T](
     attributeName: String,
     format: AttributeFormat[T],
     options: Seq[AttributeOption.Type],
-    defaultValue: Option[() ⇒ T],
+    defaultValue: Option[() => T],
     description: String
 ) {
 
   private[Attribute] lazy val logger = Logger(getClass)
 
-  def defaultValueJson: Option[JsValue] = defaultValue.map(d ⇒ format.jsFormat.writes(d()))
+  def defaultValueJson: Option[JsValue] = defaultValue.map(d => format.jsFormat.writes(d()))
 
   lazy val isMulti: Boolean = format match {
-    case _: MultiAttributeFormat[_] ⇒ true
-    case _                          ⇒ false
+    case _: MultiAttributeFormat[_] => true
+    case _                          => false
   }
   lazy val isForm: Boolean      = !options.contains(AttributeOption.model)
   lazy val isModel: Boolean     = !options.contains(AttributeOption.form)
@@ -86,14 +86,14 @@ case class Attribute[T](
   lazy val isUnaudited: Boolean = options.contains(AttributeOption.unaudited) || isSensitive || isReadonly
   lazy val isSensitive: Boolean = options.contains(AttributeOption.sensitive)
   lazy val isRequired: Boolean = format match {
-    case _: OptionalAttributeFormat[_] ⇒ false
-    case _: MultiAttributeFormat[_]    ⇒ false
-    case _                             ⇒ true
+    case _: OptionalAttributeFormat[_] => false
+    case _: MultiAttributeFormat[_]    => false
+    case _                             => true
   }
 
   def elasticMapping: FieldDefinition = format.elasticType(attributeName) match {
-    case a: BasicField if isSensitive && a.`type` == "String" ⇒ a.index(false)
-    case a                                                    ⇒ a
+    case a: BasicField if isSensitive && a.`type` == "String" => a.index(false)
+    case a                                                    => a
   }
 
   def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateRequest] =
@@ -101,23 +101,23 @@ case class Attribute[T](
 
   def validateForCreation(value: Option[JsValue]): Option[JsValue] Or Every[AttributeError] = {
     val result = value match {
-      case Some(JsNull) if !isRequired         ⇒ Good(value)
-      case Some(JsArray(Seq())) if !isRequired ⇒ Good(value)
-      case None if !isRequired                 ⇒ Good(value)
-      case Some(JsNull) | Some(JsArray(Seq())) | None ⇒
+      case Some(JsNull) if !isRequired         => Good(value)
+      case Some(JsArray(Seq())) if !isRequired => Good(value)
+      case None if !isRequired                 => Good(value)
+      case Some(JsNull) | Some(JsArray(Seq())) | None =>
         if (defaultValueJson.isDefined)
           Good(defaultValueJson)
         else
           Bad(One(MissingAttributeError(attributeName)))
-      case Some(v) ⇒
+      case Some(v) =>
         format
           .checkJsonForCreation(Nil, v)
           .transform(
-            g ⇒ Good(Some(g)),
-            x ⇒
+            g => Good(Some(g)),
+            x =>
               Bad(x.map {
-                case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = attributeName)
-                case other                             ⇒ other
+                case ifae: InvalidFormatAttributeError => ifae.copy(name = attributeName)
+                case other                             => other
               })
           )
     }
@@ -127,15 +127,15 @@ case class Attribute[T](
 
   def validateForUpdate(subNames: Seq[String], value: JsValue): JsValue Or Every[AttributeError] = {
     val result = value match {
-      case _ if isReadonly                       ⇒ Bad(One(UpdateReadOnlyAttributeError(attributeName)))
-      case JsNull | JsArray(Seq()) if isRequired ⇒ Bad(One(MissingAttributeError(attributeName)))
-      case JsNull | JsArray(Seq())               ⇒ Good(value)
-      case v ⇒
+      case _ if isReadonly                       => Bad(One(UpdateReadOnlyAttributeError(attributeName)))
+      case JsNull | JsArray(Seq()) if isRequired => Bad(One(MissingAttributeError(attributeName)))
+      case JsNull | JsArray(Seq())               => Good(value)
+      case v =>
         format
           .checkJsonForUpdate(subNames, v)
           .badMap(_.map {
-            case ifae: InvalidFormatAttributeError ⇒ ifae.copy(name = attributeName)
-            case other                             ⇒ other
+            case ifae: InvalidFormatAttributeError => ifae.copy(name = attributeName)
+            case other                             => other
           })
     }
     logger.debug(s"$modelName.$attributeName(${format.name}).validateForUpdate($value) ⇒ $result")

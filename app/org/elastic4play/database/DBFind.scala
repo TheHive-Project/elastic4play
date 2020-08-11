@@ -42,9 +42,9 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
     */
   private[database] def getOffsetAndLimitFromRange(range: Option[String]): (Int, Int) =
     range match {
-      case None        ⇒ (0, 10)
-      case Some("all") ⇒ (0, Int.MaxValue)
-      case Some(r) ⇒
+      case None        => (0, 10)
+      case Some("all") => (0, Int.MaxValue)
+      case Some(r) =>
         val Array(_offset, _end, _*) = (r + "-0").split("-", 3)
         val offset                   = Try(Math.max(0, _offset.toInt)).getOrElse(0)
         val end                      = Try(_end.toInt).getOrElse(offset + 10)
@@ -70,7 +70,7 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
     val total = resp.map(_.totalHits)
     val src = Source
       .future(resp)
-      .mapConcat { resp ⇒
+      .mapConcat { resp =>
         resp.hits.hits.toList
       }
     (src, total)
@@ -85,7 +85,7 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
     * @param query  a function that build a SearchRequest using the index name
     * @return Source (akka stream) of JsObject. The source is materialized as future of long that contains the total number of entities.
     */
-  def apply(range: Option[String], sortBy: Seq[String])(query: String ⇒ SearchRequest): (Source[JsObject, NotUsed], Future[Long]) = {
+  def apply(range: Option[String], sortBy: Seq[String])(query: String => SearchRequest): (Source[JsObject, NotUsed], Future[Long]) = {
     val (offset, limit) = getOffsetAndLimitFromRange(range)
     val sortDef         = DBUtils.sortDefinition(sortBy)
     val searchRequest   = query(db.indexName).start(offset).sortBy(sortDef).version(true)
@@ -106,7 +106,7 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
     * Execute the search definition
     * This function is used to run aggregations
     */
-  def apply(query: String ⇒ SearchRequest): Future[SearchResponse] = {
+  def apply(query: String => SearchRequest): Future[SearchResponse] = {
     val searchRequest = query(db.indexName)
     logger.debug(
       s"search in ${searchRequest.indexes.values.mkString(",")} ${db.client.show(searchRequest)}"
@@ -114,8 +114,8 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
 
     db.execute(searchRequest)
       .recoverWith {
-        case t if t == IndexNotFoundException ⇒ Future.failed(t)
-        case _                                ⇒ Future.failed(SearchError("Invalid search query"))
+        case t if t == IndexNotFoundException => Future.failed(t)
+        case _                                => Future.failed(SearchError("Invalid search query"))
       }
   }
 }
@@ -151,7 +151,7 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
         }
 
         val firstCallback: AsyncCallback[Try[SearchResponse]] = getAsyncCallback[Try[SearchResponse]] {
-          case Success(searchResponse) if skip > 0 ⇒
+          case Success(searchResponse) if skip > 0 =>
             if (searchResponse.hits.size <= skip)
               skip -= searchResponse.hits.size
             else {
@@ -160,11 +160,11 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
             }
             firstResultProcessed = true
             onPull()
-          case Success(searchResponse) ⇒
+          case Success(searchResponse) =>
             queue ++= searchResponse.hits.hits
             firstResultProcessed = true
             onPull()
-          case Failure(error) ⇒
+          case Failure(error) =>
             logger.warn("Search error", error)
             failStage(error)
         }
@@ -175,12 +175,12 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
 
             if (queue.isEmpty) {
               val callback = getAsyncCallback[Try[SearchResponse]] {
-                case Success(searchResponse) if searchResponse.isTimedOut ⇒
+                case Success(searchResponse) if searchResponse.isTimedOut =>
                   logger.warn("Search timeout")
                   failStage(SearchError("Request terminated early or timed out"))
-                case Success(searchResponse) if searchResponse.isEmpty ⇒
+                case Success(searchResponse) if searchResponse.isEmpty =>
                   completeStage()
-                case Success(searchResponse) if skip > 0 ⇒
+                case Success(searchResponse) if skip > 0 =>
                   if (searchResponse.hits.size <= skip) {
                     skip -= searchResponse.hits.size
                     onPull()
@@ -189,14 +189,14 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
                     skip = 0
                     pushNextHit()
                   }
-                case Success(searchResponse) ⇒
+                case Success(searchResponse) =>
                   queue ++= searchResponse.hits.hits
                   pushNextHit()
-                case Failure(error) ⇒
+                case Failure(error) =>
                   logger.warn("Search error", error)
                   failStage(SearchError("Request terminated early or timed out"))
               }
-              val futureSearchResponse = scrollId.flatMap(s ⇒ db.execute(searchScroll(s).keepAlive(keepAliveStr)))
+              val futureSearchResponse = scrollId.flatMap(s => db.execute(searchScroll(s).keepAlive(keepAliveStr)))
               scrollId = futureSearchResponse.map(_.scrollId.get)
               futureSearchResponse.onComplete(callback.invoke)
             } else {
@@ -206,7 +206,7 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
       }
     )
     override def postStop(): Unit =
-      scrollId.foreach { s ⇒
+      scrollId.foreach { s =>
         db.execute(clearScroll(s))
       }
   }

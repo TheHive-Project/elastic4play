@@ -11,13 +11,13 @@ import play.api.libs.json.{JsString, JsValue}
 
 class UUIDAttributeFormat extends AttributeFormat[UUID]("uuid") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
-    case JsString(v) if subNames.isEmpty ⇒
+    case JsString(v) if subNames.isEmpty =>
       try {
         UUID.fromString(v); Good(value)
       } catch {
-        case _: Throwable ⇒ formatError(JsonInputValue(value))
+        case _: Throwable => formatError(JsonInputValue(value))
       }
-    case _ ⇒ formatError(JsonInputValue(value))
+    case _ => formatError(JsonInputValue(value))
   }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): UUID Or Every[AttributeError] =
@@ -25,19 +25,19 @@ class UUIDAttributeFormat extends AttributeFormat[UUID]("uuid") {
       formatError(value)
     else
       value match {
-        case StringInputValue(Seq(v)) ⇒
+        case StringInputValue(Seq(v)) =>
           try {
             Good(UUID.fromString(v))
           } catch {
-            case _: Throwable ⇒ formatError(value)
+            case _: Throwable => formatError(value)
           }
-        case JsonInputValue(JsString(v)) ⇒
+        case JsonInputValue(JsString(v)) =>
           try {
             Good(UUID.fromString(v))
           } catch {
-            case _: Throwable ⇒ formatError(value)
+            case _: Throwable => formatError(value)
           }
-        case _ ⇒ formatError(value)
+        case _ => formatError(value)
       }
 
   override def elasticType(attributeName: String): KeywordField = keywordField(attributeName)

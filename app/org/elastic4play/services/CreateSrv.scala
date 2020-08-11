@@ -22,7 +22,7 @@ import org.elastic4play.utils.{RichFuture, RichOr}
 import org.elastic4play.{AttributeCheckingError, UnknownAttributeError}
 
 @Singleton
-class CreateSrv @Inject()(
+class CreateSrv @Inject() (
     fieldsSrv: FieldsSrv,
     dbCreate: DBCreate,
     eventSrv: EventSrv,
@@ -35,43 +35,43 @@ class CreateSrv @Inject()(
     */
   private[services] def checkAttributes(attrs: JsObject, model: BaseModelDef) =
     (attrs.keys ++ model.modelAttributes.keySet)
-      .map { name ⇒
+      .map { name =>
         (name, (attrs \ name).asOpt[JsValue], model.modelAttributes.get(name))
       }
       .validatedBy {
-        case (name, value, Some(attr)) ⇒ attr.validateForCreation(value).map(name → _)
-        case (name, maybeValue, _)     ⇒ Bad(One(UnknownAttributeError(name, maybeValue.getOrElse(JsNull))))
+        case (name, value, Some(attr)) => attr.validateForCreation(value).map(name -> _)
+        case (name, maybeValue, _)     => Bad(One(UnknownAttributeError(name, maybeValue.getOrElse(JsNull))))
       }
       .map(_.collect {
-        case (name, Some(value)) ⇒ name → value
+        case (name, Some(value)) => name -> value
       })
-      .fold(attrs ⇒ Future.successful(JsObject(attrs.toSeq)), errors ⇒ Future.failed(AttributeCheckingError(model.modelName, errors)))
+      .fold(attrs => Future.successful(JsObject(attrs.toSeq)), errors => Future.failed(AttributeCheckingError(model.modelName, errors)))
 
   private[services] def processAttributes(model: BaseModelDef, parent: Option[BaseEntity], attributes: JsObject)(
       implicit authContext: AuthContext
   ): Future[JsObject] =
     for {
-      attributesAfterHook      ← model.creationHook(parent, addMetaFields(attributes))
-      checkedAttributes        ← checkAttributes(attributesAfterHook, model)
-      attributesWithAttachment ← attachmentSrv(model)(checkedAttributes)
+      attributesAfterHook      <- model.creationHook(parent, addMetaFields(attributes))
+      checkedAttributes        <- checkAttributes(attributesAfterHook, model)
+      attributesWithAttachment <- attachmentSrv(model)(checkedAttributes)
     } yield attributesWithAttachment
 
   private[services] def addMetaFields(attrs: JsObject)(implicit authContext: AuthContext): JsObject =
     attrs ++
-      Json.obj("createdBy" → authContext.userId, "createdAt" → Json.toJson(new Date))
+      Json.obj("createdBy" -> authContext.userId, "createdAt" -> Json.toJson(new Date))
 
   private[services] def removeMetaFields(attrs: JsObject): JsObject = attrs - "createdBy" - "createdAt"
 
   def apply[M <: ModelDef[M, E], E <: EntityDef[M, E]](model: M, fields: Fields)(implicit authContext: AuthContext): Future[E] =
     for {
-      entityAttr ← create(model, None, fields) //dbCreate(model.name, None, attributesWithAttachment)
+      entityAttr <- create(model, None, fields) //dbCreate(model.name, None, attributesWithAttachment)
       entity = model(entityAttr)
       _      = eventSrv.publish(AuditOperation(entity, AuditableAction.Creation, removeMetaFields(entityAttr), authContext))
     } yield entity
 
   def apply[M <: ModelDef[M, E], E <: EntityDef[M, E]](model: M, fieldSet: Seq[Fields])(implicit authContext: AuthContext): Future[Seq[Try[E]]] =
-    Future.sequence(fieldSet.map { fields ⇒
-      create(model, None, fields).map { attr ⇒
+    Future.sequence(fieldSet.map { fields =>
+      create(model, None, fields).map { attr =>
         val entity = model(attr)
         eventSrv.publish(AuditOperation(entity, AuditableAction.Creation, removeMetaFields(attr), authContext))
         entity
@@ -82,7 +82,7 @@ class CreateSrv @Inject()(
       implicit authContext: AuthContext
   ): Future[E] =
     for {
-      entityAttr ← create(model, Some(parent), fields)
+      entityAttr <- create(model, Some(parent), fields)
       entity = model(entityAttr)
       _      = eventSrv.publish(AuditOperation(entity, AuditableAction.Creation, removeMetaFields(entityAttr), authContext))
     } yield entity
@@ -91,8 +91,8 @@ class CreateSrv @Inject()(
       implicit authContext: AuthContext
   ): Future[Seq[Try[E]]] =
     Future.sequence(fieldSet.map {
-      case (parent, fields) ⇒
-        create(model, Some(parent), fields).map { attr ⇒
+      case (parent, fields) =>
+        create(model, Some(parent), fields).map { attr =>
           val entity = model(attr)
           eventSrv.publish(AuditOperation(entity, AuditableAction.Creation, removeMetaFields(attr), authContext))
           entity
@@ -102,8 +102,8 @@ class CreateSrv @Inject()(
 
   private[services] def create(model: BaseModelDef, parent: Option[BaseEntity], fields: Fields)(implicit authContext: AuthContext): Future[JsObject] =
     for {
-      attrs                    ← fieldsSrv.parse(fields, model).toFuture
-      attributesWithAttachment ← processAttributes(model, parent, attrs)
-      entityAttr               ← dbCreate(model.modelName, parent, attributesWithAttachment)
+      attrs                    <- fieldsSrv.parse(fields, model).toFuture
+      attributesWithAttachment <- processAttributes(model, parent, attrs)
+      entityAttr               <- dbCreate(model.modelName, parent, attributesWithAttachment)
     } yield entityAttr
 }

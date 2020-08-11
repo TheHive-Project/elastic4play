@@ -33,12 +33,12 @@ case class AuditOperation(entity: BaseEntity, action: AuditableAction.Type, deta
     extends EventMessage
 
 @Singleton
-class EventFilter @Inject()(eventSrv: EventSrv, implicit val mat: Materializer, implicit val ec: ExecutionContext) extends Filter {
+class EventFilter @Inject() (eventSrv: EventSrv, implicit val mat: Materializer, implicit val ec: ExecutionContext) extends Filter {
 
-  def apply(nextFilter: RequestHeader ⇒ Future[Result])(requestHeader: RequestHeader): Future[Result] = {
+  def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] = {
     eventSrv.publish(RequestProcessStart(requestHeader))
     nextFilter(requestHeader).andThen {
-      case result ⇒ eventSrv.publish(RequestProcessEnd(requestHeader, result))
+      case result => eventSrv.publish(RequestProcessEnd(requestHeader, result))
     }
   }
 }

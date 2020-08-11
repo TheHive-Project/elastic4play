@@ -6,14 +6,14 @@ organizationName := "TheHive-Project"
 
 organizationHomepage := Some(url("https://thehive-project.org/"))
 
-licenses += "AGPL-V3" → url("https://www.gnu.org/licenses/agpl-3.0.html")
+licenses += "AGPL-V3" -> url("https://www.gnu.org/licenses/agpl-3.0.html")
 
 lazy val elastic4play = (project in file("."))
   .enablePlugins(PlayScala, PlayAkkaHttp2Support)
 // Add Http2 support to be able to ask client certificate
 // cf. https://github.com/playframework/playframework/issues/8143
 
-scalaVersion := "2.12.11"
+scalaVersion := "2.12.12"
 
 resolvers += "elasticsearch-releases" at "https://artifacts.elastic.co/maven"
 

@@ -32,7 +32,7 @@ class ClientAuthSSLEngineProvider(serverConfig: ServerConfig) extends SSLEngineP
   def readTrustManagers(): Array[TrustManager] =
     config
       .getOptional[String]("play.server.https.trustStore.path")
-      .map { trustStorePath ⇒
+      .map { trustStorePath =>
         val keyStoreType       = config.getOptional[String]("play.server.https.keyStore.type").getOrElse(KeyStore.getDefaultType)
         val trustStorePassword = config.getOptional[String]("play.server.https.trustStore.password").getOrElse("").toCharArray
         val trustInputStream   = Files.newInputStream(Paths.get(trustStorePath))

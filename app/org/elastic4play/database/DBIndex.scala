@@ -19,7 +19,7 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
       configuration.getOptional[Int]("search.nbreplicas").getOrElse(1),
       configuration
         .getOptional[Configuration]("search.settings")
-        .fold(Map.empty[String, Any]) { settings ⇒
+        .fold(Map.empty[String, Any]) { settings =>
           settings
             .entrySet
             .toMap
@@ -41,16 +41,16 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
     val fields           = models.flatMap(_.attributes.filterNot(_.attributeName == "_id").map(_.elasticMapping)).toSeq
     val relationsField = models
       .map {
-        case child: ChildModelDef[_, _, _, _] ⇒ child.parentModel.modelName → Seq(child.modelName)
-        case model                            ⇒ model.modelName             → Nil
+        case child: ChildModelDef[_, _, _, _] => child.parentModel.modelName -> Seq(child.modelName)
+        case model                            => model.modelName             -> Nil
       }
       .groupBy(_._1)
       .foldLeft(joinField("relations")) {
-        case (join, (parent, child)) ⇒ join.relation(parent, child.flatMap(_._2).toSeq)
+        case (join, (parent, child)) => join.relation(parent, child.flatMap(_._2).toSeq)
       }
 
     for {
-      majorVersion ← nodeMajorVersion
+      majorVersion <- nodeMajorVersion
       modelMapping = properties(fields :+ relationsField)
         .dateDetection(false)
         .numericDetection(false)
@@ -61,12 +61,12 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
         .replicas(nbReplicas)
         .includeTypeName(false)
       createIndexRequestWithSettings = majorVersion match {
-        case 5 ⇒ createIndexRequest.indexSetting("mapping.single_type", true)
-        case _ ⇒ createIndexRequest
+        case 5 => createIndexRequest.indexSetting("mapping.single_type", true)
+        case _ => createIndexRequest
       }
-      _ ← db.execute {
+      _ <- db.execute {
         settings.foldLeft(createIndexRequestWithSettings) {
-          case (cid, (key, value)) ⇒ cid.indexSetting(key, value)
+          case (cid, (key, value)) => cid.indexSetting(key, value)
         }
       }
     } yield ()
@@ -107,7 +107,7 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
       .map {
         _.totalHits
       }
-      .recover { case _ ⇒ 0L }
+      .recover { case _ => 0L }
 
   /**
     * Get cluster status:
@@ -123,15 +123,15 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
       }
       .map {
         _.status match {
-          case "green"  ⇒ 0
-          case "yellow" ⇒ 1
-          case "red"    ⇒ 2
-          case status ⇒
+          case "green"  => 0
+          case "yellow" => 1
+          case "red"    => 2
+          case status =>
             logger.error(s"unknown cluster status: $status")
             2
         }
       }
-      .recover { case _ ⇒ 2 }
+      .recover { case _ => 2 }
 
   def nodeVersions: Future[Seq[String]] =
     db.execute {
@@ -140,7 +140,7 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
       .map(_.nodes.values.map(_.version).toSeq.distinct)
 
   def nodeMajorVersion: Future[Int] =
-    nodeVersions.flatMap { v ⇒
+    nodeVersions.flatMap { v =>
       val majorVersions = v.map(_.takeWhile(_ != '.')).distinct.map(_.toInt)
       if (majorVersions.size == 1)
         Future.successful(majorVersions.head)
@@ -153,10 +153,10 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
   }
 
   def getClusterStatusName: Future[String] = getClusterStatus.map {
-    case 0 ⇒ "OK"
-    case 1 ⇒ "WARNING"
-    case 2 ⇒ "ERROR"
-    case _ ⇒ "UNKNOWN"
+    case 0 => "OK"
+    case 1 => "WARNING"
+    case 2 => "ERROR"
+    case _ => "UNKNOWN"
   }
 
   def clusterStatusName: String = blocking {

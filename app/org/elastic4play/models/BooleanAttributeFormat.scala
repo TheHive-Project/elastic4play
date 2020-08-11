@@ -9,8 +9,8 @@ import play.api.libs.json.{JsBoolean, JsValue}
 
 class BooleanAttributeFormat extends AttributeFormat[Boolean]("boolean") {
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
-    case _: JsBoolean if subNames.isEmpty ⇒ Good(value)
-    case _                                ⇒ formatError(JsonInputValue(value))
+    case _: JsBoolean if subNames.isEmpty => Good(value)
+    case _                                => formatError(JsonInputValue(value))
   }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): Boolean Or Every[AttributeError] =
@@ -18,14 +18,14 @@ class BooleanAttributeFormat extends AttributeFormat[Boolean]("boolean") {
       formatError(value)
     else
       value match {
-        case StringInputValue(Seq(v)) ⇒
+        case StringInputValue(Seq(v)) =>
           try {
             Good(v.toBoolean)
           } catch {
-            case _: Throwable ⇒ formatError(value)
+            case _: Throwable => formatError(value)
           }
-        case JsonInputValue(JsBoolean(v)) ⇒ Good(v)
-        case _                            ⇒ formatError(value)
+        case JsonInputValue(JsBoolean(v)) => Good(v)
+        case _                            => formatError(value)
       }
 
   override def elasticType(attributeName: String): BasicField = booleanField(attributeName)

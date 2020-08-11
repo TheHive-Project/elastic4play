@@ -11,8 +11,8 @@ object HashAttributeFormat extends AttributeFormat[String]("hash") {
   val validDigits = "0123456789abcdefABCDEF"
 
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
-    case JsString(v) if subNames.isEmpty && v.forall(c ⇒ validDigits.contains(c)) ⇒ Good(value)
-    case _                                                                        ⇒ formatError(JsonInputValue(value))
+    case JsString(v) if subNames.isEmpty && v.forall(c => validDigits.contains(c)) => Good(value)
+    case _                                                                        => formatError(JsonInputValue(value))
   }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): String Or Every[AttributeError] =
@@ -20,9 +20,9 @@ object HashAttributeFormat extends AttributeFormat[String]("hash") {
       formatError(value)
     else
       value match {
-        case StringInputValue(Seq(v)) if v.forall(c ⇒ validDigits.contains(c))    ⇒ Good(v.toLowerCase)
-        case JsonInputValue(JsString(v)) if v.forall(c ⇒ validDigits.contains(c)) ⇒ Good(v.toLowerCase)
-        case _                                                                    ⇒ formatError(value)
+        case StringInputValue(Seq(v)) if v.forall(c => validDigits.contains(c))    => Good(v.toLowerCase)
+        case JsonInputValue(JsString(v)) if v.forall(c => validDigits.contains(c)) => Good(v.toLowerCase)
+        case _                                                                    => formatError(value)
       }
 
   override def elasticType(attributeName: String): KeywordField = keywordField(attributeName)
