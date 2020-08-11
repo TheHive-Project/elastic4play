@@ -8,12 +8,12 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import akka.stream.scaladsl.{FileIO, Sink, Source, StreamConverters}
 import akka.util.ByteString
-import com.sksamuel.elastic4s.http.ElasticDsl.search
+import com.sksamuel.elastic4s.ElasticDsl.search
 import javax.inject.{Inject, Singleton}
 import org.elastic4play.controllers.JsonFormat.{attachmentInputValueReads, fileInputValueFormat}
 import org.elastic4play.controllers.{AttachmentInputValue, FileInputValue, JsonInputValue}
 import org.elastic4play.database.{DBCreate, DBFind, DBRemove}
-import org.elastic4play.models.{AttributeDef, BaseModelDef, EntityDef, ModelDef, AttributeFormat ⇒ F}
+import org.elastic4play.models.{AttributeDef, BaseModelDef, EntityDef, ModelDef, AttributeFormat => F}
 import org.elastic4play.services.JsonFormat.attachmentFormat
 import org.elastic4play.utils.{Hash, Hasher, Retry}
 import org.elastic4play.{AttributeCheckingError, InvalidFormatAttributeError, MissingAttributeError}
@@ -21,6 +21,7 @@ import play.api.Configuration
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json._
+
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -33,7 +34,7 @@ object Attachment {
 }
 
 trait AttachmentAttributes {
-  _: AttributeDef ⇒
+  _: AttributeDef =>
   val data: A[Array[Byte]] = attribute("binary", F.binaryFmt, "data")
 }
 
@@ -91,8 +92,8 @@ class AttachmentSrv(
       mat
     )
 
-  val mainHasher   = Hasher(mainHash)
-  val extraHashers = Hasher(mainHash +: extraHashes: _*)
+  val mainHasher: Hasher   = Hasher(mainHash)
+  val extraHashers: Hasher = Hasher(mainHash +: extraHashes: _*)
 
   /**
     * Handles attachments : send to datastore and build an object with hash and filename
@@ -100,23 +101,23 @@ class AttachmentSrv(
   def apply(model: BaseModelDef)(attributes: JsObject): Future[JsObject] =
     // find all declared attribute as attachment in submitted data
     model.attachmentAttributes.foldLeft(Future.successful(attributes)) {
-      case (attrs, (name, isRequired)) ⇒
-        attrs.flatMap { a ⇒
+      case (attrs, (name, isRequired)) =>
+        attrs.flatMap { a =>
           // try to convert in FileInputValue Scala Object
           val inputValue = (a \ name).asOpt[FileInputValue] orElse (a \ name).asOpt[AttachmentInputValue](attachmentInputValueReads)
           inputValue
             .map {
               // save attachment and replace FileInputValue json representation to JsObject containing attachment attributes
-              case fiv: FileInputValue ⇒
-                save(fiv).map { attachment ⇒
-                  a - name + (name → Json.toJson(attachment))
+              case fiv: FileInputValue =>
+                save(fiv).map { attachment =>
+                  a - name + (name -> Json.toJson(attachment))
                 }
-              case aiv: AttachmentInputValue ⇒ Future.successful(a - name + (name → Json.toJson(aiv.toAttachment)))
+              case aiv: AttachmentInputValue => Future.successful(a - name + (name -> Json.toJson(aiv.toAttachment)))
             }
             // if conversion to FileInputValue fails, it means that attribute is missing or format is invalid
             .getOrElse {
               (a \ name).asOpt[JsValue] match {
-                case Some(v) if v != JsNull && v != JsArray(Nil) ⇒
+                case Some(v) if v != JsNull && v != JsArray(Nil) =>
                   Future.failed(
                     AttributeCheckingError(
                       model.modelName,
@@ -129,7 +130,7 @@ class AttachmentSrv(
                       )
                     )
                   )
-                case _ ⇒
+                case _ =>
                   if (isRequired)
                     Future.failed(AttributeCheckingError(model.modelName, Seq(MissingAttributeError(name))))
                   else
@@ -144,63 +145,63 @@ class AttachmentSrv(
     val hashes = extraHashers.fromByteArray(data)
 
     for {
-      attachment ← Retry()(classOf[Exception]) {
+      attachment <- Retry()(classOf[Exception]) {
         getSrv[AttachmentModel, AttachmentChunk](attachmentModel, hash + "_0")
           .fallbackTo { // it it doesn't exist, create it
             Source
-              .fromIterator(() ⇒ data.grouped(chunkSize))
-              .zip(Source.unfold(0)(i ⇒ Some((i + 1) → i)))
+              .fromIterator(() => data.grouped(chunkSize))
+              .zip(Source.unfold(0)(i => Some((i + 1) -> i)))
               .mapAsync(5) {
-                case (buffer, index) ⇒
+                case (buffer, index) =>
                   val data = java.util.Base64.getEncoder.encodeToString(buffer)
-                  dbCreate(attachmentModel.modelName, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
+                  dbCreate(attachmentModel.modelName, None, Json.obj("binary" -> data, "_id" -> s"${hash}_$index"))
               }
               .runWith(Sink.ignore)
           }
-          .map(_ ⇒ Attachment(filename, hashes, data.length, contentType, hash))
+          .map(_ => Attachment(filename, hashes, data.length, contentType, hash))
       }
     } yield attachment
   }
 
   def save(fiv: FileInputValue): Future[Attachment] =
     for {
-      hash   ← mainHasher.fromPath(fiv.filepath).map(_.head.toString())
-      hashes ← extraHashers.fromPath(fiv.filepath)
-      attachment ← Retry()(classOf[Exception]) {
+      hash   <- mainHasher.fromPath(fiv.filepath).map(_.head.toString())
+      hashes <- extraHashers.fromPath(fiv.filepath)
+      attachment <- Retry()(classOf[Exception]) {
         getSrv[AttachmentModel, AttachmentChunk](attachmentModel, hash + "_0")
           .fallbackTo { // it it doesn't exist, create it
             FileIO
               .fromPath(fiv.filepath, chunkSize)
-              .zip(Source.fromIterator { () ⇒
+              .zip(Source.fromIterator { () =>
                 Iterator.iterate(0)(_ + 1)
               })
               .mapAsync(5) {
-                case (buffer, index) ⇒
+                case (buffer, index) =>
                   val data = java.util.Base64.getEncoder.encodeToString(buffer.toArray)
-                  dbCreate(attachmentModel.modelName, None, Json.obj("binary" → data, "_id" → s"${hash}_$index"))
+                  dbCreate(attachmentModel.modelName, None, Json.obj("binary" -> data, "_id" -> s"${hash}_$index"))
               }
               .runWith(Sink.ignore)
           }
-          .map { _ ⇒
+          .map { _ =>
             Attachment(hash, hashes, fiv)
           }
       }
     } yield attachment
 
   def source(id: String): Source[ByteString, NotUsed] =
-    Source.unfoldAsync(0) { chunkNumber ⇒
+    Source.unfoldAsync(0) { chunkNumber =>
       getSrv[AttachmentModel, AttachmentChunk](attachmentModel, s"${id}_$chunkNumber")
-        .map { entity ⇒
+        .map { entity =>
           Some((chunkNumber + 1, ByteString(entity.data())))
         }
-        .recover { case _ ⇒ None }
+        .recover { case _ => None }
     }
 
   def stream(id: String): InputStream = source(id).runWith(StreamConverters.asInputStream(1.minute))
 
   def getHashes(id: String): Future[Seq[Hash]] = extraHashers.fromSource(source(id))
 
-  def getSize(id: String): Future[Int] = source(id).map(_.size).runReduce(_ + _)
+  def getSize(id: String): Future[Int] = source(id).map(_.size).runFold(0)(_ + _)
 
   def attachmentUseCount(attachmentId: String): Future[Long] = {
     import org.elastic4play.services.QueryDSL._
@@ -210,28 +211,28 @@ class AttachmentSrv(
   def delete(id: String): Future[Unit] = {
     def removeChunks(chunkNumber: Int = 0): Future[Unit] =
       getSrv[AttachmentModel, AttachmentChunk](attachmentModel, s"${id}_$chunkNumber")
-        .map { chunk ⇒
+        .map { chunk =>
           dbRemove(chunk)
         }
-        .flatMap { _ ⇒
+        .flatMap { _ =>
           removeChunks(chunkNumber + 1)
         }
 
-    removeChunks().recover { case _ ⇒ () }
+    removeChunks().recover { case _ => () }
   }
 
   def cleanup: Future[Unit] =
-    dbFind(Some("all"), Nil)(index ⇒ search(index).matchQuery("relations", attachmentModel.modelName).fetchSource(false))
+    dbFind(Some("all"), Nil)(index => search(index).matchQuery("relations", attachmentModel.modelName).fetchSource(false))
       ._1
-      .mapConcat(o ⇒ (o \ "_id").asOpt[String].toList)
-      .collect { case id if id.endsWith("_0") ⇒ id.dropRight(2) }
-      .mapAsync(1) { id ⇒
-        attachmentUseCount(id).map(id → _)
+      .mapConcat(o => (o \ "_id").asOpt[String].toList)
+      .collect { case id if id.endsWith("_0") => id.dropRight(2) }
+      .mapAsync(1) { id =>
+        attachmentUseCount(id).map(id -> _)
       }
       .mapAsync(1) {
-        case (id, 0L) ⇒ delete(id)
-        case _        ⇒ Future.successful(())
+        case (id, 0L) => delete(id)
+        case _        => Future.successful(())
       }
       .runWith(Sink.ignore)
-      .map(_ ⇒ ())
+      .map(_ => ())
 }

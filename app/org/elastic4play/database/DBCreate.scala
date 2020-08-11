@@ -1,18 +1,15 @@
 package org.elastic4play.database
 
 import scala.concurrent.{ExecutionContext, Future}
-
 import play.api.Logger
 import play.api.libs.json.JsValue.jsValueToJsLookup
 import play.api.libs.json._
-
 import akka.stream.scaladsl.Sink
-import com.sksamuel.elastic4s.RefreshPolicy
-import com.sksamuel.elastic4s.http.ElasticDsl._
-import com.sksamuel.elastic4s.indexes.IndexRequest
+import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.requests.common.RefreshPolicy
+import com.sksamuel.elastic4s.requests.indexes.IndexRequest
 import com.sksamuel.elastic4s.streams.RequestBuilder
 import javax.inject.{Inject, Singleton}
-
 import org.elastic4play.models.BaseEntity
 
 /**
@@ -20,7 +17,7 @@ import org.elastic4play.models.BaseEntity
   * This service doesn't check any attribute conformity (according to model)
   */
 @Singleton
-class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBCreate @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
 
   private[DBCreate] lazy val logger = Logger(getClass)
 
@@ -58,39 +55,38 @@ class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
 
     db.execute {
         addId(id).andThen(addRouting(routing)) {
-          indexInto(db.indexName / "doc").source(docSource.toString).refresh(RefreshPolicy.WAIT_UNTIL)
+          indexInto(db.indexName).source(docSource.toString).refresh(RefreshPolicy.WAIT_FOR)
         }
       }
-      .map(
-        indexResponse ⇒
-          attributes +
-            ("_type"    → JsString(modelName)) +
-            ("_id"      → JsString(indexResponse.id)) +
-            ("_parent"  → parentId.fold[JsValue](JsNull)(JsString)) +
-            ("_routing" → JsString(routing.getOrElse(indexResponse.id))) +
-            ("_version" → JsNumber(indexResponse.version))
+      .map(indexResponse =>
+        attributes +
+          ("_type"    -> JsString(modelName)) +
+          ("_id"      -> JsString(indexResponse.id)) +
+          ("_parent"  -> parentId.fold[JsValue](JsNull)(JsString)) +
+          ("_routing" -> JsString(routing.getOrElse(indexResponse.id))) +
+          ("_version" -> JsNumber(indexResponse.version))
       )
   }
 
   /**
     * add id information in index definition
     */
-  private def addId(id: Option[String]): IndexRequest ⇒ IndexRequest = id match {
-    case Some(i) ⇒ _ id i createOnly true
-    case None    ⇒ identity
+  private def addId(id: Option[String]): IndexRequest => IndexRequest = id match {
+    case Some(i) => _ id i createOnly true
+    case None    => identity
   }
 
   /**
     * add routing information in index definition
     */
-  private def addRouting(routing: Option[String]): IndexRequest ⇒ IndexRequest = routing match {
-    case Some(r) ⇒ _ routing r
-    case None    ⇒ identity
+  private def addRouting(routing: Option[String]): IndexRequest => IndexRequest = routing match {
+    case Some(r) => _ routing r
+    case None    => identity
   }
 
   private def addParent(modelName: String, parent: Option[BaseEntity], entity: JsObject): JsObject = parent match {
-    case Some(p) ⇒ entity + ("relations" → Json.obj("name" → modelName, "parent" → p.id))
-    case None    ⇒ entity + ("relations" → JsString(modelName))
+    case Some(p) => entity + ("relations" -> Json.obj("name" -> modelName, "parent" -> p.id))
+    case None    => entity + ("relations" -> JsString(modelName))
   }
 
   /**
@@ -103,7 +99,7 @@ class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
       val routing   = (attributes \ "_routing").asOpt[String] orElse id
       val docSource = JsObject(attributes.fields.filterNot(_._1.startsWith("_")))
       addId(id).andThen(addRouting(routing)) {
-        indexInto(db.indexName, "doc").source(docSource.toString)
+        indexInto(db.indexName).source(docSource.toString)
       }
     }
   }

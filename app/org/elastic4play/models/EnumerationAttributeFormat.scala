@@ -1,25 +1,23 @@
 package org.elastic4play.models
 
-import play.api.libs.json.{Format, JsString, JsValue}
-
-import com.sksamuel.elastic4s.http.ElasticDsl.keywordField
-import com.sksamuel.elastic4s.mappings.KeywordField
-import org.scalactic._
-
+import com.sksamuel.elastic4s.ElasticDsl.keywordField
+import com.sksamuel.elastic4s.requests.mappings.KeywordField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.services.DBLists
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
+import org.scalactic._
+import play.api.libs.json.{Format, JsString, JsValue}
 
 case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit format: Format[T#Value]) extends AttributeFormat[T#Value](s"enumeration") {
 
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
-    case JsString(v) if subNames.isEmpty ⇒
+    case JsString(v) if subNames.isEmpty =>
       try {
         enum.withName(v); Good(value)
       } catch {
-        case _: Throwable ⇒ formatError(JsonInputValue(value))
+        case _: Throwable => formatError(JsonInputValue(value))
       }
-    case _ ⇒ formatError(JsonInputValue(value))
+    case _ => formatError(JsonInputValue(value))
   }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): T#Value Or Every[AttributeError] =
@@ -27,23 +25,23 @@ case class EnumerationAttributeFormat[T <: Enumeration](enum: T)(implicit format
       formatError(value)
     else
       value match {
-        case StringInputValue(Seq(v)) ⇒
+        case StringInputValue(Seq(v)) =>
           try {
             Good(enum.withName(v))
           } catch {
-            case _: Throwable ⇒ formatError(value)
+            case _: Throwable => formatError(value)
           }
-        case JsonInputValue(JsString(v)) ⇒
+        case JsonInputValue(JsString(v)) =>
           try {
             Good(enum.withName(v))
           } catch {
-            case _: Throwable ⇒ formatError(value)
+            case _: Throwable => formatError(value)
           }
-        case _ ⇒ formatError(value)
+        case _ => formatError(value)
       }
 
   override def elasticType(attributeName: String): KeywordField = keywordField(attributeName)
 
   override def definition(dblists: DBLists, attribute: Attribute[T#Value]): Seq[AttributeDefinition] =
-    Seq(AttributeDefinition(attribute.attributeName, name, attribute.description, enum.values.map(v ⇒ JsString(v.toString)).toSeq, Nil))
+    Seq(AttributeDefinition(attribute.attributeName, name, attribute.description, enum.values.map(v => JsString(v.toString)).toSeq, Nil))
 }

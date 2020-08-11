@@ -1,29 +1,28 @@
 package org.elastic4play.database
 
-import com.sksamuel.elastic4s.RefreshPolicy
+import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.requests.common.RefreshPolicy
 import javax.inject.{Inject, Singleton}
+import org.elastic4play.models.{Attribute, ModelAttributes, AttributeFormat => F, AttributeOption => O}
 
 import scala.concurrent.{ExecutionContext, Future}
-import com.sksamuel.elastic4s.http.ElasticDsl._
-import org.elastic4play.models.{ModelAttributes, AttributeFormat ⇒ F, AttributeOption ⇒ O}
 
 class SequenceModel extends ModelAttributes("sequence") {
-  val counter = attribute("sequenceCounter", F.numberFmt, "Value of the sequence", O.model)
+  val counter: Attribute[Long] = attribute("sequenceCounter", F.numberFmt, "Value of the sequence", O.model)
 }
 
 @Singleton
-class DBSequence @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBSequence @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
 
   def apply(seqId: String): Future[Int] =
     db.execute {
-      update(s"sequence_$seqId")
-        .in(db.indexName / "doc")
-        .upsert("sequenceCounter" → 1, "relations" → "sequence")
+      updateById(db.indexName, s"sequence_$seqId")
+        .upsert("sequenceCounter" -> 1, "relations" -> "sequence")
         .script("ctx._source.sequenceCounter += 1")
         .retryOnConflict(5)
         .fetchSource(true)
-        .refresh(RefreshPolicy.WAIT_UNTIL)
-    } map { updateResponse ⇒
+        .refresh(RefreshPolicy.WAIT_FOR)
+    } map { updateResponse =>
       updateResponse.source("sequenceCounter").asInstanceOf[Int]
     }
 }

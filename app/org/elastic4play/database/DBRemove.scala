@@ -1,7 +1,7 @@
 package org.elastic4play.database
 
-import com.sksamuel.elastic4s.RefreshPolicy
-import com.sksamuel.elastic4s.http.ElasticDsl._
+import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.requests.common.RefreshPolicy
 import javax.inject.{Inject, Singleton}
 import org.elastic4play.models.BaseEntity
 import play.api.Logger
@@ -10,18 +10,17 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
 
 @Singleton
-class DBRemove @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBRemove @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
 
-  lazy val logger = Logger(getClass)
+  lazy val logger: Logger = Logger(getClass)
 
   def apply(entity: BaseEntity): Future[Boolean] = {
     logger.debug(s"Remove ${entity.model.modelName} ${entity.id}")
     db.execute {
-        delete(entity.id)
-          .from(db.indexName / "doc")
+        deleteById(db.indexName, entity.id)
           .routing(entity.routing)
-          .refresh(RefreshPolicy.WAIT_UNTIL)
+          .refresh(RefreshPolicy.WAIT_FOR)
       }
-      .transform(r ⇒ Success(r.isSuccess))
+      .transform(r => Success(r.isSuccess))
   }
 }

@@ -17,12 +17,12 @@ trait AttributeDef {
       attributeName: String,
       format: AttributeFormat[T],
       description: String,
-      defaultValue: Option[() ⇒ T],
+      defaultValue: Option[() => T],
       options: AttributeOption.Type*
   ): A[T]
 
-  def attribute[T](attributeName: String, format: AttributeFormat[T], description: String, defaultValue: ⇒ T, options: AttributeOption.Type*): A[T] =
-    attribute(attributeName, format, description, Some(() ⇒ defaultValue), options: _*)
+  def attribute[T](attributeName: String, format: AttributeFormat[T], description: String, defaultValue: => T, options: AttributeOption.Type*): A[T] =
+    attribute(attributeName, format, description, Some(() => defaultValue), options: _*)
 
   def attribute[T](attributeName: String, format: AttributeFormat[T], description: String, options: AttributeOption.Type*): A[T] =
     attribute(attributeName, format, description, None, options: _*)
@@ -31,7 +31,7 @@ trait AttributeDef {
       attributeName: String,
       format: AttributeFormat[T],
       description: String,
-      defaultValue: Option[() ⇒ Seq[T]],
+      defaultValue: Option[() => Seq[T]],
       options: AttributeOption.Type*
   ): A[Seq[T]]
 
@@ -42,7 +42,7 @@ trait AttributeDef {
       defaultValue: Seq[T],
       options: AttributeOption.Type*
   ): A[Seq[T]] =
-    multiAttribute(attributeName, format, description, Some(() ⇒ defaultValue), options: _*)
+    multiAttribute(attributeName, format, description, Some(() => defaultValue), options: _*)
 
   def multiAttribute[T](attributeName: String, format: AttributeFormat[T], description: String, options: AttributeOption.Type*): A[Seq[T]] =
     multiAttribute(attributeName, format, description, None, options: _*)
@@ -51,25 +51,25 @@ trait AttributeDef {
       attributeName: String,
       format: AttributeFormat[T],
       description: String,
-      defaultValue: Option[() ⇒ Option[T]],
+      defaultValue: Option[() => Option[T]],
       options: AttributeOption.Type*
   ): A[Option[T]]
 
   def optionalAttribute[T](attributeName: String, format: AttributeFormat[T], description: String, options: AttributeOption.Type*): A[Option[T]] =
-    optionalAttribute(attributeName, format, description, None: Option[() ⇒ Option[T]], options: _*)
+    optionalAttribute(attributeName, format, description, None: Option[() => Option[T]], options: _*)
 }
 
 abstract class ModelAttributes(val modelName: String) extends AttributeDef {
   type A[B] = Attribute[B]
   private var _attributes: Seq[Attribute[_]] = Nil
-  def attributes                             = _attributes
+  def attributes: Seq[Attribute[_]]          = _attributes
 
   /* attribute creation helper */
   def attribute[T](
       attributeName: String,
       format: AttributeFormat[T],
       description: String,
-      defaultValue: Option[() ⇒ T],
+      defaultValue: Option[() => T],
       options: AttributeOption.Type*
   ): Attribute[T] = {
     val attr = Attribute(modelName, attributeName, format, options, defaultValue, description: String)
@@ -81,7 +81,7 @@ abstract class ModelAttributes(val modelName: String) extends AttributeDef {
       attributeName: String,
       format: AttributeFormat[T],
       description: String,
-      defaultValue: Option[() ⇒ Seq[T]],
+      defaultValue: Option[() => Seq[T]],
       options: AttributeOption.Type*
   ): Attribute[Seq[T]] = {
     val attr = Attribute(modelName, attributeName, MultiAttributeFormat(format), options, defaultValue, description: String)
@@ -93,7 +93,7 @@ abstract class ModelAttributes(val modelName: String) extends AttributeDef {
       attributeName: String,
       format: AttributeFormat[T],
       description: String,
-      defaultValue: Option[() ⇒ Option[T]],
+      defaultValue: Option[() => Option[T]],
       options: AttributeOption.Type*
   ): Attribute[Option[T]] = {
     val attr = Attribute(modelName, attributeName, OptionalAttributeFormat(format), options, defaultValue, description: String)
@@ -101,13 +101,17 @@ abstract class ModelAttributes(val modelName: String) extends AttributeDef {
     attr
   }
 
-  val createdBy =
+  val createdBy: Attribute[String] =
     attribute("createdBy", AttributeFormat.userFmt, "user who created this entity", None, AttributeOption.model, AttributeOption.readonly)
 
-  val createdAt =
+  val createdAt: Attribute[Date] =
     attribute("createdAt", AttributeFormat.dateFmt, "user who created this entity", new Date, AttributeOption.model, AttributeOption.readonly)
-  val updatedBy = optionalAttribute("updatedBy", AttributeFormat.userFmt, "user who created this entity", None, AttributeOption.model)
-  val updatedAt = optionalAttribute("updatedAt", AttributeFormat.dateFmt, "user who created this entity", AttributeOption.model)
+
+  val updatedBy: Attribute[Option[String]] =
+    optionalAttribute("updatedBy", AttributeFormat.userFmt, "user who created this entity", None, AttributeOption.model)
+
+  val updatedAt: Attribute[Option[Date]] =
+    optionalAttribute("updatedAt", AttributeFormat.dateFmt, "user who created this entity", AttributeOption.model)
 }
 
 abstract class BaseModelDef(modelName: String, val label: String, val path: String) extends ModelAttributes(modelName) {
@@ -119,18 +123,18 @@ abstract class BaseModelDef(modelName: String, val label: String, val path: Stri
 
   /* get attributes definitions for the entity (form, model, required and default values) */
   def formAttributes: Map[String, Attribute[_]] =
-    attributes.collect { case a if a.isForm ⇒ a.attributeName → a }.toMap
+    attributes.collect { case a if a.isForm => a.attributeName -> a }.toMap
 
   /* get attributes definitions for the entity (form, model, required and default values) */
   def modelAttributes: Map[String, Attribute[_]] =
-    attributes.collect { case a if a.isModel ⇒ a.attributeName → a }.toMap
+    attributes.collect { case a if a.isModel => a.attributeName -> a }.toMap
 
   lazy val attachmentAttributes: Map[String, Boolean] = formAttributes
     .filter(_._2.format match {
-      case `AttachmentAttributeFormat`                                      ⇒ true
-      case OptionalAttributeFormat(fmt) if fmt == AttachmentAttributeFormat ⇒ true
-      case MultiAttributeFormat(fmt) if fmt == AttachmentAttributeFormat    ⇒ true
-      case _                                                                ⇒ false
+      case `AttachmentAttributeFormat`                                      => true
+      case OptionalAttributeFormat(fmt) if fmt == AttachmentAttributeFormat => true
+      case MultiAttributeFormat(fmt) if fmt == AttachmentAttributeFormat    => true
+      case _                                                                => false
     })
     .mapValues(_.isRequired)
 
@@ -146,45 +150,45 @@ abstract class BaseModelDef(modelName: String, val label: String, val path: Stri
 }
 
 class BaseEntity(val model: BaseModelDef, val attributes: JsObject) {
-  val id            = (attributes \ "_id").as[String]
-  val routing       = (attributes \ "_routing").as[String]
-  lazy val parentId = (attributes \ "_parent").asOpt[String]
-  val version       = (attributes \ "_version").as[Long]
-  def createdBy     = (attributes \ "createdBy").as[String]
-  def createdAt     = (attributes \ "createdAt").as[Date]
-  def updatedBy     = (attributes \ "updatedBy").as[String]
-  def updatedAt     = (attributes \ "updatedAt").as[Date]
+  val id: String                    = (attributes \ "_id").as[String]
+  val routing: String               = (attributes \ "_routing").as[String]
+  lazy val parentId: Option[String] = (attributes \ "_parent").asOpt[String]
+  val version: Long                 = (attributes \ "_version").as[Long]
+  def createdBy: String             = (attributes \ "createdBy").as[String]
+  def createdAt: Date               = (attributes \ "createdAt").as[Date]
+  def updatedBy: String             = (attributes \ "updatedBy").as[String]
+  def updatedAt: Date               = (attributes \ "updatedAt").as[Date]
 
   @inline
   final private def removeProtectedAttributes(attrs: JsObject) = JsObject {
     attrs
       .fields
-      .map { case (name, value) ⇒ (name, value, model.attributes.find(_.attributeName == name)) }
+      .map { case (name, value) => (name, value, model.attributes.find(_.attributeName == name)) }
       .collect {
-        case (name, value, Some(desc)) if !desc.isSensitive ⇒ name → value
-        case (name, value, _) if name.startsWith("_")       ⇒ name → value
+        case (name, value, Some(desc)) if !desc.isSensitive => name -> value
+        case (name, value, _) if name.startsWith("_")       => name -> value
       }
   }
 
-  def toJson =
+  def toJson: JsObject =
     removeProtectedAttributes(attributes) +
-      ("id" → JsString(id))
+      ("id" -> JsString(id))
 
   /* compute auxiliary data */
-  override def toString = Json.prettyPrint(toJson)
+  override def toString: String = Json.prettyPrint(toJson)
 }
 
 abstract class EntityDef[M <: BaseModelDef, E <: BaseEntity](model: M, attributes: JsObject) extends BaseEntity(model, attributes) with AttributeDef {
-  self: E ⇒
-  type A[B] = () ⇒ B
+  self: E =>
+  type A[B] = () => B
 
   def attribute[T](
       attributeName: String,
       format: AttributeFormat[T],
       description: String,
-      defaultValue: Option[() ⇒ T],
+      defaultValue: Option[() => T],
       options: AttributeOption.Type*
-  ): A[T] = { () ⇒
+  ): A[T] = { () =>
     (attributes \ attributeName).asOpt[T](format.jsFormat).getOrElse(throw InvalidEntityAttributes[M, T](model, attributeName, format, attributes))
   }
 
@@ -192,9 +196,9 @@ abstract class EntityDef[M <: BaseModelDef, E <: BaseEntity](model: M, attribute
       attributeName: String,
       format: AttributeFormat[T],
       description: String,
-      defaultValue: Option[() ⇒ Seq[T]],
+      defaultValue: Option[() => Seq[T]],
       options: AttributeOption.Type*
-  ): A[Seq[T]] = { () ⇒
+  ): A[Seq[T]] = { () =>
     (attributes \ attributeName).asOpt[Seq[T]](MultiAttributeFormat(format).jsFormat).getOrElse(Nil)
   }
 
@@ -202,9 +206,9 @@ abstract class EntityDef[M <: BaseModelDef, E <: BaseEntity](model: M, attribute
       attributeName: String,
       format: AttributeFormat[T],
       description: String,
-      defaultValue: Option[() ⇒ Option[T]],
+      defaultValue: Option[() => Option[T]],
       options: AttributeOption.Type*
-  ): A[Option[T]] = { () ⇒
+  ): A[Option[T]] = { () =>
     (attributes \ attributeName).asOpt[T](format.jsFormat)
   }
 }
@@ -215,7 +219,7 @@ abstract class AbstractModelDef[M <: AbstractModelDef[M, E], E <: BaseEntity](mo
 }
 
 abstract class ModelDef[M <: ModelDef[M, E], E <: BaseEntity](modelName: String, label: String, path: String)(implicit e: Manifest[E])
-    extends AbstractModelDef[M, E](modelName, label, path) { self: M ⇒
+    extends AbstractModelDef[M, E](modelName, label, path) { self: M =>
   override def apply(attributes: JsObject): E =
     e.runtimeClass.getConstructor(getClass, classOf[JsObject]).newInstance(self, attributes).asInstanceOf[E]
 }
@@ -225,7 +229,7 @@ abstract class ChildModelDef[M <: ChildModelDef[M, E, PM, PE], E <: BaseEntity, 
     label: String,
     path: String
 )(implicit e: Manifest[E])
-    extends AbstractModelDef[M, E](modelName, label, path) { self: M ⇒
+    extends AbstractModelDef[M, E](modelName, label, path) { self: M =>
   override def apply(attributes: JsObject): E =
     e.runtimeClass.getConstructor(getClass, classOf[JsObject]).newInstance(self, attributes).asInstanceOf[E]
 }

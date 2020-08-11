@@ -17,12 +17,12 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
 
 import org.elastic4play.database.DBCreate
-import org.elastic4play.models.{Attribute, EntityDef, ModelDef, AttributeFormat ⇒ F}
+import org.elastic4play.models.{Attribute, EntityDef, ModelDef, AttributeFormat => F}
 import org.elastic4play.utils.{Hasher, RichFuture}
 
 @Singleton
 class DBListModel(dblistName: String) extends ModelDef[DBListModel, DBListItemEntity](dblistName, "DBList", "/list") {
-  model ⇒
+  model =>
   @Inject def this(configuration: Configuration) = this(configuration.get[String]("dblist.name"))
 
   val value: Attribute[String]  = attribute("value", F.stringFmt, "Content of the dblist item")
@@ -37,7 +37,7 @@ class DBListItemEntity(model: DBListModel, attributes: JsObject) extends EntityD
 
   def dblist: String = (attributes \ "dblist").as[String]
 
-  override def toJson: JsObject = super.toJson - "value" + ("value" → mapTo[JsValue])
+  override def toJson: JsObject = super.toJson - "value" + ("value" -> mapTo[JsValue])
 }
 
 trait DBListItem {
@@ -61,7 +61,7 @@ trait DBList {
 }
 
 @Singleton
-class DBLists @Inject()(
+class DBLists @Inject() (
     getSrv: GetSrv,
     findSrv: FindSrv,
     deleteSrv: Provider[DeleteSrv],
@@ -85,7 +85,7 @@ class DBLists @Inject()(
 
   def deleteItem(item: DBListItemEntity)(implicit authContext: AuthContext): Future[Unit] =
     for {
-      _ ← deleteSrv.get.realDelete(item)
+      _ <- deleteSrv.get.realDelete(item)
       _ = cache.remove(dblistModel.modelName + "_" + item.dblist)
     } yield ()
 
@@ -108,15 +108,15 @@ class DBLists @Inject()(
 
     def getItems[A](implicit reads: Reads[A]): (Source[(String, A), NotUsed], Future[Long]) = {
       val (src, total) = getItems()
-      val items        = src.map(item ⇒ (item.id, item.mapTo[A]))
+      val items        = src.map(item => (item.id, item.mapTo[A]))
       (items, total)
     }
 
     def addItem[A](item: A)(implicit writes: Writes[A]): Future[DBListItem] = {
       val value = Json.toJson(item)
       val id    = Hasher("MD5").fromString(value.toString).head.toString
-      dbCreate(dblistModel.modelName, None, Json.obj("_id" → id, "dblist" → name, "value" → JsString(value.toString)))
-        .map { newItem ⇒
+      dbCreate(dblistModel.modelName, None, Json.obj("_id" -> id, "dblist" -> name, "value" -> JsString(value.toString)))
+        .map { newItem =>
           cache.remove(dblistModel.modelName + "_" + name)
           dblistModel(newItem)
         }
@@ -125,11 +125,11 @@ class DBLists @Inject()(
     def exists(key: String, value: JsValue): Future[Boolean] =
       getItems()
         ._1
-        .filter { item ⇒
+        .filter { item =>
           item
             .mapTo[JsValue]
             .asOpt[JsObject]
-            .flatMap { obj ⇒
+            .flatMap { obj =>
               (obj \ key).asOpt[JsValue]
             }
             .contains(value)

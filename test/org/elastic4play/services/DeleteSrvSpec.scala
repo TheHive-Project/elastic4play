@@ -1,36 +1,35 @@
 package org.elastic4play.services
 
+import java.util.{Date, UUID}
+
 import scala.concurrent.ExecutionContext.Implicits.{global ⇒ ec}
 import scala.concurrent.Future
-
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.test.PlaySpecification
-
 import org.junit.runner.RunWith
 import org.specs2.mock.Mockito
 import org.specs2.runner.JUnitRunner
-
 import org.elastic4play.NotFoundError
 import org.elastic4play.database.DBRemove
-import org.elastic4play.models.{EntityDef, ModelDef, AttributeFormat ⇒ F}
+import org.elastic4play.models.{Attribute, EntityDef, ModelDef, AttributeFormat ⇒ F}
 import org.elastic4play.utils.RichFuture
 
 @RunWith(classOf[JUnitRunner])
 class DeleteSrvSpec extends PlaySpecification with Mockito {
 
   class TestModel extends ModelDef[TestModel, TestEntity]("testModel", "TestModel", "/test") {
-    val textAttribute    = attribute("textAttribute", F.textFmt, "textAttribute")
-    val stringAttribute  = attribute("stringAttribute", F.stringFmt, "stringAttribute")
-    val dateAttribute    = attribute("dateAttribute", F.dateFmt, "dateAttribute")
-    val booleanAttribute = attribute("booleanAttribute", F.booleanFmt, "booleanAttribute")
-    val uuidAttribute    = attribute("uuidAttribute", F.uuidFmt, "uuidAttribute")
-    val hashAttribute    = attribute("hashAttribute", F.hashFmt, "hashAttribute")
-    val metricAttribute  = attribute("metricAttribute", F.metricsFmt, "metricAttribute")
+    val textAttribute: Attribute[String]     = attribute("textAttribute", F.textFmt, "textAttribute")
+    val stringAttribute: Attribute[String]   = attribute("stringAttribute", F.stringFmt, "stringAttribute")
+    val dateAttribute: Attribute[Date]       = attribute("dateAttribute", F.dateFmt, "dateAttribute")
+    val booleanAttribute: Attribute[Boolean] = attribute("booleanAttribute", F.booleanFmt, "booleanAttribute")
+    val uuidAttribute: Attribute[UUID]       = attribute("uuidAttribute", F.uuidFmt, "uuidAttribute")
+    val hashAttribute: Attribute[String]     = attribute("hashAttribute", F.hashFmt, "hashAttribute")
+    val metricAttribute: Attribute[JsValue]  = attribute("metricAttribute", F.metricsFmt, "metricAttribute")
   }
   class TestEntity(model: TestModel, attributes: JsObject) extends EntityDef[TestModel, TestEntity](model, attributes)
 
-  implicit val authContext = mock[AuthContext]
+  implicit val authContext: AuthContext = mock[AuthContext]
 
   val model = new TestModel
 

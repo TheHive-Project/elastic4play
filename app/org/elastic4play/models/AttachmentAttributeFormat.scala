@@ -1,17 +1,15 @@
 package org.elastic4play.models
 
-import play.api.Logger
-import play.api.libs.json.{JsValue, Json}
-
-import com.sksamuel.elastic4s.http.ElasticDsl.{keywordField, longField, nestedField}
-import com.sksamuel.elastic4s.mappings.NestedField
-import org.scalactic._
-
+import com.sksamuel.elastic4s.ElasticDsl.{keywordField, longField, nestedField}
+import com.sksamuel.elastic4s.requests.mappings.NestedField
 import org.elastic4play.controllers.JsonFormat._
 import org.elastic4play.controllers.{AttachmentInputValue, FileInputValue, InputValue, JsonInputValue}
-import org.elastic4play.services.{Attachment, DBLists}
 import org.elastic4play.services.JsonFormat.attachmentFormat
+import org.elastic4play.services.{Attachment, DBLists}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
+import org.scalactic._
+import play.api.Logger
+import play.api.libs.json.{JsValue, Json}
 
 object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment") {
   private[AttachmentAttributeFormat] lazy val logger = Logger(getClass)
@@ -35,10 +33,10 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
         formatError(value)
       else
         value match {
-          case fiv: FileInputValue if fiv.name.intersect(forbiddenChar).isEmpty        ⇒ Good(Json.toJson(fiv)(fileInputValueFormat))
-          case aiv: AttachmentInputValue                                               ⇒ Good(Json.toJson(aiv.toAttachment)(jsFormat))
-          case JsonInputValue(json) if attachmentInputValueReads.reads(json).isSuccess ⇒ Good(json)
-          case _                                                                       ⇒ formatError(value)
+          case fiv: FileInputValue if fiv.name.intersect(forbiddenChar).isEmpty        => Good(Json.toJson(fiv)(fileInputValueFormat))
+          case aiv: AttachmentInputValue                                               => Good(Json.toJson(aiv.toAttachment)(jsFormat))
+          case JsonInputValue(json) if attachmentInputValueReads.reads(json).isSuccess => Good(json)
+          case _                                                                       => formatError(value)
         }
     logger.debug(s"inputValueToJson($subNames, $value) ⇒ $result")
     result
@@ -46,9 +44,9 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): Attachment Or Every[AttributeError] = {
     val result = value match {
-      case JsonInputValue(json) if subNames.isEmpty ⇒
-        attachmentInputValueReads.reads(json).map(aiv ⇒ Good(aiv.toAttachment)).getOrElse(formatError(value))
-      case _ ⇒ formatError(value)
+      case JsonInputValue(json) if subNames.isEmpty =>
+        attachmentInputValueReads.reads(json).map(aiv => Good(aiv.toAttachment)).getOrElse(formatError(value))
+      case _ => formatError(value)
     }
     logger.debug(s"fromInputValue($subNames, $value) ⇒ $result")
     result

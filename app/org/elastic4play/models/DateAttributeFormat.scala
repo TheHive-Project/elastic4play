@@ -1,18 +1,16 @@
 package org.elastic4play.models
 
+import java.text.SimpleDateFormat
 import java.util.Date
 
-import scala.util.Try
-
-import play.api.libs.json.{JsNumber, JsString, JsValue}
-
-import com.sksamuel.elastic4s.http.ElasticDsl.dateField
-import com.sksamuel.elastic4s.mappings.BasicField
-import org.scalactic._
-
+import com.sksamuel.elastic4s.ElasticDsl.dateField
+import com.sksamuel.elastic4s.requests.mappings.BasicField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
-import java.text.SimpleDateFormat
+import org.scalactic._
+import play.api.libs.json.{JsNumber, JsString, JsValue}
+
+import scala.util.Try
 
 class DateAttributeFormat extends AttributeFormat[Date]("date") {
 
@@ -25,9 +23,9 @@ class DateAttributeFormat extends AttributeFormat[Date]("date") {
     }.orElse(Try(new Date(d.toLong))).toOption
 
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
-    case JsString(v) if subNames.isEmpty ⇒ parse(v).map(_ ⇒ Good(value)).getOrElse(formatError(JsonInputValue(value)))
-    case JsNumber(_) if subNames.isEmpty ⇒ Good(value)
-    case _                               ⇒ formatError(JsonInputValue(value))
+    case JsString(v) if subNames.isEmpty => parse(v).map(_ => Good(value)).getOrElse(formatError(JsonInputValue(value)))
+    case JsNumber(_) if subNames.isEmpty => Good(value)
+    case _                               => formatError(JsonInputValue(value))
   }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): Date Or Every[AttributeError] =
@@ -35,10 +33,10 @@ class DateAttributeFormat extends AttributeFormat[Date]("date") {
       formatError(value)
     else {
       value match {
-        case StringInputValue(Seq(v))    ⇒ parse(v).map(Good(_)).getOrElse(formatError(value))
-        case JsonInputValue(JsString(v)) ⇒ parse(v).map(Good(_)).getOrElse(formatError(value))
-        case JsonInputValue(JsNumber(v)) ⇒ Good(new Date(v.toLong))
-        case _                           ⇒ formatError(value)
+        case StringInputValue(Seq(v))    => parse(v).map(Good(_)).getOrElse(formatError(value))
+        case JsonInputValue(JsString(v)) => parse(v).map(Good(_)).getOrElse(formatError(value))
+        case JsonInputValue(JsNumber(v)) => Good(new Date(v.toLong))
+        case _                           => formatError(value)
       }
     }
 
