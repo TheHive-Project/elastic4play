@@ -1,10 +1,8 @@
 package org.elastic4play.services
 
 import scala.concurrent.Future
-
 import play.api.libs.json.JsObject
-import play.api.mvc.RequestHeader
-
+import play.api.mvc.{RequestHeader, Result}
 import org.elastic4play.{AuthenticationError, AuthorizationError}
 
 abstract class Role(val name: String) {
@@ -48,7 +46,9 @@ trait AuthSrv {
 
   def authenticate(key: String)(implicit request: RequestHeader): Future[AuthContext] =
     Future.failed(AuthenticationError("Authentication using API key is not supported"))
-  def authenticate()(implicit request: RequestHeader): Future[AuthContext] = Future.failed(AuthenticationError("SSO authentication is not supported"))
+
+  def authenticate()(implicit request: RequestHeader): Future[Either[Result, AuthContext]] =
+    Future.failed(AuthenticationError("SSO authentication is not supported"))
 
   def changePassword(username: String, oldPassword: String, newPassword: String)(implicit authContext: AuthContext): Future[Unit] =
     Future.failed(AuthorizationError("Change password is not supported"))

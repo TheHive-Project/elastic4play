@@ -1,14 +1,14 @@
 package org.elastic4play.services.auth
 
 import javax.inject.{Inject, Singleton}
+import org.elastic4play.AuthenticationError
+import org.elastic4play.services.AuthCapability.Type
+import org.elastic4play.services.{AuthContext, AuthSrv}
+import play.api.mvc.{RequestHeader, Result}
+import play.api.{Configuration, Logger}
 
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
-import play.api.mvc.RequestHeader
-import play.api.{Configuration, Logger}
-import org.elastic4play.{AuthenticationError, OAuth2Redirect}
-import org.elastic4play.services.AuthCapability.Type
-import org.elastic4play.services.{AuthContext, AuthSrv}
 
 object MultiAuthSrv {
   private[MultiAuthSrv] lazy val logger = Logger(getClass)
@@ -62,10 +62,9 @@ class MultiAuthSrv(val authProviders: Seq[AuthSrv], implicit val ec: ExecutionCo
           Future.failed(AuthenticationError("Authentication failure"))
       }
 
-  override def authenticate()(implicit request: RequestHeader): Future[AuthContext] =
+  override def authenticate()(implicit request: RequestHeader): Future[Either[Result, AuthContext]] =
     forAllAuthProvider(_.authenticate)
       .recoverWith {
-        case e: OAuth2Redirect => Future.failed(e)
         case authError =>
           MultiAuthSrv.logger.error("Authentication failure", authError)
           Future.failed(AuthenticationError("Authentication failure"))
