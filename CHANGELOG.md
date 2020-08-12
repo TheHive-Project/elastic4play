@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.12.1](https://github.com/TheHive-Project/elastic4play/milestone/37) (2020-08-12)
+
+**Closed issues:**
+
+- Make sso authenticate method return an HTTP response [\#95](https://github.com/TheHive-Project/elastic4play/issues/95)
+
 ## [1.12.0](https://github.com/TheHive-Project/elastic4play/milestone/36) (2020-08-11)
 
 **Implemented enhancements:**
