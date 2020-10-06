@@ -2,7 +2,7 @@ package org.elastic4play.services
 
 import java.util.{Date, UUID}
 
-import scala.concurrent.ExecutionContext.Implicits.{global ⇒ ec}
+import scala.concurrent.ExecutionContext.Implicits.{global => ec}
 import scala.concurrent.Future
 import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.json.{JsObject, JsValue, Json}
@@ -12,7 +12,7 @@ import org.specs2.mock.Mockito
 import org.specs2.runner.JUnitRunner
 import org.elastic4play.NotFoundError
 import org.elastic4play.database.DBRemove
-import org.elastic4play.models.{Attribute, EntityDef, ModelDef, AttributeFormat ⇒ F}
+import org.elastic4play.models.{Attribute, EntityDef, ModelDef, AttributeFormat => F}
 import org.elastic4play.utils.RichFuture
 
 @RunWith(classOf[JUnitRunner])
@@ -36,20 +36,21 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
   val entity = new TestEntity(
     model,
     Json.obj(
-      "_id"              → "42",
-      "_routing"         → "42",
-      "_type"            → "testModel",
-      "_version"         → 1,
-      "textAttribute"    → "valid text",
-      "stringAttribute"  → "valid string",
-      "dateAttribute"    → "20160128T175800+0100",
-      "booleanAttribute" → true,
-      "uuidAttribute"    → "ee0caf69-560b-4453-9bae-72982225e661",
-      "hashAttribute"    → "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
-      "metricAttribute"  → Json.obj("metric1" → 1, "metric2" → 2),
-      "user"             → "testUser",
-      "createdAt"        → "20160620T162845+0200",
-      "createdBy"        → "testUser"
+      "_id"              -> "42",
+      "_routing"         -> "42",
+      "_type"            -> "testModel",
+      "_seqNo"           -> 1,
+      "_primaryTerm"     -> 1,
+      "textAttribute"    -> "valid text",
+      "stringAttribute"  -> "valid string",
+      "dateAttribute"    -> "20160128T175800+0100",
+      "booleanAttribute" -> true,
+      "uuidAttribute"    -> "ee0caf69-560b-4453-9bae-72982225e661",
+      "hashAttribute"    -> "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "metricAttribute"  -> Json.obj("metric1" -> 1, "metric2" -> 2),
+      "user"             -> "testUser",
+      "createdAt"        -> "20160620T162845+0200",
+      "createdBy"        -> "testUser"
     )
   )
 

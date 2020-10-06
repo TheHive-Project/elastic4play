@@ -60,11 +60,12 @@ class DBCreate @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext
       }
       .map(indexResponse =>
         attributes +
-          ("_type"    -> JsString(modelName)) +
-          ("_id"      -> JsString(indexResponse.id)) +
-          ("_parent"  -> parentId.fold[JsValue](JsNull)(JsString)) +
-          ("_routing" -> JsString(routing.getOrElse(indexResponse.id))) +
-          ("_version" -> JsNumber(indexResponse.version))
+          ("_type"        -> JsString(modelName)) +
+          ("_id"          -> JsString(indexResponse.id)) +
+          ("_parent"      -> parentId.fold[JsValue](JsNull)(JsString)) +
+          ("_routing"     -> JsString(routing.getOrElse(indexResponse.id))) +
+          ("_seqNo"       -> JsNumber(indexResponse.seqNo)) +
+          ("_primaryTerm" -> JsNumber(indexResponse.primaryTerm))
       )
   }
 
