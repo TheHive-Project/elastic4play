@@ -28,6 +28,9 @@ libraryDependencies ++= Seq(
   "org.bouncycastle"       % "bcprov-jdk15on" % "1.58",
   specs2                   % Test
 )
+dependencyOverrides ++= Seq(
+  "com.typesafe.akka" %% "akka-actor" % play.core.PlayVersion.akkaVersion
+)
 
 PlayKeys.externalizeResources := false
 
