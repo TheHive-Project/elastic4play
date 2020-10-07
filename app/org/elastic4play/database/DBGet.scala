@@ -23,7 +23,7 @@ class DBGet @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
         search(db.indexName)
           .query(idsQuery(id) /*.types(modelName)*/ )
           .size(1)
-          .version(true)
+          .seqNoPrimaryTerm(true)
       }
       .map { searchResponse =>
         searchResponse

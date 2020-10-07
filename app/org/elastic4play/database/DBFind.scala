@@ -88,7 +88,7 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
   def apply(range: Option[String], sortBy: Seq[String])(query: String => SearchRequest): (Source[JsObject, NotUsed], Future[Long]) = {
     val (offset, limit) = getOffsetAndLimitFromRange(range)
     val sortDef         = DBUtils.sortDefinition(sortBy)
-    val searchRequest   = query(db.indexName).start(offset).sortBy(sortDef).version(true)
+    val searchRequest   = query(db.indexName).start(offset).sortBy(sortDef).seqNoPrimaryTerm(true)
 
     logger.debug(
       s"search in ${searchRequest.indexes.values.mkString(",")} ${db.client.show(searchRequest)}"
