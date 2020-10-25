@@ -1,6 +1,7 @@
 ---
 kind: pipeline
 name: default
+type: docker
 
 # Disable default clone
 clone:
