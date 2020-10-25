@@ -10,11 +10,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
 
 @Singleton
-class DBRemove @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBRemove @Inject() (db: DBConfiguration) {
 
   lazy val logger: Logger = Logger(getClass)
 
-  def apply(entity: BaseEntity): Future[Boolean] = {
+  def apply(entity: BaseEntity)(implicit ec: ExecutionContext): Future[Boolean] = {
     logger.debug(s"Remove ${entity.model.modelName} ${entity.id}")
     db.execute {
         deleteById(db.indexName, entity.id)

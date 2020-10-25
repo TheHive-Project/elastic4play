@@ -61,7 +61,6 @@ class AttachmentSrv(
     findSrv: FindSrv,
     attachmentModel: AttachmentModel,
     implicit val system: ActorSystem,
-    implicit val ec: ExecutionContext,
     implicit val mat: Materializer
 ) {
 
@@ -74,7 +73,6 @@ class AttachmentSrv(
       findSrv: FindSrv,
       attachmentModel: AttachmentModel,
       system: ActorSystem,
-      ec: ExecutionContext,
       mat: Materializer
   ) =
     this(
@@ -88,7 +86,6 @@ class AttachmentSrv(
       findSrv,
       attachmentModel,
       system,
-      ec,
       mat
     )
 
@@ -98,7 +95,7 @@ class AttachmentSrv(
   /**
     * Handles attachments : send to datastore and build an object with hash and filename
     */
-  def apply(model: BaseModelDef)(attributes: JsObject): Future[JsObject] =
+  def apply(model: BaseModelDef)(attributes: JsObject)(implicit ec: ExecutionContext): Future[JsObject] =
     // find all declared attribute as attachment in submitted data
     model.attachmentAttributes.foldLeft(Future.successful(attributes)) {
       case (attrs, (name, isRequired)) =>
@@ -140,7 +137,7 @@ class AttachmentSrv(
         }
     }
 
-  def save(filename: String, contentType: String, data: Array[Byte]): Future[Attachment] = {
+  def save(filename: String, contentType: String, data: Array[Byte])(implicit ec: ExecutionContext): Future[Attachment] = {
     val hash   = mainHasher.fromByteArray(data).head.toString()
     val hashes = extraHashers.fromByteArray(data)
 
@@ -163,7 +160,7 @@ class AttachmentSrv(
     } yield attachment
   }
 
-  def save(fiv: FileInputValue): Future[Attachment] =
+  def save(fiv: FileInputValue)(implicit ec: ExecutionContext): Future[Attachment] =
     for {
       hash   <- mainHasher.fromPath(fiv.filepath).map(_.head.toString())
       hashes <- extraHashers.fromPath(fiv.filepath)
@@ -188,7 +185,7 @@ class AttachmentSrv(
       }
     } yield attachment
 
-  def source(id: String): Source[ByteString, NotUsed] =
+  def source(id: String)(implicit ec: ExecutionContext): Source[ByteString, NotUsed] =
     Source.unfoldAsync(0) { chunkNumber =>
       getSrv[AttachmentModel, AttachmentChunk](attachmentModel, s"${id}_$chunkNumber")
         .map { entity =>
@@ -197,18 +194,18 @@ class AttachmentSrv(
         .recover { case _ => None }
     }
 
-  def stream(id: String): InputStream = source(id).runWith(StreamConverters.asInputStream(1.minute))
+  def stream(id: String)(implicit ec: ExecutionContext): InputStream = source(id).runWith(StreamConverters.asInputStream(1.minute))
 
-  def getHashes(id: String): Future[Seq[Hash]] = extraHashers.fromSource(source(id))
+  def getHashes(id: String)(implicit ec: ExecutionContext): Future[Seq[Hash]] = extraHashers.fromSource(source(id))
 
-  def getSize(id: String): Future[Int] = source(id).map(_.size).runFold(0)(_ + _)
+  def getSize(id: String)(implicit ec: ExecutionContext): Future[Int] = source(id).map(_.size).runFold(0)(_ + _)
 
-  def attachmentUseCount(attachmentId: String): Future[Long] = {
+  def attachmentUseCount(attachmentId: String)(implicit ec: ExecutionContext): Future[Long] = {
     import org.elastic4play.services.QueryDSL._
     findSrv(None, "attachment.id" ~= attachmentId, Some("0-0"), Nil)._2
   }
 
-  def delete(id: String): Future[Unit] = {
+  def delete(id: String)(implicit ec: ExecutionContext): Future[Unit] = {
     def removeChunks(chunkNumber: Int = 0): Future[Unit] =
       getSrv[AttachmentModel, AttachmentChunk](attachmentModel, s"${id}_$chunkNumber")
         .map { chunk =>
@@ -221,7 +218,7 @@ class AttachmentSrv(
     removeChunks().recover { case _ => () }
   }
 
-  def cleanup: Future[Unit] =
+  def cleanup(implicit ec: ExecutionContext): Future[Unit] =
     dbFind(Some("all"), Nil)(index => search(index).matchQuery("relations", attachmentModel.modelName).fetchSource(false))
       ._1
       .mapConcat(o => (o \ "_id").asOpt[String].toList)

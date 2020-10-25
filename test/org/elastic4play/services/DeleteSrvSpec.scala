@@ -60,7 +60,7 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
       val getSrv    = mock[GetSrv]
       val dbRemove  = mock[DBRemove]
       val eventSrv  = mock[EventSrv]
-      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, ec)
+      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv)
 
       val id = "42"
       getSrv[TestModel, TestEntity](model, id) returns Future.successful(entity)
@@ -74,7 +74,7 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
       val getSrv    = mock[GetSrv]
       val dbRemove  = mock[DBRemove]
       val eventSrv  = mock[EventSrv]
-      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, ec)
+      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv)
 
       val id    = "42"
       val error = NotFoundError(s"${model.modelName} $id not found")
@@ -87,7 +87,7 @@ class DeleteSrvSpec extends PlaySpecification with Mockito {
       val getSrv    = mock[GetSrv]
       val dbRemove  = mock[DBRemove]
       val eventSrv  = mock[EventSrv]
-      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv, ec)
+      val deleteSrv = new DeleteSrv(updateSrv, getSrv, dbRemove, eventSrv)
 
       val id = "42"
       getSrv[TestModel, TestEntity](model, id) returns Future.successful(entity)

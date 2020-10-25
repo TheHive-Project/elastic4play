@@ -13,6 +13,7 @@ import play.api.libs.json._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
+import java.util.{Map => JMap}
 
 case class ModifyConfig(
     retryOnConflict: Int = 5,
@@ -25,7 +26,7 @@ object ModifyConfig {
 }
 
 @Singleton
-class DBModify @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBModify @Inject() (db: DBConfiguration) {
   private[DBModify] lazy val logger = Logger(getClass)
 
   /**
@@ -81,7 +82,7 @@ class DBModify @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext
     * @param modifyConfig modification parameter (retryOnConflict and refresh policy)
     * @return new version of the entity
     */
-  def apply(entity: BaseEntity, updateAttributes: JsObject, modifyConfig: ModifyConfig): Future[BaseEntity] =
+  def apply(entity: BaseEntity, updateAttributes: JsObject, modifyConfig: ModifyConfig)(implicit ec: ExecutionContext): Future[BaseEntity] =
     db.execute {
         val updateDefinition = updateById(db.indexName, entity.id)
           .routing(entity.routing)

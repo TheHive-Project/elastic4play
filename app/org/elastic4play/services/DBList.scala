@@ -53,9 +53,9 @@ trait DBList {
 
   def getItems(): (Source[DBListItem, NotUsed], Future[Long])
 
-  def getItems[A](implicit reads: Reads[A]): (Source[(String, A), NotUsed], Future[Long])
+  def getItems[A: Reads]: (Source[(String, A), NotUsed], Future[Long])
 
-  def addItem[A](item: A)(implicit writes: Writes[A]): Future[DBListItem]
+  def addItem[A: Writes](item: A): Future[DBListItem]
 
   def exists(key: String, value: JsValue): Future[Boolean]
 }
@@ -106,13 +106,13 @@ class DBLists @Inject() (
       findSrv[DBListModel, DBListItemEntity](dblistModel, "dblist" ~= name, Some("all"), Nil)
     }
 
-    def getItems[A](implicit reads: Reads[A]): (Source[(String, A), NotUsed], Future[Long]) = {
+    override def getItems[A: Reads]: (Source[(String, A), NotUsed], Future[Long]) = {
       val (src, total) = getItems()
       val items        = src.map(item => (item.id, item.mapTo[A]))
       (items, total)
     }
 
-    def addItem[A](item: A)(implicit writes: Writes[A]): Future[DBListItem] = {
+    override def addItem[A: Writes](item: A): Future[DBListItem] = {
       val value = Json.toJson(item)
       val id    = Hasher("MD5").fromString(value.toString).head.toString
       dbCreate(dblistModel.modelName, None, Json.obj("_id" -> id, "dblist" -> name, "value" -> JsString(value.toString)))

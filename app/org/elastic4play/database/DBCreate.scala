@@ -17,7 +17,7 @@ import org.elastic4play.models.BaseEntity
   * This service doesn't check any attribute conformity (according to model)
   */
 @Singleton
-class DBCreate @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBCreate @Inject() (db: DBConfiguration) {
 
   private[DBCreate] lazy val logger = Logger(getClass)
 
@@ -28,7 +28,7 @@ class DBCreate @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext
     * @param attributes JSON object containing attributes of the creating entity. Attributes can contain _id, _parent and _routing.
     * @return created entity attributes with _id and _routing (and _parent if entity is a child)
     */
-  def apply(modelName: String, attributes: JsObject): Future[JsObject] =
+  def apply(modelName: String, attributes: JsObject)(implicit ec: ExecutionContext): Future[JsObject] =
     apply(modelName, None, attributes)
 
   /**
@@ -40,7 +40,7 @@ class DBCreate @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext
     * Attributes can contain _id, _parent and _routing. Routing and parent informations are extracted from parent parameter (if present)
     * @return created entity attributes with _id and _routing (and _parent if entity is a child)
     */
-  def apply(modelName: String, parent: Option[BaseEntity], attributes: JsObject): Future[JsObject] = {
+  def apply(modelName: String, parent: Option[BaseEntity], attributes: JsObject)(implicit ec: ExecutionContext): Future[JsObject] = {
     val id = (attributes \ "_id").asOpt[String]
     val parentId = parent
       .map(_.id)
@@ -108,5 +108,5 @@ class DBCreate @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext
   /**
     * build a akka stream sink that create entities
     */
-  def sink(): Sink[JsObject, Future[Unit]] = db.sink(new AttributeRequestBuilder())
+  def sink()(implicit ec: ExecutionContext): Sink[JsObject, Future[Unit]] = db.sink(new AttributeRequestBuilder())
 }

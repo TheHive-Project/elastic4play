@@ -11,7 +11,7 @@ import play.api.libs.json.JsObject
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class AuxSrv @Inject() (findSrv: FindSrv, modelSrv: ModelSrv, implicit val ec: ExecutionContext, implicit val mat: Materializer) {
+class AuxSrv @Inject() (findSrv: FindSrv, modelSrv: ModelSrv, implicit val mat: Materializer) {
 
   import org.elastic4play.services.QueryDSL._
 
@@ -23,10 +23,12 @@ class AuxSrv @Inject() (findSrv: FindSrv, modelSrv: ModelSrv, implicit val ec: E
       case (json, _)                                       => json
     }
 
-  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] =
+  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean)(implicit ec: ExecutionContext): Future[JsObject] =
     apply(entity, nparent, withStats, opts => !removeUnaudited || !opts.contains(AttributeOption.unaudited))
 
-  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, filter: Seq[AttributeOption.Type] => Boolean): Future[JsObject] = {
+  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, filter: Seq[AttributeOption.Type] => Boolean)(
+      implicit ec: ExecutionContext
+  ): Future[JsObject] = {
     val entityWithParent = entity.model match {
       case childModel: ChildModelDef[_, _, _, _] if nparent > 0 =>
         val (src, _) = findSrv(
@@ -57,12 +59,16 @@ class AuxSrv @Inject() (findSrv: FindSrv, modelSrv: ModelSrv, implicit val ec: E
     } else entityWithParent
   }
 
-  def apply[A](entities: Source[BaseEntity, A], nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Source[JsObject, A] =
+  def apply[A](entities: Source[BaseEntity, A], nparent: Int, withStats: Boolean, removeUnaudited: Boolean)(
+      implicit ec: ExecutionContext
+  ): Source[JsObject, A] =
     entities.mapAsync(5) { entity =>
       apply(entity, nparent, withStats, removeUnaudited)
     }
 
-  def apply(modelName: String, entityId: String, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = {
+  def apply(modelName: String, entityId: String, nparent: Int, withStats: Boolean, removeUnaudited: Boolean)(
+      implicit ec: ExecutionContext
+  ): Future[JsObject] = {
     if (entityId == "")
       return Future.successful(JsObject.empty)
     modelSrv(modelName)

@@ -72,11 +72,11 @@ class MigrationSrv @Inject() (
   /* Last version of database */
   class OriginState(db: DBConfiguration) extends DatabaseState {
     private val currentdbfind     = dbfind.switchTo(db)
-    private lazy val currentdbget = new DBGet(db, ec)
+    private lazy val currentdbget = new DBGet(db)
     override def version: Int     = db.version
     override def source(tableName: String): Source[JsObject, NotUsed] =
       currentdbfind.apply(Some("all"), Nil)(indexName => search(indexName).matchQuery("relations", tableName))._1
-    override def count(tableName: String): Future[Long]                           = new DBIndex(db, 0, 0, Map.empty, ec).getSize(tableName)
+    override def count(tableName: String): Future[Long]                           = new DBIndex(db, 0, 0, Map.empty).getSize(tableName)
     override def getEntity(tableName: String, entityId: String): Future[JsObject] = currentdbget(tableName, entityId)
   }
 
@@ -89,7 +89,7 @@ class MigrationSrv @Inject() (
   }
 
   def migrationPath(db: DBConfiguration): Future[(Int, DatabaseState)] =
-    new DBIndex(db, 0, 0, Map.empty, ec).getIndexStatus.flatMap {
+    new DBIndex(db, 0, 0, Map.empty).getIndexStatus.flatMap {
       case true =>
         logger.info(s"Initiate database migration from version ${db.version}")
         Future.successful(db.version -> new OriginState(db))
@@ -187,11 +187,11 @@ object Operation {
 
   def renameEntity(previous: String, next: String): Operation =
     Operation((f: String => Source[JsObject, NotUsed]) => {
-      case `next` => f(previous).map(_ + ("_type" → JsString(next)))
+      case `next` => f(previous).map(_ + ("_type" -> JsString(next)))
       case "audit" =>
         f("audit").map { x =>
           (x \ "objectType").asOpt[String] match {
-            case Some(`previous`) => x - "objectType" + ("objectType" → JsString(next))
+            case Some(`previous`) => x - "objectType" + ("objectType" -> JsString(next))
             case _                => x
           }
         }
