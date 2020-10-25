@@ -39,7 +39,6 @@ class DBConfiguration @Inject() (
     config: Configuration,
     lifecycle: ApplicationLifecycle,
     @Named("databaseVersion") val version: Int,
-    implicit val ec: ExecutionContext,
     implicit val actorSystem: ActorSystem
 ) {
   private[DBConfiguration] lazy val logger = Logger(getClass)
@@ -123,22 +122,31 @@ class DBConfiguration @Inject() (
   /**
     * Underlying ElasticSearch client
     */
-  private[database] val client: ElasticClient = {
-    val props = ElasticProperties(config.get[String]("search.uri"))
-    ElasticClient(JavaClient(props, requestConfigCallback, httpClientConfig))
-  }
+  private[database] val props   = ElasticProperties(config.get[String]("search.uri"))
+  private[database] var clients = Map.empty[ExecutionContext, ElasticClient]
+  private[database] def getClient(ec: ExecutionContext): ElasticClient =
+    clients.get(ec) match {
+      case Some(c) => c
+      case None =>
+        synchronized {
+          val c = clients.getOrElse(ec, ElasticClient(JavaClient(props, requestConfigCallback, httpClientConfig)))
+          clients = clients + (ec -> c)
+          c
+        }
+    }
   // when application close, close also ElasticSearch connection
   lifecycle.addStopHook { () =>
-    Future {
-      client.close()
-    }
+    clients.values.foreach(_.close())
+    Future.successful(())
   }
 
   def execute[T, U](t: T)(
       implicit
       handler: Handler[T, U],
-      manifest: Manifest[U]
+      manifest: Manifest[U],
+      ec: ExecutionContext
   ): Future[U] = {
+    val client = getClient(ec)
     logger.debug(s"Elasticsearch request: ${client.show(t)}")
     client.execute(t).flatMap {
       case RequestSuccess(_, _, _, r) => Future.successful(r)
@@ -160,12 +168,13 @@ class DBConfiguration @Inject() (
   /**
     * Creates a Source (akka stream) from the result of the search
     */
-  def source(searchRequest: SearchRequest): Source[SearchHit, NotUsed] = Source.fromPublisher(client.publisher(searchRequest))
+  def source(searchRequest: SearchRequest)(implicit ec: ExecutionContext): Source[SearchHit, NotUsed] =
+    Source.fromPublisher(getClient(ec).publisher(searchRequest))
 
   /**
     * Create a Sink (akka stream) that create entity in ElasticSearch
     */
-  def sink[T](implicit builder: RequestBuilder[T]): Sink[T, Future[Unit]] = {
+  def sink[T](implicit builder: RequestBuilder[T], ec: ExecutionContext): Sink[T, Future[Unit]] = {
     val sinkListener = new ResponseListener[T] {
       override def onAck(resp: BulkResponseItem, original: T): Unit = ()
 
@@ -184,7 +193,7 @@ class DBConfiguration @Inject() (
     }
     Sink
       .fromSubscriber(
-        client.subscriber(
+        getClient(ec).subscriber(
           batchSize = 100,
           concurrentRequests = 5,
           refreshAfterOp = false,
@@ -212,5 +221,5 @@ class DBConfiguration @Inject() (
     * return a new instance of DBConfiguration that points to the previous version of the index schema
     */
   def previousVersion: DBConfiguration =
-    new DBConfiguration(config, lifecycle, version - 1, ec, actorSystem)
+    new DBConfiguration(config, lifecycle, version - 1, actorSystem)
 }

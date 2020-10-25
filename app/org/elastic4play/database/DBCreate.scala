@@ -108,5 +108,5 @@ class DBCreate @Inject() (db: DBConfiguration) {
   /**
     * build a akka stream sink that create entities
     */
-  def sink()(implicit ec: ExecutionContext): Sink[JsObject, Future[Unit]] = db.sink(new AttributeRequestBuilder())
+  def sink()(implicit ec: ExecutionContext): Sink[JsObject, Future[Unit]] = db.sink(new AttributeRequestBuilder(), ec)
 }
