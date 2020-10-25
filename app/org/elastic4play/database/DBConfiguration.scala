@@ -3,14 +3,6 @@ package org.elastic4play.database
 import java.nio.file.{Files, Paths}
 import java.security.KeyStore
 
-import scala.collection.JavaConverters._
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{ExecutionContext, Future, Promise}
-
-import play.api.inject.ApplicationLifecycle
-import play.api.libs.json.JsObject
-import play.api.{Configuration, Logger}
-
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Sink, Source}
@@ -27,9 +19,15 @@ import org.apache.http.client.CredentialsProvider
 import org.apache.http.client.config.RequestConfig
 import org.apache.http.impl.client.BasicCredentialsProvider
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
-import org.elasticsearch.client.RestClientBuilder.{HttpClientConfigCallback, RequestConfigCallback}
-
 import org.elastic4play.{ConflictError, IndexNotFoundException, InternalError, SearchError}
+import org.elasticsearch.client.RestClientBuilder.{HttpClientConfigCallback, RequestConfigCallback}
+import play.api.inject.ApplicationLifecycle
+import play.api.libs.json.JsObject
+import play.api.{Configuration, Logger}
+
+import scala.collection.JavaConverters._
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
   * This class is a wrapper of ElasticSearch client from Elastic4s
@@ -41,12 +39,11 @@ class DBConfiguration @Inject()(
     config: Configuration,
     lifecycle: ApplicationLifecycle,
     @Named("databaseVersion") val version: Int,
-    implicit val ec: ExecutionContext,
     implicit val actorSystem: ActorSystem
 ) {
   private[DBConfiguration] lazy val logger = Logger(getClass)
 
-  def requestConfigCallback: RequestConfigCallback = (requestConfigBuilder: RequestConfig.Builder) ⇒ {
+  def requestConfigCallback: RequestConfigCallback = (requestConfigBuilder: RequestConfig.Builder) => {
     requestConfigBuilder.setAuthenticationEnabled(credentialsProviderMaybe.isDefined)
     config.getOptional[Boolean]("search.circularRedirectsAllowed").foreach(requestConfigBuilder.setCircularRedirectsAllowed)
     config.getOptional[Int]("search.connectionRequestTimeout").foreach(requestConfigBuilder.setConnectionRequestTimeout)
@@ -57,18 +54,18 @@ class DBConfiguration @Inject()(
     //    config.getOptional[InetAddress]("search.localAddress").foreach(requestConfigBuilder.setLocalAddress)
     config.getOptional[Int]("search.maxRedirects").foreach(requestConfigBuilder.setMaxRedirects)
     //    config.getOptional[Boolean]("search.proxy").foreach(requestConfigBuilder.setProxy)
-    config.getOptional[Seq[String]]("search.proxyPreferredAuthSchemes").foreach(v ⇒ requestConfigBuilder.setProxyPreferredAuthSchemes(v.asJava))
+    config.getOptional[Seq[String]]("search.proxyPreferredAuthSchemes").foreach(v => requestConfigBuilder.setProxyPreferredAuthSchemes(v.asJava))
     config.getOptional[Boolean]("search.redirectsEnabled").foreach(requestConfigBuilder.setRedirectsEnabled)
     config.getOptional[Boolean]("search.relativeRedirectsAllowed").foreach(requestConfigBuilder.setRelativeRedirectsAllowed)
     config.getOptional[Int]("search.socketTimeout").foreach(requestConfigBuilder.setSocketTimeout)
-    config.getOptional[Seq[String]]("search.targetPreferredAuthSchemes").foreach(v ⇒ requestConfigBuilder.setTargetPreferredAuthSchemes(v.asJava))
+    config.getOptional[Seq[String]]("search.targetPreferredAuthSchemes").foreach(v => requestConfigBuilder.setTargetPreferredAuthSchemes(v.asJava))
     requestConfigBuilder
   }
 
   lazy val credentialsProviderMaybe: Option[CredentialsProvider] =
     for {
-      user     ← config.getOptional[String]("search.user")
-      password ← config.getOptional[String]("search.password")
+      user     <- config.getOptional[String]("search.user")
+      password <- config.getOptional[String]("search.password")
     } yield {
       val provider    = new BasicCredentialsProvider
       val credentials = new UsernamePasswordCredentials(user, password)
@@ -76,7 +73,7 @@ class DBConfiguration @Inject()(
       provider
     }
 
-  lazy val sslContextMaybe: Option[SSLContext] = config.getOptional[String]("search.keyStore.path").map { keyStore ⇒
+  lazy val sslContextMaybe: Option[SSLContext] = config.getOptional[String]("search.keyStore.path").map { keyStore =>
     val keyStorePath     = Paths.get(keyStore)
     val keyStoreType     = config.getOptional[String]("search.keyStore.type").getOrElse(KeyStore.getDefaultType)
     val keyStorePassword = config.getOptional[String]("search.keyStore.password").getOrElse("").toCharArray
@@ -93,7 +90,7 @@ class DBConfiguration @Inject()(
 
     val trustManagers = config
       .getOptional[String]("search.trustStore.path")
-      .map { trustStorePath ⇒
+      .map { trustStorePath =>
         val keyStoreType       = config.getOptional[String]("search.trustStore.type").getOrElse(KeyStore.getDefaultType)
         val trustStorePassword = config.getOptional[String]("search.trustStore.password").getOrElse("").toCharArray
         val trustInputStream   = Files.newInputStream(Paths.get(trustStorePath))
@@ -115,7 +112,7 @@ class DBConfiguration @Inject()(
     sslContext
   }
 
-  def httpClientConfig: HttpClientConfigCallback = (httpClientBuilder: HttpAsyncClientBuilder) ⇒ {
+  def httpClientConfig: HttpClientConfigCallback = (httpClientBuilder: HttpAsyncClientBuilder) => {
     sslContextMaybe.foreach(httpClientBuilder.setSSLContext)
     credentialsProviderMaybe.foreach(httpClientBuilder.setDefaultCredentialsProvider)
     httpClientBuilder
@@ -124,32 +121,44 @@ class DBConfiguration @Inject()(
   /**
     * Underlying ElasticSearch client
     */
-  private[database] val client = ElasticClient(ElasticProperties(config.get[String]("search.uri")), requestConfigCallback, httpClientConfig)
-  // when application close, close also ElasticSearch connection
-  lifecycle.addStopHook { () ⇒
-    Future {
-      client.close()
+  private[database] val props   = ElasticProperties(config.get[String]("search.uri"))
+  private[database] var clients = Map.empty[ExecutionContext, ElasticClient]
+  private[database] def getClient(ec: ExecutionContext): ElasticClient =
+    clients.get(ec) match {
+      case Some(c) => c
+      case None =>
+        synchronized {
+          val c = clients.getOrElse(ec, ElasticClient(props, requestConfigCallback, httpClientConfig))
+          clients = clients + (ec -> c)
+          c
+        }
     }
+  // when application close, close also ElasticSearch connection
+  lifecycle.addStopHook { () =>
+    clients.values.foreach(_.close())
+    Future.successful(())
   }
 
   def execute[T, U](t: T)(
       implicit
       handler: Handler[T, U],
-      manifest: Manifest[U]
+      manifest: Manifest[U],
+      ec: ExecutionContext
   ): Future[U] = {
+    val client = getClient(ec)
     logger.debug(s"Elasticsearch request: ${client.show(t)}")
     client.execute(t).flatMap {
-      case RequestSuccess(_, _, _, r) ⇒ Future.successful(r)
-      case RequestFailure(_, _, _, error) ⇒
+      case RequestSuccess(_, _, _, r) => Future.successful(r)
+      case RequestFailure(_, _, _, error) =>
         val exception = error.`type` match {
-          case "index_not_found_exception"         ⇒ IndexNotFoundException
-          case "version_conflict_engine_exception" ⇒ ConflictError(error.reason, JsObject.empty)
-          case "search_phase_execution_exception"  ⇒ SearchError(error.reason)
-          case _                                   ⇒ InternalError(s"Unknown error: $error")
+          case "index_not_found_exception"         => IndexNotFoundException
+          case "version_conflict_engine_exception" => ConflictError(error.reason, JsObject.empty)
+          case "search_phase_execution_exception"  => SearchError(error.reason)
+          case _                                   => InternalError(s"Unknown error: $error")
         }
         exception match {
-          case _: ConflictError ⇒
-          case _                ⇒ logger.error(s"ElasticSearch request failure: ${client.show(t)}\n => $error")
+          case _: ConflictError =>
+          case _                => logger.error(s"ElasticSearch request failure: ${client.show(t)}\n => $error")
         }
         Future.failed(exception)
     }
@@ -158,12 +167,13 @@ class DBConfiguration @Inject()(
   /**
     * Creates a Source (akka stream) from the result of the search
     */
-  def source(searchRequest: SearchRequest): Source[SearchHit, NotUsed] = Source.fromPublisher(client.publisher(searchRequest))
+  def source(searchRequest: SearchRequest)(implicit ec: ExecutionContext): Source[SearchHit, NotUsed] =
+    Source.fromPublisher(getClient(ec).publisher(searchRequest))
 
   /**
     * Create a Sink (akka stream) that create entity in ElasticSearch
     */
-  def sink[T](implicit builder: RequestBuilder[T]): Sink[T, Future[Unit]] = {
+  def sink[T](implicit builder: RequestBuilder[T], ec: ExecutionContext): Sink[T, Future[Unit]] = {
     val sinkListener = new ResponseListener[T] {
       override def onAck(resp: BulkResponseItem, original: T): Unit = ()
 
@@ -171,18 +181,18 @@ class DBConfiguration @Inject()(
         logger.warn(s"Document index failure ${resp.id}: ${resp.error.fold("unexpected")(_.toString)}\n$original")
     }
     val end = Promise[Unit]
-    val complete = () ⇒ {
+    val complete = () => {
       if (!end.isCompleted)
         end.success(())
       ()
     }
-    val failure = (t: Throwable) ⇒ {
+    val failure = (t: Throwable) => {
       end.failure(t)
       ()
     }
     Sink
       .fromSubscriber(
-        client.subscriber(
+        getClient(ec).subscriber(
           batchSize = 100,
           concurrentRequests = 5,
           refreshAfterOp = false,
@@ -196,7 +206,7 @@ class DBConfiguration @Inject()(
           maxAttempts = 10
         )
       )
-      .mapMaterializedValue { _ ⇒
+      .mapMaterializedValue { _ =>
         end.future
       }
   }
@@ -210,5 +220,5 @@ class DBConfiguration @Inject()(
     * return a new instance of DBConfiguration that points to the previous version of the index schema
     */
   def previousVersion: DBConfiguration =
-    new DBConfiguration(config, lifecycle, version - 1, ec, actorSystem)
+    new DBConfiguration(config, lifecycle, version - 1, actorSystem)
 }
