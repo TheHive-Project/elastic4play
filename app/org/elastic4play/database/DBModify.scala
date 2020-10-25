@@ -11,7 +11,7 @@ import com.sksamuel.elastic4s.script.Script
 
 import org.elastic4play.models.BaseEntity
 import scala.collection.JavaConverters._
-import java.util.{Map ⇒ JMap}
+import java.util.{Map => JMap}
 
 import com.sksamuel.elastic4s.RefreshPolicy
 import com.sksamuel.elastic4s.json.JacksonSupport
@@ -23,7 +23,7 @@ object ModifyConfig {
 }
 
 @Singleton
-class DBModify @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBModify @Inject()(db: DBConfiguration) {
   private[DBModify] lazy val logger = Logger(getClass)
 
   /**
@@ -32,12 +32,12 @@ class DBModify @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
   private[database] def jsonToAny(json: JsValue): Any = {
     import scala.collection.JavaConverters._
     json match {
-      case v: JsObject  ⇒ v.fields.toMap.mapValues(jsonToAny).asJava
-      case v: JsArray   ⇒ v.value.map(jsonToAny).toArray
-      case v: JsNumber  ⇒ v.value.toLong
-      case v: JsString  ⇒ v.value
-      case v: JsBoolean ⇒ v.value
-      case JsNull       ⇒ null
+      case v: JsObject  => v.fields.toMap.mapValues(jsonToAny).asJava
+      case v: JsArray   => v.value.map(jsonToAny).toArray
+      case v: JsNumber  => v.value.toLong
+      case v: JsString  => v.value
+      case v: JsBoolean => v.value
+      case JsNull       => null
     }
   }
 
@@ -54,17 +54,17 @@ class DBModify @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
   private[database] def buildScript(entity: BaseEntity, updateAttributes: JsObject): Script = {
     val attrs = updateAttributes.fields.zipWithIndex
     val updateScript = attrs.map {
-      case ((name, JsArray(Seq())), _) ⇒
+      case ((name, JsArray(Seq())), _) =>
         val names = name.split("\\.")
-        names.init.map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s""".remove("${names.last}")""")
-      case ((name, JsNull), _) ⇒
-        name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=null")
-      case ((name, _), index) ⇒
-        name.split("\\.").map(n ⇒ s"""["$n"]""").mkString("ctx._source", "", s"=params.param$index")
+        names.init.map(n => s"""["$n"]""").mkString("ctx._source", "", s""".remove("${names.last}")""")
+      case ((name, JsNull), _) =>
+        name.split("\\.").map(n => s"""["$n"]""").mkString("ctx._source", "", s"=null")
+      case ((name, _), index) =>
+        name.split("\\.").map(n => s"""["$n"]""").mkString("ctx._source", "", s"=params.param$index")
     } mkString ";"
 
     val parameters = jsonToAny(JsObject(attrs.collect {
-      case ((_, value), index) if value != JsArray(Nil) && value != JsNull ⇒ s"param$index" → value
+      case ((_, value), index) if value != JsArray(Nil) && value != JsNull => s"param$index" -> value
     })).asInstanceOf[JMap[String, Any]].asScala.toMap
 
     script(updateScript).params(parameters)
@@ -79,7 +79,7 @@ class DBModify @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
     * @param modifyConfig modification parameter (retryOnConflict and refresh policy)
     * @return new version of the entity
     */
-  def apply(entity: BaseEntity, updateAttributes: JsObject, modifyConfig: ModifyConfig): Future[BaseEntity] =
+  def apply(entity: BaseEntity, updateAttributes: JsObject, modifyConfig: ModifyConfig)(implicit ec: ExecutionContext): Future[BaseEntity] =
     db.execute {
         val updateDefinition = update(entity.id)
           .in(db.indexName / "doc")
@@ -90,14 +90,14 @@ class DBModify @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
           .refresh(modifyConfig.refreshPolicy)
         modifyConfig.version.fold(updateDefinition)(updateDefinition.version(_))
       }
-      .map { updateResponse ⇒
+      .map { updateResponse =>
         entity.model(
           Json.parse(JacksonSupport.mapper.writeValueAsString(updateResponse.source)).as[JsObject] +
-            ("_type"    → JsString(entity.model.modelName)) +
-            ("_id"      → JsString(entity.id)) +
-            ("_routing" → JsString(entity.routing)) +
-            ("_parent"  → entity.parentId.fold[JsValue](JsNull)(JsString)) +
-            ("_version" → JsNumber(updateResponse.version))
+            ("_type"    -> JsString(entity.model.modelName)) +
+            ("_id"      -> JsString(entity.id)) +
+            ("_routing" -> JsString(entity.routing)) +
+            ("_parent"  -> entity.parentId.fold[JsValue](JsNull)(JsString)) +
+            ("_version" -> JsNumber(updateResponse.version))
         )
       }
 }

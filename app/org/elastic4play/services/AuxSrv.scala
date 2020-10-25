@@ -14,24 +14,26 @@ import org.elastic4play.database.DBConfiguration
 import org.elastic4play.models.{AttributeOption, BaseEntity, ChildModelDef}
 
 @Singleton
-class AuxSrv @Inject()(db: DBConfiguration, findSrv: FindSrv, modelSrv: ModelSrv, implicit val ec: ExecutionContext, implicit val mat: Materializer) {
+class AuxSrv @Inject()(db: DBConfiguration, findSrv: FindSrv, modelSrv: ModelSrv, implicit val mat: Materializer) {
 
   import org.elastic4play.services.QueryDSL._
 
   private[AuxSrv] lazy val logger = Logger(getClass)
 
-  def filterAttributes(entity: BaseEntity, filter: Seq[AttributeOption.Type] ⇒ Boolean): JsObject =
+  def filterAttributes(entity: BaseEntity, filter: Seq[AttributeOption.Type] => Boolean): JsObject =
     entity.model.attributes.foldLeft(entity.toJson) {
-      case (json, attribute) if !filter(attribute.options) ⇒ json - attribute.attributeName
-      case (json, _)                                       ⇒ json
+      case (json, attribute) if !filter(attribute.options) => json - attribute.attributeName
+      case (json, _)                                       => json
     }
 
-  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] =
-    apply(entity, nparent, withStats, opts ⇒ !removeUnaudited || !opts.contains(AttributeOption.unaudited))
+  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, removeUnaudited: Boolean)(implicit ec: ExecutionContext): Future[JsObject] =
+    apply(entity, nparent, withStats, opts => !removeUnaudited || !opts.contains(AttributeOption.unaudited))
 
-  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, filter: Seq[AttributeOption.Type] ⇒ Boolean): Future[JsObject] = {
+  def apply(entity: BaseEntity, nparent: Int, withStats: Boolean, filter: Seq[AttributeOption.Type] => Boolean)(
+      implicit ec: ExecutionContext
+  ): Future[JsObject] = {
     val entityWithParent = entity.model match {
-      case childModel: ChildModelDef[_, _, _, _] if nparent > 0 ⇒
+      case childModel: ChildModelDef[_, _, _, _] if nparent > 0 =>
         val (src, _) = findSrv(
           childModel.parentModel,
           "_id" ~= entity.parentId.getOrElse(throw InternalError(s"Child entity $entity has no parent ID")),
@@ -39,10 +41,10 @@ class AuxSrv @Inject()(db: DBConfiguration, findSrv: FindSrv, modelSrv: ModelSrv
           Nil
         )
         src
-          .mapAsync(1) { parent ⇒
-            apply(parent, nparent - 1, withStats, filter).map { parent ⇒
+          .mapAsync(1) { parent =>
+            apply(parent, nparent - 1, withStats, filter).map { parent =>
               val entityObj = filterAttributes(entity, filter)
-              entityObj + (childModel.parentModel.modelName → parent)
+              entityObj + (childModel.parentModel.modelName -> parent)
             }
           }
           .runWith(Sink.headOption)
@@ -50,29 +52,33 @@ class AuxSrv @Inject()(db: DBConfiguration, findSrv: FindSrv, modelSrv: ModelSrv
             logger.warn(s"Child entity (${childModel.modelName} ${entity.id}) has no parent !")
             JsObject.empty
           })
-      case _ ⇒ Future.successful(filterAttributes(entity, filter))
+      case _ => Future.successful(filterAttributes(entity, filter))
     }
     if (withStats) {
       for {
-        e ← entityWithParent
-        s ← entity.model.getStats(entity)
-      } yield e + ("stats" → s)
+        e <- entityWithParent
+        s <- entity.model.getStats(entity)
+      } yield e + ("stats" -> s)
     } else entityWithParent
   }
 
-  def apply[A](entities: Source[BaseEntity, A], nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Source[JsObject, A] =
-    entities.mapAsync(5) { entity ⇒
+  def apply[A](entities: Source[BaseEntity, A], nparent: Int, withStats: Boolean, removeUnaudited: Boolean)(
+      implicit ec: ExecutionContext
+  ): Source[JsObject, A] =
+    entities.mapAsync(5) { entity =>
       apply(entity, nparent, withStats, removeUnaudited)
     }
 
-  def apply(modelName: String, entityId: String, nparent: Int, withStats: Boolean, removeUnaudited: Boolean): Future[JsObject] = {
+  def apply(modelName: String, entityId: String, nparent: Int, withStats: Boolean, removeUnaudited: Boolean)(
+      implicit ec: ExecutionContext
+  ): Future[JsObject] = {
     if (entityId == "")
       return Future.successful(JsObject.empty)
     modelSrv(modelName)
-      .map { model ⇒
+      .map { model =>
         val (src, _) = findSrv(model, "_id" ~= entityId, Some("0-1"), Nil)
         src
-          .mapAsync(1) { entity ⇒
+          .mapAsync(1) { entity =>
             apply(entity, nparent, withStats, removeUnaudited)
           }
           .runWith(Sink.headOption)

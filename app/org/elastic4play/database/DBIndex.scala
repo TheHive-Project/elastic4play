@@ -13,22 +13,21 @@ import org.elastic4play.models.{ChildModelDef, ModelAttributes}
 import org.elastic4play.utils.Collection
 
 @Singleton
-class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map[String, Any], implicit val ec: ExecutionContext) {
+class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map[String, Any]) {
 
-  @Inject def this(configuration: Configuration, db: DBConfiguration, ec: ExecutionContext) =
+  @Inject def this(configuration: Configuration, db: DBConfiguration) =
     this(
       db,
       configuration.getOptional[Int]("search.nbshards").getOrElse(5),
       configuration.getOptional[Int]("search.nbreplicas").getOrElse(1),
       configuration
         .getOptional[Configuration]("search.settings")
-        .fold(Map.empty[String, Any]) { settings ⇒
+        .fold(Map.empty[String, Any]) { settings =>
           settings
             .entrySet
             .toMap
             .mapValues(_.unwrapped)
-        },
-      ec
+        }
     )
 
   private[DBIndex] lazy val logger = Logger(getClass)
@@ -39,21 +38,21 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
     * @param models list of all ModelAttributes to used in order to build index mapping
     * @return a future which is completed when index creation is finished
     */
-  def createIndex(models: Iterable[ModelAttributes]): Future[Unit] = {
+  def createIndex(models: Iterable[ModelAttributes])(implicit ec: ExecutionContext): Future[Unit] = {
     val mappingTemplates = Collection.distinctBy(models.flatMap(_.attributes).flatMap(_.elasticTemplate()))(_.name)
     val fields           = models.flatMap(_.attributes.filterNot(_.attributeName == "_id").map(_.elasticMapping)).toSeq
     val relationsField = models
       .map {
-        case child: ChildModelDef[_, _, _, _] ⇒ child.parentModel.modelName → Seq(child.modelName)
-        case model                            ⇒ model.modelName             → Nil
+        case child: ChildModelDef[_, _, _, _] => child.parentModel.modelName -> Seq(child.modelName)
+        case model                            => model.modelName             -> Nil
       }
       .groupBy(_._1)
       .foldLeft(joinField("relations")) {
-        case (join, (parent, child)) ⇒ join.relation(parent, child.flatMap(_._2).toSeq)
+        case (join, (parent, child)) => join.relation(parent, child.flatMap(_._2).toSeq)
       }
 
     for {
-      majorVersion ← nodeMajorVersion
+      majorVersion <- nodeMajorVersion
       modelMapping = mapping("doc")
         .fields(fields :+ relationsField)
         .dateDetection(false)
@@ -64,12 +63,12 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
         .shards(nbShards)
         .replicas(nbReplicas)
       createIndexRequestWithSettings = majorVersion match {
-        case 5 ⇒ createIndexRequest.indexSetting("mapping.single_type", true)
-        case _ ⇒ createIndexRequest
+        case 5 => createIndexRequest.indexSetting("mapping.single_type", true)
+        case _ => createIndexRequest
       }
-      _ ← db.execute {
+      _ <- db.execute {
         settings.foldLeft(createIndexRequestWithSettings) {
-          case (cid, (key, value)) ⇒ cid.indexSetting(key, value)
+          case (cid, (key, value)) => cid.indexSetting(key, value)
         }
       }
     } yield ()
@@ -80,7 +79,7 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
     *
     * @return future of true if the index exists
     */
-  def getIndexStatus: Future[Boolean] =
+  def getIndexStatus(implicit ec: ExecutionContext): Future[Boolean] =
     db.execute {
         indexExists(db.indexName)
       }
@@ -93,7 +92,7 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
     *
     * @return true if the index exists
     */
-  def indexStatus: Boolean = blocking {
+  def indexStatus(implicit ec: ExecutionContext): Boolean = blocking {
     getIndexStatus.await
   }
 
@@ -103,14 +102,14 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
     * @param modelName name of the document type from which the count must be done
     * @return document count
     */
-  def getSize(modelName: String): Future[Long] =
+  def getSize(modelName: String)(implicit ec: ExecutionContext): Future[Long] =
     db.execute {
         search(db.indexName).matchQuery("relations", modelName).size(0)
       }
       .map {
         _.totalHits
       }
-      .recover { case _ ⇒ 0L }
+      .recover { case _ => 0L }
 
   /**
     * Get cluster status:
@@ -120,30 +119,30 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
     *
     * @return cluster status
     */
-  def getClusterStatus: Future[Int] =
+  def getClusterStatus(implicit ec: ExecutionContext): Future[Int] =
     db.execute {
         clusterHealth(db.indexName)
       }
       .map {
         _.status match {
-          case "green"  ⇒ 0
-          case "yellow" ⇒ 1
-          case "red"    ⇒ 2
-          case status ⇒
+          case "green"  => 0
+          case "yellow" => 1
+          case "red"    => 2
+          case status =>
             logger.error(s"unknown cluster status: $status")
             2
         }
       }
-      .recover { case _ ⇒ 2 }
+      .recover { case _ => 2 }
 
-  def nodeVersions: Future[Seq[String]] =
+  def nodeVersions(implicit ec: ExecutionContext): Future[Seq[String]] =
     db.execute {
         nodeInfo()
       }
       .map(_.nodes.values.map(_.version).toSeq.distinct)
 
-  def nodeMajorVersion: Future[Int] =
-    nodeVersions.flatMap { v ⇒
+  def nodeMajorVersion(implicit ec: ExecutionContext): Future[Int] =
+    nodeVersions.flatMap { v =>
       val majorVersions = v.map(_.takeWhile(_ != '.')).distinct.map(_.toInt)
       if (majorVersions.size == 1)
         Future.successful(majorVersions.head)
@@ -151,18 +150,18 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
         Future.failed(InternalError(s"The ElasticSearch cluster contains node with different major versions ($v)"))
     }
 
-  def clusterStatus: Int = blocking {
+  def clusterStatus(implicit ec: ExecutionContext): Int = blocking {
     getClusterStatus.await
   }
 
-  def getClusterStatusName: Future[String] = getClusterStatus.map {
-    case 0 ⇒ "OK"
-    case 1 ⇒ "WARNING"
-    case 2 ⇒ "ERROR"
-    case _ ⇒ "UNKNOWN"
+  def getClusterStatusName(implicit ec: ExecutionContext): Future[String] = getClusterStatus.map {
+    case 0 => "OK"
+    case 1 => "WARNING"
+    case 2 => "ERROR"
+    case _ => "UNKNOWN"
   }
 
-  def clusterStatusName: String = blocking {
+  def clusterStatusName(implicit ec: ExecutionContext): String = blocking {
     getClusterStatusName.await
   }
 }

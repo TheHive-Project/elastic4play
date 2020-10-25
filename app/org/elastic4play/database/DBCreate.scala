@@ -20,7 +20,7 @@ import org.elastic4play.models.BaseEntity
   * This service doesn't check any attribute conformity (according to model)
   */
 @Singleton
-class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBCreate @Inject()(db: DBConfiguration) {
 
   private[DBCreate] lazy val logger = Logger(getClass)
 
@@ -31,7 +31,7 @@ class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
     * @param attributes JSON object containing attributes of the creating entity. Attributes can contain _id, _parent and _routing.
     * @return created entity attributes with _id and _routing (and _parent if entity is a child)
     */
-  def apply(modelName: String, attributes: JsObject): Future[JsObject] =
+  def apply(modelName: String, attributes: JsObject)(implicit ec: ExecutionContext): Future[JsObject] =
     apply(modelName, None, attributes)
 
   /**
@@ -43,7 +43,7 @@ class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
     * Attributes can contain _id, _parent and _routing. Routing and parent informations are extracted from parent parameter (if present)
     * @return created entity attributes with _id and _routing (and _parent if entity is a child)
     */
-  def apply(modelName: String, parent: Option[BaseEntity], attributes: JsObject): Future[JsObject] = {
+  def apply(modelName: String, parent: Option[BaseEntity], attributes: JsObject)(implicit ec: ExecutionContext): Future[JsObject] = {
     val id = (attributes \ "_id").asOpt[String]
     val parentId = parent
       .map(_.id)
@@ -62,35 +62,35 @@ class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
         }
       }
       .map(
-        indexResponse ⇒
+        indexResponse =>
           attributes +
-            ("_type"    → JsString(modelName)) +
-            ("_id"      → JsString(indexResponse.id)) +
-            ("_parent"  → parentId.fold[JsValue](JsNull)(JsString)) +
-            ("_routing" → JsString(routing.getOrElse(indexResponse.id))) +
-            ("_version" → JsNumber(indexResponse.version))
+            ("_type"    -> JsString(modelName)) +
+            ("_id"      -> JsString(indexResponse.id)) +
+            ("_parent"  -> parentId.fold[JsValue](JsNull)(JsString)) +
+            ("_routing" -> JsString(routing.getOrElse(indexResponse.id))) +
+            ("_version" -> JsNumber(indexResponse.version))
       )
   }
 
   /**
     * add id information in index definition
     */
-  private def addId(id: Option[String]): IndexRequest ⇒ IndexRequest = id match {
-    case Some(i) ⇒ _ id i createOnly true
-    case None    ⇒ identity
+  private def addId(id: Option[String]): IndexRequest => IndexRequest = id match {
+    case Some(i) => _ id i createOnly true
+    case None    => identity
   }
 
   /**
     * add routing information in index definition
     */
-  private def addRouting(routing: Option[String]): IndexRequest ⇒ IndexRequest = routing match {
-    case Some(r) ⇒ _ routing r
-    case None    ⇒ identity
+  private def addRouting(routing: Option[String]): IndexRequest => IndexRequest = routing match {
+    case Some(r) => _ routing r
+    case None    => identity
   }
 
   private def addParent(modelName: String, parent: Option[BaseEntity], entity: JsObject): JsObject = parent match {
-    case Some(p) ⇒ entity + ("relations" → Json.obj("name" → modelName, "parent" → p.id))
-    case None    ⇒ entity + ("relations" → JsString(modelName))
+    case Some(p) => entity + ("relations" -> Json.obj("name" -> modelName, "parent" -> p.id))
+    case None    => entity + ("relations" -> JsString(modelName))
   }
 
   /**
@@ -111,5 +111,5 @@ class DBCreate @Inject()(db: DBConfiguration, implicit val ec: ExecutionContext)
   /**
     * build a akka stream sink that create entities
     */
-  def sink(): Sink[JsObject, Future[Unit]] = db.sink(new AttributeRequestBuilder())
+  def sink()(implicit ec: ExecutionContext): Sink[JsObject, Future[Unit]] = db.sink(new AttributeRequestBuilder(), ec)
 }

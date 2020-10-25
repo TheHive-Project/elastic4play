@@ -4,14 +4,16 @@ import akka.NotUsed
 import akka.stream.scaladsl.Source
 import akka.stream.stage.{AsyncCallback, GraphStage, GraphStageLogic, OutHandler}
 import akka.stream.{Attributes, Materializer, Outlet, SourceShape}
+import com.sksamuel.elastic4s.Show
 import com.sksamuel.elastic4s.http.ElasticDsl._
+import com.sksamuel.elastic4s.http.ElasticRequest
 import com.sksamuel.elastic4s.http.search.{SearchHit, SearchResponse}
 import com.sksamuel.elastic4s.searches.SearchRequest
 import javax.inject.{Inject, Singleton}
-
 import org.elastic4play.{IndexNotFoundException, SearchError}
 import play.api.libs.json._
 import play.api.{Configuration, Logger}
+
 import scala.collection.mutable
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
@@ -21,10 +23,10 @@ import scala.util.{Failure, Success, Try}
   * Service class responsible for entity search
   */
 @Singleton
-class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, implicit val ec: ExecutionContext, implicit val mat: Materializer) {
+class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, implicit val mat: Materializer) {
 
-  @Inject def this(configuration: Configuration, db: DBConfiguration, ec: ExecutionContext, mat: Materializer) =
-    this(configuration.get[Int]("search.pagesize"), configuration.getMillis("search.keepalive").millis, db, ec, mat)
+  @Inject def this(configuration: Configuration, db: DBConfiguration, mat: Materializer) =
+    this(configuration.get[Int]("search.pagesize"), configuration.getMillis("search.keepalive").millis, db, mat)
 
   val keepAliveStr                = keepAlive.toMillis + "ms"
   private[DBFind] lazy val logger = Logger(getClass)
@@ -32,7 +34,7 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
   /**
     * return a new instance of DBFind but using another DBConfiguration
     */
-  def switchTo(otherDB: DBConfiguration) = new DBFind(pageSize, keepAlive, otherDB, ec, mat)
+  def switchTo(otherDB: DBConfiguration) = new DBFind(pageSize, keepAlive, otherDB, mat)
 
   /**
     * Extract offset and limit from optional range
@@ -41,9 +43,9 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
     */
   private[database] def getOffsetAndLimitFromRange(range: Option[String]): (Int, Int) =
     range match {
-      case None        ⇒ (0, 10)
-      case Some("all") ⇒ (0, Int.MaxValue)
-      case Some(r) ⇒
+      case None        => (0, 10)
+      case Some("all") => (0, Int.MaxValue)
+      case Some(r) =>
         val Array(_offset, _end, _*) = (r + "-0").split("-", 3)
         val offset                   = Try(Math.max(0, _offset.toInt)).getOrElse(0)
         val end                      = Try(_end.toInt).getOrElse(offset + 10)
@@ -56,7 +58,9 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
   /**
     * Execute the search definition using scroll
     */
-  private[database] def searchWithScroll(searchRequest: SearchRequest, offset: Int, limit: Int): (Source[SearchHit, NotUsed], Future[Long]) = {
+  private[database] def searchWithScroll(searchRequest: SearchRequest, offset: Int, limit: Int)(
+      implicit ec: ExecutionContext
+  ): (Source[SearchHit, NotUsed], Future[Long]) = {
     val searchWithScroll = new SearchWithScroll(db, searchRequest, keepAliveStr, offset, limit)
     (Source.fromGraph(searchWithScroll), searchWithScroll.totalHits)
   }
@@ -64,16 +68,21 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
   /**
     * Execute the search definition
     */
-  private[database] def searchWithoutScroll(searchRequest: SearchRequest, offset: Int, limit: Int): (Source[SearchHit, NotUsed], Future[Long]) = {
+  private[database] def searchWithoutScroll(searchRequest: SearchRequest, offset: Int, limit: Int)(
+      implicit ec: ExecutionContext
+  ): (Source[SearchHit, NotUsed], Future[Long]) = {
     val resp  = db.execute(searchRequest.start(offset).limit(limit))
     val total = resp.map(_.totalHits)
     val src = Source
       .fromFuture(resp)
-      .mapConcat { resp ⇒
+      .mapConcat { resp =>
         resp.hits.hits.toList
       }
     (src, total)
   }
+
+  def showQuery(request: SearchRequest): String =
+    Show[ElasticRequest].show(SearchHandler.build(request))
 
   /**
     * Search entities in ElasticSearch
@@ -84,13 +93,15 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
     * @param query  a function that build a SearchRequest using the index name
     * @return Source (akka stream) of JsObject. The source is materialized as future of long that contains the total number of entities.
     */
-  def apply(range: Option[String], sortBy: Seq[String])(query: String ⇒ SearchRequest): (Source[JsObject, NotUsed], Future[Long]) = {
+  def apply(range: Option[String], sortBy: Seq[String])(
+      query: String => SearchRequest
+  )(implicit ec: ExecutionContext): (Source[JsObject, NotUsed], Future[Long]) = {
     val (offset, limit) = getOffsetAndLimitFromRange(range)
     val sortDef         = DBUtils.sortDefinition(sortBy)
     val searchRequest   = query(db.indexName).start(offset).sortBy(sortDef).version(true)
 
     logger.debug(
-      s"search in ${searchRequest.indexesTypes.indexes.mkString(",")} / ${searchRequest.indexesTypes.types.mkString(",")} ${db.client.show(searchRequest)}"
+      s"search in ${searchRequest.indexesTypes.indexes.mkString(",")} / ${searchRequest.indexesTypes.types.mkString(",")} ${showQuery(searchRequest)}"
     )
     val (src, total) = if (limit > 2 * pageSize) {
       searchWithScroll(searchRequest, offset, limit)
@@ -105,16 +116,16 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
     * Execute the search definition
     * This function is used to run aggregations
     */
-  def apply(query: String ⇒ SearchRequest): Future[SearchResponse] = {
+  def apply(query: String => SearchRequest)(implicit ec: ExecutionContext): Future[SearchResponse] = {
     val searchRequest = query(db.indexName)
     logger.debug(
-      s"search in ${searchRequest.indexesTypes.indexes.mkString(",")} / ${searchRequest.indexesTypes.types.mkString(",")} ${db.client.show(searchRequest)}"
+      s"search in ${searchRequest.indexesTypes.indexes.mkString(",")} / ${searchRequest.indexesTypes.types.mkString(",")} ${showQuery(searchRequest)}"
     )
 
     db.execute(searchRequest)
       .recoverWith {
-        case t if t == IndexNotFoundException ⇒ Future.failed(t)
-        case t                                ⇒ Future.failed(SearchError("Invalid search query"))
+        case t if t == IndexNotFoundException => Future.failed(t)
+        case t                                => Future.failed(SearchError("Invalid search query"))
       }
   }
 }
@@ -150,7 +161,7 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
         }
 
         val firstCallback: AsyncCallback[Try[SearchResponse]] = getAsyncCallback[Try[SearchResponse]] {
-          case Success(searchResponse) if skip > 0 ⇒
+          case Success(searchResponse) if skip > 0 =>
             if (searchResponse.hits.size <= skip)
               skip -= searchResponse.hits.size
             else {
@@ -159,7 +170,7 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
             }
             firstResultProcessed = true
             onPull()
-          case Success(searchResponse) ⇒
+          case Success(searchResponse) =>
             queue ++= searchResponse.hits.hits
             firstResultProcessed = true
             onPull()
@@ -174,12 +185,12 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
 
             if (queue.isEmpty) {
               val callback = getAsyncCallback[Try[SearchResponse]] {
-                case Success(searchResponse) if searchResponse.isTimedOut ⇒
+                case Success(searchResponse) if searchResponse.isTimedOut =>
                   logger.warn("Search timeout")
                   failStage(SearchError("Request terminated early or timed out"))
-                case Success(searchResponse) if searchResponse.isEmpty ⇒
+                case Success(searchResponse) if searchResponse.isEmpty =>
                   completeStage()
-                case Success(searchResponse) if skip > 0 ⇒
+                case Success(searchResponse) if skip > 0 =>
                   if (searchResponse.hits.size <= skip) {
                     skip -= searchResponse.hits.size
                     onPull()
@@ -188,14 +199,14 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
                     skip = 0
                     pushNextHit()
                   }
-                case Success(searchResponse) ⇒
+                case Success(searchResponse) =>
                   queue ++= searchResponse.hits.hits
                   pushNextHit()
-                case Failure(error) ⇒
+                case Failure(error) =>
                   logger.warn("Search error", error)
                   failStage(SearchError("Request terminated early or timed out"))
               }
-              val futureSearchResponse = scrollId.flatMap(s ⇒ db.execute(searchScroll(s).keepAlive(keepAliveStr)))
+              val futureSearchResponse = scrollId.flatMap(s => db.execute(searchScroll(s).keepAlive(keepAliveStr)))
               scrollId = futureSearchResponse.map(_.scrollId.get)
               futureSearchResponse.onComplete(callback.invoke)
             } else {
@@ -205,7 +216,7 @@ class SearchWithScroll(db: DBConfiguration, SearchRequest: SearchRequest, keepAl
       }
     )
     override def postStop(): Unit =
-      scrollId.foreach { s ⇒
+      scrollId.foreach { s =>
         db.execute(clearScroll(s))
       }
   }
