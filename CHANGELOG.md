@@ -1,5 +1,17 @@
 # Change Log
 
+## [1.12.2](https://github.com/TheHive-Project/elastic4play/milestone/38) (2020-10-26)
+
+**Fixed bugs:**
+
+- Use ES7 optimistic concurrency control [\#96](https://github.com/TheHive-Project/elastic4play/issues/96)
+
+## [1.11.6](https://github.com/TheHive-Project/elastic4play/milestone/39) (2020-10-26)
+
+**Closed issues:**
+
+- Use different queues for ES requests [\#97](https://github.com/TheHive-Project/elastic4play/issues/97)
+
 ## [1.12.1](https://github.com/TheHive-Project/elastic4play/milestone/37) (2020-08-12)
 
 **Closed issues:**
