@@ -6,7 +6,7 @@ organizationName := "TheHive-Project"
 
 organizationHomepage := Some(url("https://thehive-project.org/"))
 
-licenses += "AGPL-V3" → url("https://www.gnu.org/licenses/agpl-3.0.html")
+licenses += "AGPL-V3" -> url("https://www.gnu.org/licenses/agpl-3.0.html")
 
 lazy val elastic4play = (project in file("."))
   .enablePlugins(PlayScala, PlayAkkaHttp2Support)
@@ -49,3 +49,6 @@ scalacOptions in ThisBuild ++= Seq(
   "-Ywarn-inaccessible",
   "-Ywarn-dead-code"
 )
+
+import org.thp.ghcl._
+milestoneFilter := ((milestone: Milestone) => milestone.title.matches("1\\.(?:.\\..*|1[01].*|.)")) // < 1.12

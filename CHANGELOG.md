@@ -1,20 +1,10 @@
 # Change Log
 
-## [1.12.1](https://github.com/TheHive-Project/elastic4play/milestone/37) (2020-08-12)
+## [1.11.6](https://github.com/TheHive-Project/elastic4play/milestone/39) (2020-10-26)
 
 **Closed issues:**
 
-- Make sso authenticate method return an HTTP response [\#95](https://github.com/TheHive-Project/elastic4play/issues/95)
-
-## [1.12.0](https://github.com/TheHive-Project/elastic4play/milestone/36) (2020-08-11)
-
-**Implemented enhancements:**
-
-- Add support of ES7 [\#94](https://github.com/TheHive-Project/elastic4play/issues/94)
-
-**Fixed bugs:**
-
-- The size calculation of an empty attachment fails [\#93](https://github.com/TheHive-Project/elastic4play/issues/93)
+- Use different queues for ES requests [\#97](https://github.com/TheHive-Project/elastic4play/issues/97)
 
 ## [1.11.5](https://github.com/TheHive-Project/elastic4play/milestone/35) (2019-09-05)
 
