@@ -12,9 +12,9 @@ class SequenceModel extends ModelAttributes("sequence") {
 }
 
 @Singleton
-class DBSequence @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBSequence @Inject() (db: DBConfiguration) {
 
-  def apply(seqId: String): Future[Int] =
+  def apply(seqId: String)(implicit ec: ExecutionContext): Future[Int] =
     db.execute {
       updateById(db.indexName, s"sequence_$seqId")
         .upsert("sequenceCounter" -> 1, "relations" -> "sequence")

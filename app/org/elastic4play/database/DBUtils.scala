@@ -25,7 +25,7 @@ object DBUtils {
 
   /**
     * Transform search hit into JsObject
-    * This function parses hit source add _type, _routing, _parent, _id and _version attributes
+    * This function parses hit source add _type, _routing, _parent, _id, _seqNo and _primaryTerm  attributes
     */
   def hit2json(hit: SearchHit): JsObject = {
     val id   = JsString(hit.id)
@@ -35,10 +35,11 @@ object DBUtils {
       case None    => JsNull -> (body \ "relations").as[JsString]
     }
     body - "relations" +
-      ("_type"    -> model) +
-      ("_routing" -> hit.routing.fold(id)(JsString.apply)) +
-      ("_parent"  -> parent) +
-      ("_id"      -> id) +
-      ("_version" -> JsNumber(hit.version))
+      ("_type"        -> model) +
+      ("_routing"     -> hit.routing.fold(id)(JsString.apply)) +
+      ("_parent"      -> parent) +
+      ("_id"          -> id) +
+      ("_seqNo"       -> JsNumber(hit.seqNo)) +
+      ("_primaryTerm" -> JsNumber(hit.primaryTerm))
   }
 }

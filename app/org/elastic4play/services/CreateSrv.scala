@@ -26,8 +26,7 @@ class CreateSrv @Inject() (
     fieldsSrv: FieldsSrv,
     dbCreate: DBCreate,
     eventSrv: EventSrv,
-    attachmentSrv: AttachmentSrv,
-    implicit val ec: ExecutionContext
+    attachmentSrv: AttachmentSrv
 ) {
 
   /**
@@ -48,7 +47,8 @@ class CreateSrv @Inject() (
       .fold(attrs => Future.successful(JsObject(attrs.toSeq)), errors => Future.failed(AttributeCheckingError(model.modelName, errors)))
 
   private[services] def processAttributes(model: BaseModelDef, parent: Option[BaseEntity], attributes: JsObject)(
-      implicit authContext: AuthContext
+      implicit authContext: AuthContext,
+      ec: ExecutionContext
   ): Future[JsObject] =
     for {
       attributesAfterHook      <- model.creationHook(parent, addMetaFields(attributes))
@@ -62,14 +62,17 @@ class CreateSrv @Inject() (
 
   private[services] def removeMetaFields(attrs: JsObject): JsObject = attrs - "createdBy" - "createdAt"
 
-  def apply[M <: ModelDef[M, E], E <: EntityDef[M, E]](model: M, fields: Fields)(implicit authContext: AuthContext): Future[E] =
+  def apply[M <: ModelDef[M, E], E <: EntityDef[M, E]](model: M, fields: Fields)(implicit authContext: AuthContext, ec: ExecutionContext): Future[E] =
     for {
       entityAttr <- create(model, None, fields) //dbCreate(model.name, None, attributesWithAttachment)
       entity = model(entityAttr)
       _      = eventSrv.publish(AuditOperation(entity, AuditableAction.Creation, removeMetaFields(entityAttr), authContext))
     } yield entity
 
-  def apply[M <: ModelDef[M, E], E <: EntityDef[M, E]](model: M, fieldSet: Seq[Fields])(implicit authContext: AuthContext): Future[Seq[Try[E]]] =
+  def apply[M <: ModelDef[M, E], E <: EntityDef[M, E]](
+      model: M,
+      fieldSet: Seq[Fields]
+  )(implicit authContext: AuthContext, ec: ExecutionContext): Future[Seq[Try[E]]] =
     Future.sequence(fieldSet.map { fields =>
       create(model, None, fields).map { attr =>
         val entity = model(attr)
@@ -79,7 +82,8 @@ class CreateSrv @Inject() (
     })
 
   def apply[M <: ChildModelDef[M, E, _, PE], E <: EntityDef[M, E], PE <: BaseEntity](model: M, parent: PE, fields: Fields)(
-      implicit authContext: AuthContext
+      implicit authContext: AuthContext,
+      ec: ExecutionContext
   ): Future[E] =
     for {
       entityAttr <- create(model, Some(parent), fields)
@@ -88,7 +92,8 @@ class CreateSrv @Inject() (
     } yield entity
 
   def apply[M <: ChildModelDef[M, E, _, PE], E <: EntityDef[M, E], PE <: BaseEntity](model: M, fieldSet: Seq[(PE, Fields)])(
-      implicit authContext: AuthContext
+      implicit authContext: AuthContext,
+      ec: ExecutionContext
   ): Future[Seq[Try[E]]] =
     Future.sequence(fieldSet.map {
       case (parent, fields) =>
@@ -100,7 +105,10 @@ class CreateSrv @Inject() (
 
     })
 
-  private[services] def create(model: BaseModelDef, parent: Option[BaseEntity], fields: Fields)(implicit authContext: AuthContext): Future[JsObject] =
+  private[services] def create(model: BaseModelDef, parent: Option[BaseEntity], fields: Fields)(
+      implicit authContext: AuthContext,
+      ec: ExecutionContext
+  ): Future[JsObject] =
     for {
       attrs                    <- fieldsSrv.parse(fields, model).toFuture
       attributesWithAttachment <- processAttributes(model, parent, attrs)

@@ -13,7 +13,7 @@ import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.PlaySpecification
 
-import scala.concurrent.ExecutionContext.Implicits.{global ⇒ ec}
+import scala.concurrent.ExecutionContext.Implicits.{global => ec}
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
@@ -30,55 +30,55 @@ class DBFindSpec extends PlaySpecification with Mockito {
   "DBFind" should {
     "if range is not provided, use offset:0 and limit:10" in {
       val db     = mock[DBConfiguration]
-      val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
+      val dbfind = new DBFind(pageSize, keepAlive, db, mat)
       dbfind.getOffsetAndLimitFromRange(None) must_== ((0, 10))
     }
 
     "if range is 75, use offset:75 and limit:10" in {
       val db     = mock[DBConfiguration]
-      val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
+      val dbfind = new DBFind(pageSize, keepAlive, db, mat)
       dbfind.getOffsetAndLimitFromRange(Some("75")) must_== ((75, 10))
     }
 
     "if range is 75-NaN, use it as offset:75 and limit:10" in {
       val db     = mock[DBConfiguration]
-      val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
+      val dbfind = new DBFind(pageSize, keepAlive, db, mat)
       dbfind.getOffsetAndLimitFromRange(Some("75-NaN")) must_== ((75, 10))
     }
 
     "if range is NaN, use it as offset:0 and limit:10" in {
       val db     = mock[DBConfiguration]
-      val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
+      val dbfind = new DBFind(pageSize, keepAlive, db, mat)
       dbfind.getOffsetAndLimitFromRange(Some("NaN")) must_== ((0, 10))
     }
 
     "if range is 75-32, use it as offset:75 and limit:10" in {
       val db     = mock[DBConfiguration]
-      val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
+      val dbfind = new DBFind(pageSize, keepAlive, db, mat)
       dbfind.getOffsetAndLimitFromRange(Some("75-32")) must_== ((75, 10))
     }
 
     "if range is 75-100, use it as offset:75 and limit:25" in {
       val db     = mock[DBConfiguration]
-      val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
+      val dbfind = new DBFind(pageSize, keepAlive, db, mat)
       dbfind.getOffsetAndLimitFromRange(Some("75-100")) must_== ((75, 25))
     }
 
     "if range is all, use it as offset:0 and limit:Int.MaxValue" in {
       val db     = mock[DBConfiguration]
-      val dbfind = new DBFind(pageSize, keepAlive, db, ec, mat)
+      val dbfind = new DBFind(pageSize, keepAlive, db, mat)
       dbfind.getOffsetAndLimitFromRange(Some("all")) must_== ((0, Int.MaxValue))
     }
 
 //    "execute search using scroll" in {
 //      val db        = mock[DBConfiguration].verbose
-//      val dbfind    = new DBFind(pageSize, keepAlive, db, ec, mat)
+//      val dbfind    = new DBFind(pageSize, keepAlive, db, mat)
 //      val searchDef = mock[SearchRequest]
 //      searchDef.limit(pageSize) returns searchDef
 //      searchDef.scroll(dbfind.keepAliveStr) returns searchDef
 //      val firstPageResult = mock[SearchResponse]
 //      val scrollId        = F.string("scrollId")
-//      val hits = Range(0, 24).map { i ⇒
+//      val hits = Range(0, 24).map { i =>
 //        val m = mock[SearchHit]
 //        m.toString returns s"MockResult-$i"
 //        m
@@ -117,7 +117,7 @@ class DBFindSpec extends PlaySpecification with Mockito {
     "execute search without scroll" in {
       val db = mock[DBConfiguration]
       db.indexName returns "index-test"
-      val dbfind    = new DBFind(pageSize, keepAlive, db, ec, mat)
+      val dbfind    = new DBFind(pageSize, keepAlive, db, mat)
       val limit     = 24
       val offset    = 3
       val hits      = Array.fill(limit)(mock[SearchHit])

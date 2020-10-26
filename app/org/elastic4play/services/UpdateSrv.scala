@@ -26,8 +26,7 @@ class UpdateSrv @Inject() (
     dbModify: DBModify,
     getSrv: GetSrv,
     attachmentSrv: AttachmentSrv,
-    eventSrv: EventSrv,
-    implicit val ec: ExecutionContext
+    eventSrv: EventSrv
 ) {
 
   /**
@@ -48,7 +47,8 @@ class UpdateSrv @Inject() (
       .fold(attrs => Future.successful(JsObject(attrs)), errors => Future.failed(AttributeCheckingError(model.modelName, errors)))
 
   private[services] def doUpdate[E <: BaseEntity](entity: E, attributes: JsObject, modifyConfig: ModifyConfig)(
-      implicit authContext: AuthContext
+      implicit authContext: AuthContext,
+      ec: ExecutionContext
   ): Future[E] =
     for {
       attributesAfterHook      <- entity.model.updateHook(entity, addMetaFields(attributes))
@@ -64,7 +64,8 @@ class UpdateSrv @Inject() (
   private[services] def removeMetaFields(attrs: JsObject): JsObject = attrs - "updatedBy" - "updatedAt"
 
   def apply[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, id: String, fields: Fields, modifyConfig: ModifyConfig)(
-      implicit authContext: AuthContext
+      implicit authContext: AuthContext,
+      ec: ExecutionContext
   ): Future[E] =
     for {
       entity    <- getSrv[M, E](model, id)
@@ -72,7 +73,8 @@ class UpdateSrv @Inject() (
     } yield newEntity
 
   def apply[M <: AbstractModelDef[M, E], E <: EntityDef[M, E]](model: M, ids: Seq[String], fields: Fields, modifyConfig: ModifyConfig)(
-      implicit authContext: AuthContext
+      implicit authContext: AuthContext,
+      ec: ExecutionContext
   ): Future[Seq[Try[E]]] =
     Future.sequence {
       ids.map { id =>
@@ -81,7 +83,10 @@ class UpdateSrv @Inject() (
       }
     }
 
-  def apply[E <: BaseEntity](entity: E, fields: Fields, modifyConfig: ModifyConfig)(implicit authContext: AuthContext): Future[E] =
+  def apply[E <: BaseEntity](entity: E, fields: Fields, modifyConfig: ModifyConfig)(
+      implicit authContext: AuthContext,
+      ec: ExecutionContext
+  ): Future[E] =
     for {
       attributes <- fieldsSrv.parse(fields, entity.model).toFuture
       newEntity  <- doUpdate(entity, attributes, modifyConfig)
@@ -89,7 +94,8 @@ class UpdateSrv @Inject() (
     } yield newEntity
 
   def apply[E <: BaseEntity](entitiesAttributes: Seq[(E, Fields)], modifyConfig: ModifyConfig)(
-      implicit authContext: AuthContext
+      implicit authContext: AuthContext,
+      ec: ExecutionContext
   ): Future[Seq[Try[E]]] =
     Future.sequence(entitiesAttributes.map {
       case (entity, fields) => apply(entity, fields, modifyConfig).toTry

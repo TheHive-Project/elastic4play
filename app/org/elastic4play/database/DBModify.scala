@@ -13,15 +13,20 @@ import play.api.libs.json._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
+import java.util.{Map => JMap}
 
-case class ModifyConfig(retryOnConflict: Int = 5, refreshPolicy: RefreshPolicy = RefreshPolicy.WAIT_FOR, version: Option[Long] = None)
+case class ModifyConfig(
+    retryOnConflict: Int = 5,
+    refreshPolicy: RefreshPolicy = RefreshPolicy.WAIT_FOR,
+    seqNoAndPrimaryTerm: Option[(Long, Long)] = None
+)
 
 object ModifyConfig {
   def default: ModifyConfig = ModifyConfig(5, RefreshPolicy.WAIT_FOR, None)
 }
 
 @Singleton
-class DBModify @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBModify @Inject() (db: DBConfiguration) {
   private[DBModify] lazy val logger = Logger(getClass)
 
   /**
@@ -77,7 +82,7 @@ class DBModify @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext
     * @param modifyConfig modification parameter (retryOnConflict and refresh policy)
     * @return new version of the entity
     */
-  def apply(entity: BaseEntity, updateAttributes: JsObject, modifyConfig: ModifyConfig): Future[BaseEntity] =
+  def apply(entity: BaseEntity, updateAttributes: JsObject, modifyConfig: ModifyConfig)(implicit ec: ExecutionContext): Future[BaseEntity] =
     db.execute {
         val updateDefinition = updateById(db.indexName, entity.id)
           .routing(entity.routing)
@@ -85,16 +90,17 @@ class DBModify @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext
           .fetchSource(true)
           .retryOnConflict(modifyConfig.retryOnConflict)
           .refresh(modifyConfig.refreshPolicy)
-        modifyConfig.version.fold(updateDefinition)(updateDefinition.version(_))
+        modifyConfig.seqNoAndPrimaryTerm.fold(updateDefinition)(s => updateDefinition.ifSeqNo(s._1).ifPrimaryTerm(s._2))
       }
       .map { updateResponse =>
         entity.model(
           Json.parse(JacksonSupport.mapper.writeValueAsString(updateResponse.source)).as[JsObject] +
-            ("_type"    -> JsString(entity.model.modelName)) +
-            ("_id"      -> JsString(entity.id)) +
-            ("_routing" -> JsString(entity.routing)) +
-            ("_parent"  -> entity.parentId.fold[JsValue](JsNull)(JsString)) +
-            ("_version" -> JsNumber(updateResponse.version))
+            ("_type"        -> JsString(entity.model.modelName)) +
+            ("_id"          -> JsString(entity.id)) +
+            ("_routing"     -> JsString(entity.routing)) +
+            ("_parent"      -> entity.parentId.fold[JsValue](JsNull)(JsString)) +
+            ("_seqNo"       -> JsNumber(updateResponse.seqNo)) +
+            ("_primaryTerm" -> JsNumber(updateResponse.primaryTerm))
         )
       }
 }

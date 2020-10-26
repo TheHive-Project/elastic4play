@@ -16,21 +16,21 @@ import scala.concurrent.{ExecutionContext, Future}
 case class QueryDef(query: Query)
 
 @Singleton
-class FindSrv @Inject() (dbfind: DBFind, modelSrv: ModelSrv, implicit val ec: ExecutionContext) {
+class FindSrv @Inject() (dbfind: DBFind, modelSrv: ModelSrv) {
 
-  def switchTo(db: DBConfiguration) = new FindSrv(dbfind.switchTo(db), modelSrv, ec)
+  def switchTo(db: DBConfiguration) = new FindSrv(dbfind.switchTo(db), modelSrv)
 
   def apply(
       modelName: Option[String],
       queryDef: QueryDef,
       range: Option[String],
       sortBy: Seq[String]
-  ): (Source[BaseEntity, NotUsed], Future[Long]) = {
+  )(implicit ec: ExecutionContext): (Source[BaseEntity, NotUsed], Future[Long]) = {
     val query        = modelName.fold(queryDef)(m => and("relations" ~= m, queryDef)).query
     val (src, total) = dbfind(range, sortBy)(indexName => search(indexName).query(query))
     val entities = src.map { attrs =>
       modelName match {
-        //case Some("audit") ⇒ auditModel.get()(attrs)
+        //case Some("audit") => auditModel.get()(attrs)
         case Some(m) => modelSrv(m).getOrElse(sys.error("TODO"))(attrs)
         case None =>
           val tpe   = (attrs \ "_type").asOpt[String].getOrElse(sys.error("TODO"))
@@ -41,7 +41,9 @@ class FindSrv @Inject() (dbfind: DBFind, modelSrv: ModelSrv, implicit val ec: Ex
     (entities, total)
   }
 
-  def apply(model: BaseModelDef, queryDef: QueryDef, range: Option[String], sortBy: Seq[String]): (Source[BaseEntity, NotUsed], Future[Long]) = {
+  def apply(model: BaseModelDef, queryDef: QueryDef, range: Option[String], sortBy: Seq[String])(
+      implicit ec: ExecutionContext
+  ): (Source[BaseEntity, NotUsed], Future[Long]) = {
     val (src, total) = dbfind(range, sortBy)(indexName => search(indexName).query(and("relations" ~= model.modelName, queryDef).query))
     val entities     = src.map(attrs => model(attrs))
     (entities, total)
@@ -52,14 +54,15 @@ class FindSrv @Inject() (dbfind: DBFind, modelSrv: ModelSrv, implicit val ec: Ex
       queryDef: QueryDef,
       range: Option[String],
       sortBy: Seq[String]
-  ): (Source[E, NotUsed], Future[Long]) = {
+  )(implicit ec: ExecutionContext): (Source[E, NotUsed], Future[Long]) = {
     val (src, total) = dbfind(range, sortBy)(indexName => search(indexName).query(and("relations" ~= model.modelName, queryDef).query))
     val entities     = src.map(attrs => model(attrs))
     (entities, total)
   }
 
-  def apply(model: BaseModelDef, queryDef: QueryDef, aggs: Agg*): Future[JsObject] =
-    dbfind(indexName => search(indexName).query(and("relations" ~= model.modelName, queryDef).query).aggregations(aggs.flatMap(_.apply(model))).size(0)
+  def apply(model: BaseModelDef, queryDef: QueryDef, aggs: Agg*)(implicit ec: ExecutionContext): Future[JsObject] =
+    dbfind(indexName =>
+      search(indexName).query(and("relations" ~= model.modelName, queryDef).query).aggregations(aggs.flatMap(_.apply(model))).size(0)
     ).map { searchResponse =>
       aggs
         .map(_.processResult(model, searchResponse.aggregations))

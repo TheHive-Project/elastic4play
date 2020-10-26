@@ -17,7 +17,7 @@ scalaVersion := "2.12.12"
 
 resolvers += "elasticsearch-releases" at "https://artifacts.elastic.co/maven"
 
-val elastic4sVersion = "7.7.0"
+val elastic4sVersion = "7.9.1"
 libraryDependencies ++= Seq(
   cacheApi,
   "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion,
@@ -27,6 +27,9 @@ libraryDependencies ++= Seq(
   "org.scalactic"          %% "scalactic" % "3.1.2",
   "org.bouncycastle"       % "bcprov-jdk15on" % "1.58",
   specs2                   % Test
+)
+dependencyOverrides ++= Seq(
+  "com.typesafe.akka" %% "akka-actor" % play.core.PlayVersion.akkaVersion
 )
 
 PlayKeys.externalizeResources := false

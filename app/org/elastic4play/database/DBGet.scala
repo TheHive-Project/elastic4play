@@ -8,7 +8,7 @@ import play.api.libs.json.JsObject
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class DBGet @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
+class DBGet @Inject() (db: DBConfiguration) {
 
   /**
     * Retrieve entities from ElasticSearch
@@ -17,13 +17,13 @@ class DBGet @Inject() (db: DBConfiguration, implicit val ec: ExecutionContext) {
     * @param id identifier of the entity to retrieve
     * @return the entity
     */
-  def apply(modelName: String, id: String): Future[JsObject] =
+  def apply(modelName: String, id: String)(implicit ec: ExecutionContext): Future[JsObject] =
     db.execute {
-        // Search by id is not possible on child entity without routing information ⇒ id query
+        // Search by id is not possible on child entity without routing information => id query
         search(db.indexName)
           .query(idsQuery(id) /*.types(modelName)*/ )
           .size(1)
-          .version(true)
+          .seqNoPrimaryTerm(true)
       }
       .map { searchResponse =>
         searchResponse
