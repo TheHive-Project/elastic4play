@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.12.3](https://github.com/TheHive-Project/elastic4play/milestone/40) (2020-10-29)
+
+**Closed issues:**
+
+- Update Playframework to fix vulnerability [\#98](https://github.com/TheHive-Project/elastic4play/issues/98)
+
 ## [1.12.2](https://github.com/TheHive-Project/elastic4play/milestone/38) (2020-10-26)
 
 **Fixed bugs:**
