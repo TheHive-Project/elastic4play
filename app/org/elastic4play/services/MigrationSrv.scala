@@ -1,23 +1,19 @@
 package org.elastic4play.services
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
-
-import play.api.libs.json.JsValue.jsValueToJsLookup
-import play.api.libs.json.Json.toJsFieldJsValueWrapper
-import play.api.libs.json._
-import play.api.{Configuration, Logger}
-
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Sink, Source}
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Materializer}
 import com.sksamuel.elastic4s.http.ElasticDsl._
-import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
-
 import org.elastic4play.InternalError
 import org.elastic4play.database._
+import play.api.Logger
+import play.api.libs.json.JsValue.jsValueToJsLookup
+import play.api.libs.json.Json.toJsFieldJsValueWrapper
+import play.api.libs.json._
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 case class MigrationEvent(modelName: String, current: Long, total: Long) extends EventMessage
 
@@ -45,29 +41,21 @@ abstract class DatabaseState {
 }
 
 object DatabaseState {
-  def unapply(s: DatabaseState) = Some(s.version)
+  def unapply(s: DatabaseState): Option[Int] = Some(s.version)
 }
 
 @Singleton
 class MigrationSrv @Inject()(
-    configuration: Configuration,
     migration: MigrationOperations,
     db: DBConfiguration,
     dbcreate: DBCreate,
     dbfind: DBFind,
-    dbget: DBGet,
-    dblists: DBLists,
     dbindex: DBIndex,
     modelSrv: ModelSrv,
     eventSrv: EventSrv,
     implicit val system: ActorSystem,
     implicit val ec: ExecutionContext
 ) {
-
-  implicit val mat: Materializer = {
-    val materializerSettings = configuration.getOptional[Config]("migration.stream").map(ActorMaterializerSettings.apply)
-    ActorMaterializer(materializerSettings, None)
-  }
 
   private[MigrationSrv] lazy val logger = Logger(getClass)
 
@@ -130,7 +118,7 @@ class MigrationSrv @Inject()(
 
   object OriginState {
 
-    def apply(db: DBConfiguration) =
+    def apply(db: DBConfiguration): DatabaseState =
       migration.indexType(db.version) match {
         case IndexType.`indexWithoutMappingTypes` => new OriginStateES6(db)
         case IndexType.indexWithMappingTypes      => new OriginStateES5(db)
@@ -241,9 +229,8 @@ trait Operation extends ((String => Source[JsObject, NotUsed]) => (String => Sou
 
 object Operation {
 
-  def apply(o: (String => Source[JsObject, NotUsed]) => String => Source[JsObject, NotUsed]) = new Operation {
-    def apply(f: String => Source[JsObject, NotUsed]): String => Source[JsObject, NotUsed] = o(f)
-  }
+  def apply(o: (String => Source[JsObject, NotUsed]) => String => Source[JsObject, NotUsed]): Operation =
+    (f: String => Source[JsObject, NotUsed]) => o(f)
 
   def renameEntity(previous: String, next: String): Operation =
     Operation((f: String => Source[JsObject, NotUsed]) => {

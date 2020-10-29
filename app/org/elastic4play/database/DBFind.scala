@@ -74,7 +74,7 @@ class DBFind(pageSize: Int, keepAlive: FiniteDuration, db: DBConfiguration, impl
     val resp  = db.execute(searchRequest.start(offset).limit(limit))
     val total = resp.map(_.totalHits)
     val src = Source
-      .fromFuture(resp)
+      .future(resp)
       .mapConcat { resp =>
         resp.hits.hits.toList
       }

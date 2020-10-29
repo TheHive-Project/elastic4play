@@ -13,7 +13,7 @@ lazy val elastic4play = (project in file("."))
 // Add Http2 support to be able to ask client certificate
 // cf. https://github.com/playframework/playframework/issues/8143
 
-scalaVersion := "2.12.8"
+scalaVersion := "2.12.12"
 
 resolvers += "elasticsearch-releases" at "https://artifacts.elastic.co/maven"
 
