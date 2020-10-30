@@ -18,6 +18,6 @@ class MigrationCtrl @Inject()(migrationSrv: MigrationSrv, components: Controller
 
   @Timed("controllers.MigrationCtrl.migrate")
   def migrate: Action[AnyContent] = Action.async {
-    migrationSrv.migrate.map(_ ⇒ NoContent)
+    migrationSrv.migrate.map(_ => NoContent)
   }
 }

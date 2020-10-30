@@ -21,11 +21,11 @@
 //    "generate correct elasticsearch query" in {
 //      import org.elastic4play.services.QueryDSL._
 //      val catAgg = new GroupByCategory(Map(
-//        "debug" → ("level" ~= "DEBUG"),
-//        "info" → ("level" ~= "INFO"),
-//        "warn" → ("level" ~= "WARN")), Seq(selectCount))
+//        "debug" -> ("level" ~= "DEBUG"),
+//        "info" -> ("level" ~= "INFO"),
+//        "warn" -> ("level" ~= "WARN")), Seq(selectCount))
 //
-//      val query = search(indexName → documentType).matchAllQuery.aggregations(catAgg(mock[BaseModelDef]))
+//      val query = search(indexName -> documentType).matchAllQuery.aggregations(catAgg(mock[BaseModelDef]))
 //
 //      Json.parse(query._builder.toString) must_== Json.parse("""
 //        {

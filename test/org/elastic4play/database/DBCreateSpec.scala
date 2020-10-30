@@ -1,6 +1,6 @@
 //package org.elastic4play.database
 //
-//import scala.concurrent.ExecutionContext.Implicits.{global ⇒ ec}
+//import scala.concurrent.ExecutionContext.Implicits.{global => ec}
 //import scala.concurrent.Future
 //
 //import play.api.libs.json.{JsObject, JsString, Json}
@@ -9,7 +9,7 @@
 //import com.sksamuel.elastic4s.http.index.IndexResponse
 //import com.sksamuel.elastic4s.http.ElasticDsl.IndexHandler
 //import com.sksamuel.elastic4s.indexes.IndexRequest
-//import common.{Fabricator ⇒ F}
+//import common.{Fabricator => F}
 //import org.junit.runner.RunWith
 //import org.specs2.mock.Mockito
 //import org.specs2.runner.JUnitRunner
@@ -21,7 +21,7 @@
 //class DBCreateSpec extends PlaySpecification with Mockito {
 //  val modelName: String       = F.string("modelName")
 //  val defaultEntityId: String = F.string("defaultEntityId")
-//  val sampleDoc: JsObject     = Json.obj("caseId" → 42, "title" → "Test case", "description" → "Case used for unit test", "tags" → Seq("test", "specs"))
+//  val sampleDoc: JsObject     = Json.obj("caseId" -> 42, "title" -> "Test case", "description" -> "Case used for unit test", "tags" -> Seq("test", "specs"))
 //
 //  class DBCreateWrapper {
 //    val db: DBConfiguration = mock[DBConfiguration]
@@ -69,9 +69,9 @@
 //      val (returnAttrs, indexDef) = dbcreate(
 //        modelName,
 //        sampleDoc +
-//          ("_id"      → JsString(entityId)) +
-//          ("_routing" → JsString(routing)) +
-//          ("_parent"  → JsString(parentId))
+//          ("_id"      -> JsString(entityId)) +
+//          ("_routing" -> JsString(routing)) +
+//          ("_parent"  -> JsString(parentId))
 //      )
 //
 //      (returnAttrs \ "_type").asOpt[String] must beSome(modelName)
@@ -92,7 +92,7 @@
 //      val parent   = mock[BaseEntity]
 //      parent.id returns parentId
 //      parent.routing returns routing
-//      val (returnAttrs, indexDef) = dbcreate(parent, sampleDoc + ("_id" → JsString(entityId)))
+//      val (returnAttrs, indexDef) = dbcreate(parent, sampleDoc + ("_id" -> JsString(entityId)))
 //
 //      (returnAttrs \ "_type").asOpt[String] must beSome(modelName)
 //      (returnAttrs \ "_id").asOpt[String] must beSome(entityId)

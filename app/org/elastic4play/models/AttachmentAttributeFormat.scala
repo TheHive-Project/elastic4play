@@ -23,7 +23,7 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
         Good(value)
       else
         formatError(JsonInputValue(value))
-    logger.debug(s"checkJson($subNames, $value) ⇒ $result")
+    logger.debug(s"checkJson($subNames, $value) => $result")
     result
   }
 
@@ -35,22 +35,22 @@ object AttachmentAttributeFormat extends AttributeFormat[Attachment]("attachment
         formatError(value)
       else
         value match {
-          case fiv: FileInputValue if fiv.name.intersect(forbiddenChar).isEmpty        ⇒ Good(Json.toJson(fiv)(fileInputValueFormat))
-          case aiv: AttachmentInputValue                                               ⇒ Good(Json.toJson(aiv.toAttachment)(jsFormat))
-          case JsonInputValue(json) if attachmentInputValueReads.reads(json).isSuccess ⇒ Good(json)
-          case _                                                                       ⇒ formatError(value)
+          case fiv: FileInputValue if fiv.name.intersect(forbiddenChar).isEmpty        => Good(Json.toJson(fiv)(fileInputValueFormat))
+          case aiv: AttachmentInputValue                                               => Good(Json.toJson(aiv.toAttachment)(jsFormat))
+          case JsonInputValue(json) if attachmentInputValueReads.reads(json).isSuccess => Good(json)
+          case _                                                                       => formatError(value)
         }
-    logger.debug(s"inputValueToJson($subNames, $value) ⇒ $result")
+    logger.debug(s"inputValueToJson($subNames, $value) => $result")
     result
   }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): Attachment Or Every[AttributeError] = {
     val result = value match {
-      case JsonInputValue(json) if subNames.isEmpty ⇒
-        attachmentInputValueReads.reads(json).map(aiv ⇒ Good(aiv.toAttachment)).getOrElse(formatError(value))
-      case _ ⇒ formatError(value)
+      case JsonInputValue(json) if subNames.isEmpty =>
+        attachmentInputValueReads.reads(json).map(aiv => Good(aiv.toAttachment)).getOrElse(formatError(value))
+      case _ => formatError(value)
     }
-    logger.debug(s"fromInputValue($subNames, $value) ⇒ $result")
+    logger.debug(s"fromInputValue($subNames, $value) => $result")
     result
   }
 

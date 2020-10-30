@@ -22,15 +22,15 @@ case class ADConnection(domainFQDN: String, domainName: String, serverNames: Seq
   private val noADServerAvailableException = AuthenticationError("No LDAP server found")
 
   private def isFatal(t: Throwable): Boolean = t match {
-    case null                           ⇒ true
-    case `noADServerAvailableException` ⇒ false
-    case _: ConnectException            ⇒ false
-    case _                              ⇒ isFatal(t.getCause)
+    case null                           => true
+    case `noADServerAvailableException` => false
+    case _: ConnectException            => false
+    case _                              => isFatal(t.getCause)
   }
 
-  private def connect[A](username: String, password: String)(f: InitialDirContext ⇒ Try[A]): Try[A] =
+  private def connect[A](username: String, password: String)(f: InitialDirContext => Try[A]): Try[A] =
     serverNames.foldLeft[Try[A]](Failure(noADServerAvailableException)) {
-      case (Failure(e), serverName) if !isFatal(e) ⇒
+      case (Failure(e), serverName) if !isFatal(e) =>
         val protocol = if (useSSL) "ldaps://" else "ldap://"
         val env      = new util.Hashtable[Any, Any]
         env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
@@ -44,11 +44,11 @@ case class ADConnection(domainFQDN: String, domainName: String, serverNames: Seq
           finally ctx.close()
         }.flatten
           .recoverWith {
-            case ldapError ⇒
+            case ldapError =>
               logger.debug("LDAP connect error", ldapError)
               Failure(ldapError)
           }
-      case (r, _) ⇒ r
+      case (r, _) => r
     }
 
   private def getUserDN(ctx: InitialDirContext, username: String): Try[String] =
@@ -63,13 +63,13 @@ case class ADConnection(domainFQDN: String, domainName: String, serverNames: Seq
     }
 
   def authenticate(username: String, password: String): Try[Unit] =
-    connect(domainName + "\\" + username, password)(_ ⇒ Success(()))
+    connect(domainName + "\\" + username, password)(_ => Success(()))
 
   def changePassword(username: String, oldPassword: String, newPassword: String): Try[Unit] = {
     val unicodeOldPassword = ("\"" + oldPassword + "\"").getBytes("UTF-16LE")
     val unicodeNewPassword = ("\"" + newPassword + "\"").getBytes("UTF-16LE")
-    connect(domainName + "\\" + username, oldPassword) { ctx ⇒
-      getUserDN(ctx, username).map { userDN ⇒
+    connect(domainName + "\\" + username, oldPassword) { ctx =>
+      getUserDN(ctx, username).map { userDN =>
         val mods = Array(
           new ModificationItem(DirContext.REMOVE_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeOldPassword)),
           new ModificationItem(DirContext.ADD_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeNewPassword))
@@ -84,8 +84,8 @@ object ADConnection {
 
   def apply(configuration: Configuration): ADConnection =
     (for {
-      domainFQDN ← configuration.getOptional[String]("auth.ad.domainFQDN")
-      domainName ← configuration.getOptional[String]("auth.ad.domainName")
+      domainFQDN <- configuration.getOptional[String]("auth.ad.domainFQDN")
+      domainName <- configuration.getOptional[String]("auth.ad.domainName")
       serverNames = configuration.getOptional[Seq[String]]("auth.ad.serverNames").getOrElse(Seq(domainFQDN))
       useSSL      = configuration.getOptional[Boolean]("auth.ad.useSSL").getOrElse(false)
     } yield ADConnection(domainFQDN, domainName, serverNames, useSSL))
@@ -103,11 +103,11 @@ class ADAuthSrv(adConnection: ADConnection, userSrv: UserSrv, implicit val ec: E
 
   override def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] =
     (for {
-      _           ← Future.fromTry(adConnection.authenticate(username, password))
-      authContext ← userSrv.getFromId(request, username, name)
+      _           <- Future.fromTry(adConnection.authenticate(username, password))
+      authContext <- userSrv.getFromId(request, username, name)
     } yield authContext)
       .recoverWith {
-        case t ⇒
+        case t =>
           logger.error("AD authentication failure", t)
           Future.failed(AuthenticationError("Authentication failure"))
       }
@@ -116,7 +116,7 @@ class ADAuthSrv(adConnection: ADConnection, userSrv: UserSrv, implicit val ec: E
     Future
       .fromTry(adConnection.changePassword(username, oldPassword, newPassword))
       .recoverWith {
-        case t ⇒
+        case t =>
           logger.error("AD change password failure", t)
           Future.failed(AuthorizationError("Change password failure"))
       }

@@ -22,7 +22,7 @@ class MultiAuthSrv(val authProviders: Seq[AuthSrv], implicit val ec: ExecutionCo
       configuration
         .getDeprecated[Option[Seq[String]]]("auth.provider", "auth.type")
         .getOrElse(Nil)
-        .flatMap { authType ⇒
+        .flatMap { authType =>
           authModules
             .find(_.name == authType)
             .orElse {
@@ -36,12 +36,12 @@ class MultiAuthSrv(val authProviders: Seq[AuthSrv], implicit val ec: ExecutionCo
   val name                             = "multi"
   override val capabilities: Set[Type] = authProviders.flatMap(_.capabilities).toSet
 
-  private[auth] def forAllAuthProvider[A](body: AuthSrv ⇒ Future[A]) =
-    authProviders.foldLeft(Future.failed[A](new Exception("no authentication provider found"))) { (f, a) ⇒
+  private[auth] def forAllAuthProvider[A](body: AuthSrv => Future[A]) =
+    authProviders.foldLeft(Future.failed[A](new Exception("no authentication provider found"))) { (f, a) =>
       f.recoverWith {
-        case _ ⇒
+        case _ =>
           val r = body(a)
-          r.failed.foreach(error ⇒ MultiAuthSrv.logger.debug(s"${a.name} ${error.getClass.getSimpleName} ${error.getMessage}"))
+          r.failed.foreach(error => MultiAuthSrv.logger.debug(s"${a.name} ${error.getClass.getSimpleName} ${error.getMessage}"))
           r
       }
     }
@@ -49,7 +49,7 @@ class MultiAuthSrv(val authProviders: Seq[AuthSrv], implicit val ec: ExecutionCo
   override def authenticate(username: String, password: String)(implicit request: RequestHeader): Future[AuthContext] =
     forAllAuthProvider(_.authenticate(username, password))
       .recoverWith {
-        case authError ⇒
+        case authError =>
           MultiAuthSrv.logger.error("Authentication failure", authError)
           Future.failed(AuthenticationError("Authentication failure"))
       }
@@ -57,7 +57,7 @@ class MultiAuthSrv(val authProviders: Seq[AuthSrv], implicit val ec: ExecutionCo
   override def authenticate(key: String)(implicit request: RequestHeader): Future[AuthContext] =
     forAllAuthProvider(_.authenticate(key))
       .recoverWith {
-        case authError ⇒
+        case authError =>
           MultiAuthSrv.logger.error("Authentication failure", authError)
           Future.failed(AuthenticationError("Authentication failure"))
       }
@@ -65,8 +65,8 @@ class MultiAuthSrv(val authProviders: Seq[AuthSrv], implicit val ec: ExecutionCo
   override def authenticate()(implicit request: RequestHeader): Future[AuthContext] =
     forAllAuthProvider(_.authenticate)
       .recoverWith {
-        case e: OAuth2Redirect ⇒ Future.failed(e)
-        case authError ⇒
+        case e: OAuth2Redirect => Future.failed(e)
+        case authError =>
           MultiAuthSrv.logger.error("Authentication failure", authError)
           Future.failed(AuthenticationError("Authentication failure"))
       }

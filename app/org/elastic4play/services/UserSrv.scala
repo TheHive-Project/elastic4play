@@ -23,7 +23,7 @@ trait UserSrv {
   def getFromId(request: RequestHeader, userId: String, authMethod: String): Future[AuthContext]
   def getFromUser(request: RequestHeader, user: User, authMethod: String): Future[AuthContext]
   def getInitialUser(request: RequestHeader): Future[AuthContext]
-  def inInitAuthContext[A](block: AuthContext ⇒ Future[A]): Future[A]
+  def inInitAuthContext[A](block: AuthContext => Future[A]): Future[A]
   def get(userId: String): Future[User]
 }
 

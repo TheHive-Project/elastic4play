@@ -1,6 +1,6 @@
 //package org.elastic4play.database
 //
-//import scala.concurrent.ExecutionContext.Implicits.{ global ⇒ ec }
+//import scala.concurrent.ExecutionContext.Implicits.{ global => ec }
 //import scala.concurrent.Future
 //
 //import play.api.libs.json.Json.toJsFieldJsValueWrapper
@@ -35,17 +35,17 @@
 //
 //      db.execute(searchDefinition.capture) returns Future.successful(response)
 //      dbget(modelName, entityId).await must_== Json.obj(
-//        "_type" → modelName,
-//        "_routing" → entityId,
-//        "_parent" → JsNull,
-//        "_id" → entityId)
+//        "_type" -> modelName,
+//        "_routing" -> entityId,
+//        "_parent" -> JsNull,
+//        "_id" -> entityId)
 //
 //      Json.parse(searchDefinition.value._builder.toString) must_== Json.obj(
-//        "query" → Json.obj(
-//          "ids" → Json.obj(
-//            "type" → "user",
-//            "values" → Seq("me"))),
-//        "fields" → Seq("_source", "_routing", "_parent"))
+//        "query" -> Json.obj(
+//          "ids" -> Json.obj(
+//            "type" -> "user",
+//            "values" -> Seq("me"))),
+//        "fields" -> Seq("_source", "_routing", "_parent"))
 //    }
 //  }
 //}

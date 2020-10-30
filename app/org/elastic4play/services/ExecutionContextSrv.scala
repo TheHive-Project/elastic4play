@@ -30,6 +30,6 @@ class ExecutionContextSrv @Inject()(system: ActorSystem, syncCacheApi: SyncCache
         default
       }
     }
-  def withCustom[A](threadPoolName: String)(body: ExecutionContext ⇒ A): A = body(get(threadPoolName))
-  def withDefault[A](body: ExecutionContext ⇒ A): A                        = body(default)
+  def withCustom[A](threadPoolName: String)(body: ExecutionContext => A): A = body(get(threadPoolName))
+  def withDefault[A](body: ExecutionContext => A): A                        = body(default)
 }

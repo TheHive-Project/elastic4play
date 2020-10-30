@@ -21,54 +21,54 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
 
   override def checkJsonForCreation(subNames: Seq[String], value: JsValue): JsObject Or Every[AttributeError] = {
     val result = value match {
-      case obj: JsObject if subNames.isEmpty ⇒
+      case obj: JsObject if subNames.isEmpty =>
         subAttributes
-          .validatedBy { attr ⇒
+          .validatedBy { attr =>
             attr.validateForCreation((value \ attr.attributeName).asOpt[JsValue])
           }
-          .map { _ ⇒
+          .map { _ =>
             obj
           }
-      case _ ⇒ formatError(JsonInputValue(value))
+      case _ => formatError(JsonInputValue(value))
     }
-    logger.debug(s"checkJsonForCreation($subNames, $value) ⇒ $result")
+    logger.debug(s"checkJsonForCreation($subNames, $value) => $result")
     result
   }
 
   override def checkJsonForUpdate(subNames: Seq[String], value: JsValue): JsObject Or Every[AttributeError] =
     value match {
-      case obj: JsObject if subNames.isEmpty ⇒
+      case obj: JsObject if subNames.isEmpty =>
         obj
           .fields
           .validatedBy {
-            case (_name, v) ⇒
+            case (_name, v) =>
               subAttributes
                 .find(_.attributeName == _name)
                 .map(_.validateForUpdate(subNames, v))
                 .getOrElse(Bad(One(UnknownAttributeError(_name, v))))
           }
-          .map { _ ⇒
+          .map { _ =>
             obj
           }
-      case _ ⇒ formatError(JsonInputValue(value))
+      case _ => formatError(JsonInputValue(value))
     }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): JsObject Or Every[AttributeError] = {
     val result = subNames
       .headOption
-      .map { subName ⇒
+      .map { subName =>
         subAttributes
           .find(_.attributeName == subName)
-          .map { subAttribute ⇒
+          .map { subAttribute =>
             value.jsonValue match {
-              case jsvalue @ (JsNull | JsArray(Seq())) ⇒ Good(JsObject(Seq(subName → jsvalue)))
-              case _ ⇒
+              case jsvalue @ (JsNull | JsArray(Seq())) => Good(JsObject(Seq(subName -> jsvalue)))
+              case _ =>
                 subAttribute
                   .format
                   .inputValueToJson(subNames.tail, value)
-                  .map(v ⇒ JsObject(Seq(subName → v)))
-                  .badMap { errors ⇒
-                    errors.map(e ⇒ e.withName(name + "." + e.name))
+                  .map(v => JsObject(Seq(subName -> v)))
+                  .badMap { errors =>
+                    errors.map(e => e.withName(name + "." + e.name))
                   }
             }
           }
@@ -76,23 +76,23 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
       }
       .getOrElse {
         value match {
-          case JsonInputValue(v: JsObject) ⇒
+          case JsonInputValue(v: JsObject) =>
             v.fields
               .validatedBy {
-                case (_, jsvalue) if jsvalue == JsNull || jsvalue == JsArray(Nil) ⇒ Good(jsvalue)
-                case (_name, jsvalue) ⇒
+                case (_, jsvalue) if jsvalue == JsNull || jsvalue == JsArray(Nil) => Good(jsvalue)
+                case (_name, jsvalue) =>
                   subAttributes
                     .find(_.attributeName == _name)
                     .map(_.format.fromInputValue(Nil, JsonInputValue(jsvalue)))
                     .getOrElse(Bad(One(UnknownAttributeError(_name, Json.toJson(value)))))
               }
-              .map { _ ⇒
+              .map { _ =>
                 v
               }
-          case _ ⇒ formatError(value)
+          case _ => formatError(value)
         }
       }
-    logger.debug(s"fromInputValue($subNames, $value) ⇒ $result")
+    logger.debug(s"fromInputValue($subNames, $value) => $result")
     result
   }
 
@@ -104,9 +104,9 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
   override def definition(dblists: DBLists, attribute: Attribute[JsObject]): Seq[AttributeDefinition] =
     subAttributes
       .flatMap {
-        case subAttribute: Attribute[tpe] ⇒ subAttribute.format.definition(dblists, subAttribute)
+        case subAttribute: Attribute[tpe] => subAttribute.format.definition(dblists, subAttribute)
       }
-      .map { attributeDefinition ⇒
+      .map { attributeDefinition =>
         attributeDefinition.copy(name = s"${attribute.attributeName}.${attributeDefinition.name}")
       }
 }
