@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.11.8](https://github.com/TheHive-Project/elastic4play/milestone/42) (2020-10-30)
+
+**Fixed bugs:**
+
+- Fix library conflicts [\#100](https://github.com/TheHive-Project/elastic4play/issues/100)
+
 ## [1.11.7](https://github.com/TheHive-Project/elastic4play/milestone/41) (2020-10-29)
 
 **Fixed bugs:**

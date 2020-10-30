@@ -17,13 +17,13 @@ scalaVersion := "2.12.12"
 
 resolvers += "elasticsearch-releases" at "https://artifacts.elastic.co/maven"
 
-val elastic4sVersion = "6.5.1"
+val elastic4sVersion = "6.7.8"
 libraryDependencies ++= Seq(
   cacheApi,
   "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion,
   "com.sksamuel.elastic4s" %% "elastic4s-http-streams" % elastic4sVersion,
   "com.sksamuel.elastic4s" %% "elastic4s-http" % elastic4sVersion,
-  "com.typesafe.akka"      %% "akka-stream-testkit" % play.core.PlayVersion.akkaVersion % Test,
+  "com.typesafe.akka"      %% "akka-stream-testkit" % "2.5.31" % Test,
   "org.scalactic"          %% "scalactic" % "3.0.5",
   "org.bouncycastle"       % "bcprov-jdk15on" % "1.58",
   specs2                   % Test
