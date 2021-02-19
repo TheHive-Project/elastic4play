@@ -219,7 +219,7 @@ class AttachmentSrv(
   }
 
   def cleanup(implicit ec: ExecutionContext): Future[Unit] =
-    dbFind(Some("all"), Nil)(index => search(index).matchQuery("docType", attachmentModel.modelName).fetchSource(false))
+    dbFind(Some("all"), Nil)(index => search(index).matchQuery("relations", attachmentModel.modelName).fetchSource(false))
       ._1
       .mapConcat(o => (o \ "_id").asOpt[String].toList)
       .collect { case id if id.endsWith("_0") => id.dropRight(2) }
