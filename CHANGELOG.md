@@ -1,5 +1,23 @@
 # Change Log
 
+## [1.13.0](https://github.com/TheHive-Project/elastic4play/milestone/43) (2021-02-19)
+
+**Fixed bugs:**
+
+- Update doesn't work on Elasticsearch 7.11 [\#101](https://github.com/TheHive-Project/elastic4play/issues/101)
+
+## [1.11.8](https://github.com/TheHive-Project/elastic4play/milestone/42) (2020-10-30)
+
+**Fixed bugs:**
+
+- Fix library conflicts [\#100](https://github.com/TheHive-Project/elastic4play/issues/100)
+
+## [1.11.7](https://github.com/TheHive-Project/elastic4play/milestone/41) (2020-10-29)
+
+**Fixed bugs:**
+
+- Update Playframework to fix vulnerabilities [\#99](https://github.com/TheHive-Project/elastic4play/issues/99)
+
 ## [1.12.3](https://github.com/TheHive-Project/elastic4play/milestone/40) (2020-10-29)
 
 **Closed issues:**
