@@ -17,7 +17,7 @@ scalaVersion := "2.12.12"
 
 resolvers += "elasticsearch-releases" at "https://artifacts.elastic.co/maven"
 
-val elastic4sVersion = "7.9.1"
+val elastic4sVersion = "7.10.0"
 libraryDependencies ++= Seq(
   cacheApi,
   "com.sksamuel.elastic4s" %% "elastic4s-core" % elastic4sVersion,

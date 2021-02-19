@@ -26,7 +26,7 @@ class FindSrv @Inject() (dbfind: DBFind, modelSrv: ModelSrv) {
       range: Option[String],
       sortBy: Seq[String]
   )(implicit ec: ExecutionContext): (Source[BaseEntity, NotUsed], Future[Long]) = {
-    val query        = modelName.fold(queryDef)(m => and("relations" ~= m, queryDef)).query
+    val query        = modelName.fold(queryDef)(m => and("docType" ~= m, queryDef)).query
     val (src, total) = dbfind(range, sortBy)(indexName => search(indexName).query(query))
     val entities = src.map { attrs =>
       modelName match {
@@ -44,7 +44,7 @@ class FindSrv @Inject() (dbfind: DBFind, modelSrv: ModelSrv) {
   def apply(model: BaseModelDef, queryDef: QueryDef, range: Option[String], sortBy: Seq[String])(
       implicit ec: ExecutionContext
   ): (Source[BaseEntity, NotUsed], Future[Long]) = {
-    val (src, total) = dbfind(range, sortBy)(indexName => search(indexName).query(and("relations" ~= model.modelName, queryDef).query))
+    val (src, total) = dbfind(range, sortBy)(indexName => search(indexName).query(and("docType" ~= model.modelName, queryDef).query))
     val entities     = src.map(attrs => model(attrs))
     (entities, total)
   }
@@ -55,18 +55,17 @@ class FindSrv @Inject() (dbfind: DBFind, modelSrv: ModelSrv) {
       range: Option[String],
       sortBy: Seq[String]
   )(implicit ec: ExecutionContext): (Source[E, NotUsed], Future[Long]) = {
-    val (src, total) = dbfind(range, sortBy)(indexName => search(indexName).query(and("relations" ~= model.modelName, queryDef).query))
+    val (src, total) = dbfind(range, sortBy)(indexName => search(indexName).query(and("docType" ~= model.modelName, queryDef).query))
     val entities     = src.map(attrs => model(attrs))
     (entities, total)
   }
 
   def apply(model: BaseModelDef, queryDef: QueryDef, aggs: Agg*)(implicit ec: ExecutionContext): Future[JsObject] =
-    dbfind(indexName =>
-      search(indexName).query(and("relations" ~= model.modelName, queryDef).query).aggregations(aggs.flatMap(_.apply(model))).size(0)
-    ).map { searchResponse =>
-      aggs
-        .map(_.processResult(model, searchResponse.aggregations))
-        .reduceOption(_ ++ _)
-        .getOrElse(JsObject.empty)
-    }
+    dbfind(indexName => search(indexName).query(and("docType" ~= model.modelName, queryDef).query).aggregations(aggs.flatMap(_.apply(model))).size(0))
+      .map { searchResponse =>
+        aggs
+          .map(_.processResult(model, searchResponse.aggregations))
+          .reduceOption(_ ++ _)
+          .getOrElse(JsObject.empty)
+      }
 }

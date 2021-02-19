@@ -146,13 +146,11 @@ class SelectTop(aggregationName: String, size: Int, sortBy: Seq[String], query: 
 
   def processResult(model: BaseModelDef, aggregations: HasAggregations): JsObject = {
     val hits = aggregations.result[TopHits](aggregationName).hits.map { hit =>
-      val id   = JsString(hit.id)
-      val body = Json.parse(JacksonSupport.mapper.writeValueAsString(hit.source)).as[JsObject]
-      val (parent, model) = (body \ "relations" \ "parent").asOpt[JsString] match {
-        case Some(p) => p      -> (body \ "relations" \ "name").as[JsString]
-        case None    => JsNull -> (body \ "relations").as[JsString]
-      }
-      body - "relations" +
+      val id     = JsString(hit.id)
+      val body   = Json.parse(JacksonSupport.mapper.writeValueAsString(hit.source)).as[JsObject]
+      val model  = (body \ "docType").as[JsString]
+      val parent = (body \ "relations" \ "parent").asOpt[JsString].getOrElse(JsNull)
+      body - "relations" - "docType" +
         ("_type"   -> model) +
         ("_parent" -> parent) +
         ("_id"     -> id)

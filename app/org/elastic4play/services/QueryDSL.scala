@@ -58,7 +58,7 @@ object QueryDSL {
     new GroupByCategory(aggregationName.getOrElse("categories"), categories, selectables)
 
   private def nestedField(field: String, q: String => Query) = field match {
-    case "_type" => q("relations")
+    case "_type" => q("docType")
     case _ =>
       field
         .split("\\.")
@@ -90,7 +90,7 @@ object QueryDSL {
     def in(values: String*): QueryDef      = QueryDef(nestedField(field, termsQuery(_, values)))
   }
 
-  def ofType(value: String): QueryDef                       = QueryDef(termQuery("relations", value))
+  def ofType(value: String): QueryDef                       = QueryDef(termQuery("docType", value))
   def withId(entityIds: String*): QueryDef                  = QueryDef(idsQuery(entityIds))
   def any: QueryDef                                         = QueryDef(matchAllQuery)
   def contains(field: String): QueryDef                     = QueryDef(nestedField(field, existsQuery))
