@@ -1,10 +1,14 @@
 # Change Log
 
-## [1.13.0](https://github.com/TheHive-Project/elastic4play/milestone/43) (2021-02-19)
+## [1.13.1](https://github.com/TheHive-Project/elastic4play/milestone/44) (2021-02-19)
 
 **Fixed bugs:**
 
 - Update doesn't work on Elasticsearch 7.11 [\#101](https://github.com/TheHive-Project/elastic4play/issues/101)
+
+## [1.13.0](https://github.com/TheHive-Project/elastic4play/milestone/43) (2021-02-19)
+
+
 
 ## [1.11.8](https://github.com/TheHive-Project/elastic4play/milestone/42) (2020-10-30)
 
