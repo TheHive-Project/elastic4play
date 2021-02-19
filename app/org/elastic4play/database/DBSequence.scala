@@ -17,7 +17,7 @@ class DBSequence @Inject() (db: DBConfiguration) {
   def apply(seqId: String)(implicit ec: ExecutionContext): Future[Int] =
     db.execute {
       updateById(db.indexName, s"sequence_$seqId")
-        .upsert("sequenceCounter" -> 1, "relations" -> "sequence")
+        .upsert("sequenceCounter" -> 1, "docType" -> "sequence")
         .script("ctx._source.sequenceCounter += 1")
         .retryOnConflict(5)
         .fetchSource(true)

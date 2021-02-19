@@ -86,8 +86,8 @@ class DBCreate @Inject() (db: DBConfiguration) {
   }
 
   private def addParent(modelName: String, parent: Option[BaseEntity], entity: JsObject): JsObject = parent match {
-    case Some(p) => entity + ("relations" -> Json.obj("name" -> modelName, "parent" -> p.id))
-    case None    => entity + ("relations" -> JsString(modelName))
+    case Some(p) => entity + ("relations" -> Json.obj("name" -> modelName, "parent" -> p.id)) + ("docType" -> JsString(modelName))
+    case None    => entity + ("docType"   -> JsString(modelName))
   }
 
   /**

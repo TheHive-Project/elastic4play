@@ -30,11 +30,11 @@ object DBUtils {
   def hit2json(hit: SearchHit): JsObject = {
     val id   = JsString(hit.id)
     val body = Json.parse(hit.sourceAsString).as[JsObject]
-    val (parent, model) = (body \ "relations" \ "parent").asOpt[JsString] match {
-      case Some(p) => p      -> (body \ "relations" \ "name").as[JsString]
-      case None    => JsNull -> (body \ "relations").as[JsString]
-    }
-    body - "relations" +
+    // Retrieve document type from the field "relations" for index pre-ES7.11
+    // This method is used by migration. "relations" must be used as fall-back to permit migration from pre-ES7.11
+    val model  = (body \ "docType").asOpt[JsString].orElse((body \ "relations" \ "name").asOpt[JsString]).getOrElse((body \ "relations").as[JsString])
+    val parent = (body \ "relations" \ "parent").asOpt[JsString].getOrElse(JsNull)
+    body - "relations" - "docType" +
       ("_type"        -> model) +
       ("_routing"     -> hit.routing.fold(id)(JsString.apply)) +
       ("_parent"      -> parent) +

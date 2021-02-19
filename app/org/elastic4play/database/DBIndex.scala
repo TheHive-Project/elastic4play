@@ -39,18 +39,18 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
     val mappingTemplates = Collection.distinctBy(models.flatMap(_.attributes).flatMap(_.elasticTemplate()))(_.name)
     val fields           = models.flatMap(_.attributes.filterNot(_.attributeName == "_id").map(_.elasticMapping)).toSeq
     val relationsField = models
-      .map {
+      .collect {
         case child: ChildModelDef[_, _, _, _] => child.parentModel.modelName -> Seq(child.modelName)
-        case model                            => model.modelName             -> Nil
       }
       .groupBy(_._1)
       .foldLeft(joinField("relations")) {
         case (join, (parent, child)) => join.relation(parent, child.flatMap(_._2).toSeq)
       }
+    val docTypeField = keywordField("docType")
 
     for {
       majorVersion <- nodeMajorVersion
-      modelMapping = properties(fields :+ relationsField)
+      modelMapping = properties(fields :+ relationsField :+ docTypeField)
         .dateDetection(false)
         .numericDetection(false)
         .templates(mappingTemplates)
@@ -101,7 +101,7 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
     */
   def getSize(modelName: String)(implicit ec: ExecutionContext): Future[Long] =
     db.execute {
-        search(db.indexName).matchQuery("relations", modelName).size(0)
+        search(db.indexName).matchQuery("docType", modelName).size(0)
       }
       .map {
         _.totalHits

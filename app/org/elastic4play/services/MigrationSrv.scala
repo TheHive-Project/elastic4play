@@ -116,8 +116,7 @@ class MigrationSrv @Inject() (
       .zipWith(count) { (entity, current) =>
         eventSrv.publish(MigrationEvent(modelName, current.toLong, total))
         (entity \ "_type").asOpt[JsString].fold(entity) { t =>
-          val relations = (entity \ "_parent").asOpt[JsString].fold[JsValue](t)(p => Json.obj("name" -> t, "parent" -> p))
-          entity - "_type" - "_parent" + ("relations" -> relations)
+          (entity \ "_parent").asOpt[JsString].fold(entity - "_type" + ("docType" -> t))(p => entity - "_type" - "_parent" + ("relations" -> Json.obj("name" -> t, "parent" -> p)))
         }
       }
       .runWith(dbcreate.sink())
