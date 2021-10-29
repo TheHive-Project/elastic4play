@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.13.2](https://github.com/TheHive-Project/elastic4play/milestone/45) (2021-10-29)
+
+**Closed issues:**
+
+- artifact is not available anymore in bintray [\#102](https://github.com/TheHive-Project/elastic4play/issues/102)
+
 ## [1.13.1](https://github.com/TheHive-Project/elastic4play/milestone/44) (2021-02-19)
 
 **Fixed bugs:**
@@ -180,11 +186,6 @@
 - Elasticsearch secured by SearchGuard [\#53](https://github.com/TheHive-Project/elastic4play/issues/53)
 - New TheHive-Project repository [\#58](https://github.com/TheHive-Project/elastic4play/issues/58)
 
-**Closed issues:**
-
-- Single Sign-On with X.509 certificates [\#26](https://github.com/TheHive-Project/elastic4play/issues/26)
-- SSL support [\#56](https://github.com/TheHive-Project/elastic4play/issues/56)
-
 **Fixed bugs:**
 
 - Temporary files cannot be created on Windows as their filename contains ":" [\#59](https://github.com/TheHive-Project/elastic4play/issues/59)
@@ -192,6 +193,11 @@
 - x.509 PKI - illegal object in getInstance: org.bouncycastle.asn1.DERTaggedObject [\#61](https://github.com/TheHive-Project/elastic4play/issues/61)
 - Session cookie expiration is not correctly checked [\#62](https://github.com/TheHive-Project/elastic4play/issues/62)
 - Race condition when an attachment is saved [\#63](https://github.com/TheHive-Project/elastic4play/issues/63)
+
+**Closed issues:**
+
+- Single Sign-On with X.509 certificates [\#26](https://github.com/TheHive-Project/elastic4play/issues/26)
+- SSL support [\#56](https://github.com/TheHive-Project/elastic4play/issues/56)
 
 ## [1.5.0](https://github.com/TheHive-Project/elastic4play/milestone/15) (2018-03-29)
 
@@ -238,7 +244,9 @@
 
 ## [1.4.2](https://github.com/TheHive-Project/elastic4play/milestone/14) (2018-01-04)
 
+**Pull requests:**
 
+- Add XPack authentication support [\#39](https://github.com/TheHive-Project/elastic4play/pull/39)
 
 ## [1.4.1](https://github.com/TheHive-Project/elastic4play/milestone/13) (2017-12-15)
 
@@ -281,13 +289,13 @@
 - Rename authentication type by authentication provider [\#29](https://github.com/TheHive-Project/elastic4play/issues/29)
 - Add method to query ElasticSearch cluster health [\#30](https://github.com/TheHive-Project/elastic4play/issues/30)
 
-**Closed issues:**
-
-- Update Play to 2.6 and Scala to 2.12 [\#23](https://github.com/TheHive-Project/elastic4play/issues/23)
-
 **Fixed bugs:**
 
 - Handle search query error [\#27](https://github.com/TheHive-Project/elastic4play/issues/27)
+
+**Closed issues:**
+
+- Update Play to 2.6 and Scala to 2.12 [\#23](https://github.com/TheHive-Project/elastic4play/issues/23)
 
 ## [1.2.1](https://github.com/TheHive-Project/elastic4play/milestone/9) (2017-08-14)
 
@@ -316,13 +324,13 @@
 
 - Make index creation configurable [\#9](https://github.com/TheHive-Project/elastic4play/issues/9)
 
-**Closed issues:**
-
-- Scala code cleanup [\#14](https://github.com/TheHive-Project/elastic4play/issues/14)
-
 **Fixed bugs:**
 
 - Offset is not taken into account if search uses scroll [\#12](https://github.com/TheHive-Project/elastic4play/issues/12)
+
+**Closed issues:**
+
+- Scala code cleanup [\#14](https://github.com/TheHive-Project/elastic4play/issues/14)
 
 ## [1.1.4](https://github.com/TheHive-Project/elastic4play/milestone/5) (2017-05-11)
 

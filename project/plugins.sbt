@@ -3,6 +3,6 @@ logLevel := Level.Info
 
 // Use the Play sbt plugin for Play projects
 addSbtPlugin("com.typesafe.play"   % "sbt-plugin"           % "2.8.3")
-addSbtPlugin("org.foundweekends"   % "sbt-bintray"          % "0.5.1")
 addSbtPlugin("org.scalameta"       % "sbt-scalafmt"         % "2.4.2")
-addSbtPlugin("org.thehive-project" % "sbt-github-changelog" % "0.3.0")
+addSbtPlugin("org.thehive-project" % "sbt-github-changelog" % "0.4.0")
+addSbtPlugin("org.xerial.sbt"      % "sbt-sonatype"         % "3.9.10")
