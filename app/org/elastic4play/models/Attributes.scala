@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
+import com.sksamuel.elastic4s.fields.{ElasticField, TextField}
 import com.sksamuel.elastic4s.requests.mappings.dynamictemplate.DynamicTemplateRequest
-import com.sksamuel.elastic4s.requests.mappings.{BasicField, FieldDefinition}
 import org.elastic4play.controllers.InputValue
 import org.elastic4play.services.{Attachment, DBLists}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError, MissingAttributeError, UpdateReadOnlyAttributeError}
@@ -25,7 +25,7 @@ abstract class AttributeFormat[T](val name: String)(implicit val jsFormat: Forma
 
   def fromInputValue(subNames: Seq[String], value: InputValue): T Or Every[AttributeError]
 
-  def elasticType(attributeName: String): FieldDefinition
+  def elasticType(attributeName: String): ElasticField
 
   def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] = Nil
 
@@ -91,9 +91,9 @@ case class Attribute[T](
     case _                             => true
   }
 
-  def elasticMapping: FieldDefinition = format.elasticType(attributeName) match {
-    case a: BasicField if isSensitive && a.`type` == "String" => a.index(false)
-    case a                                                    => a
+  def elasticMapping: ElasticField = format.elasticType(attributeName) match {
+    case a: TextField if isSensitive && a.`type` == "String" => a.index(false)
+    case a                                                   => a
   }
 
   def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateRequest] =

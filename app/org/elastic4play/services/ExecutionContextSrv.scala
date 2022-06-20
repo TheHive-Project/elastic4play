@@ -9,7 +9,7 @@ import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 @Singleton
-class ExecutionContextSrv @Inject()(system: ActorSystem, syncCacheApi: SyncCacheApi) {
+class ExecutionContextSrv @Inject() (system: ActorSystem, syncCacheApi: SyncCacheApi) {
   lazy val logger: Logger       = Logger(getClass)
   val default: ExecutionContext = system.dispatcher
 
@@ -30,6 +30,6 @@ class ExecutionContextSrv @Inject()(system: ActorSystem, syncCacheApi: SyncCache
         default
       }
     }
-  def withCustom[A](threadPoolName: String)(body: ExecutionContext ⇒ A): A = body(get(threadPoolName))
-  def withDefault[A](body: ExecutionContext ⇒ A): A                        = body(default)
+  def withCustom[A](threadPoolName: String)(body: ExecutionContext => A): A = body(get(threadPoolName))
+  def withDefault[A](body: ExecutionContext => A): A                        = body(default)
 }

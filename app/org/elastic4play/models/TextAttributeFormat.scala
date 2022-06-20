@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
 import com.sksamuel.elastic4s.ElasticDsl.textField
-import com.sksamuel.elastic4s.requests.mappings.TextField
+import com.sksamuel.elastic4s.fields.ElasticField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
 import org.scalactic._
@@ -23,7 +23,7 @@ class TextAttributeFormat extends AttributeFormat[String]("text") {
         case _                           => formatError(value)
       }
 
-  override def elasticType(attributeName: String): TextField = textField(attributeName).fielddata(true)
+  override def elasticType(attributeName: String): ElasticField = textField(attributeName).fielddata(true)
 }
 
 object TextAttributeFormat extends TextAttributeFormat

@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
 import com.sksamuel.elastic4s.ElasticDsl._
-import com.sksamuel.elastic4s.requests.mappings.NestedField
+import com.sksamuel.elastic4s.fields.ElasticField
 import com.sksamuel.elastic4s.requests.mappings.dynamictemplate.DynamicTemplateRequest
 import org.elastic4play.AttributeError
 import org.elastic4play.controllers.{InputValue, JsonInputValue}
@@ -61,21 +61,22 @@ class CustomAttributeFormat extends AttributeFormat[JsValue]("custom") {
       case _                 => formatError(value)
     }
 
-  override def elasticType(attributeName: String): NestedField =
+  override def elasticType(attributeName: String): ElasticField =
     nestedField(attributeName)
 
-  override def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateRequest] =
-    dynamicTemplate(attributePath.mkString("_"))
-      .mapping(
-        dynamicNestedField().fields(
-          longField("number"),
-          keywordField("string"),
-          dateField("date").format("epoch_millis||basic_date_time_no_millis"),
-          booleanField("boolean"),
-          longField("order")
-        )
+  override def elasticTemplate(attributePath: Seq[String] = Nil): Seq[DynamicTemplateRequest] = {
+    val name = attributePath.mkString("_")
+    DynamicTemplateRequest(
+      name,
+      nestedField(name).fields(
+        longField("number"),
+        keywordField("string"),
+        dateField("date").format("epoch_millis||basic_date_time_no_millis"),
+        booleanField("boolean"),
+        longField("order")
       )
-      .pathMatch(attributePath.mkString(".") + ".*") :: Nil
+    ).pathMatch(attributePath.mkString(".") + ".*") :: Nil
+  }
 
   override def definition(dblists: DBLists, attribute: Attribute[JsValue]): Seq[AttributeDefinition] =
     dblists("custom_fields").cachedItems.flatMap { item =>

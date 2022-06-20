@@ -29,27 +29,29 @@ case class ADConnection(domainFQDN: String, domainName: String, serverNames: Seq
   }
 
   private def connect[A](username: String, password: String)(f: InitialDirContext => Try[A]): Try[A] =
-    serverNames.foldLeft[Try[A]](Failure(noADServerAvailableException)) {
-      case (Failure(e), serverName) if !isFatal(e) =>
-        val protocol = if (useSSL) "ldaps://" else "ldap://"
-        val env      = new util.Hashtable[Any, Any]
-        env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
-        env.put(Context.PROVIDER_URL, protocol + serverName)
-        env.put(Context.SECURITY_AUTHENTICATION, "simple")
-        env.put(Context.SECURITY_PRINCIPAL, username)
-        env.put(Context.SECURITY_CREDENTIALS, password)
-        Try {
-          val ctx = new InitialDirContext(env)
-          try f(ctx)
-          finally ctx.close()
-        }.flatten
-          .recoverWith {
-            case ldapError =>
-              logger.debug("LDAP connect error", ldapError)
-              Failure(ldapError)
-          }
-      case (r, _) => r
-    }
+    if (password.isEmpty) Failure(AuthenticationError("Authentication failure"))
+    else
+      serverNames.foldLeft[Try[A]](Failure(noADServerAvailableException)) {
+        case (Failure(e), serverName) if !isFatal(e) =>
+          val protocol = if (useSSL) "ldaps://" else "ldap://"
+          val env      = new util.Hashtable[Any, Any]
+          env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
+          env.put(Context.PROVIDER_URL, protocol + serverName)
+          env.put(Context.SECURITY_AUTHENTICATION, "simple")
+          env.put(Context.SECURITY_PRINCIPAL, username)
+          env.put(Context.SECURITY_CREDENTIALS, password)
+          Try {
+            val ctx = new InitialDirContext(env)
+            try f(ctx)
+            finally ctx.close()
+          }.flatten
+            .recoverWith {
+              case ldapError =>
+                logger.debug("LDAP connect error", ldapError)
+                Failure(ldapError)
+            }
+        case (r, _) => r
+      }
 
   private def getUserDN(ctx: InitialDirContext, username: String): Try[String] =
     Try {
@@ -65,19 +67,23 @@ case class ADConnection(domainFQDN: String, domainName: String, serverNames: Seq
   def authenticate(username: String, password: String): Try[Unit] =
     connect(domainName + "\\" + username, password)(_ => Success(()))
 
-  def changePassword(username: String, oldPassword: String, newPassword: String): Try[Unit] = {
-    val unicodeOldPassword = ("\"" + oldPassword + "\"").getBytes("UTF-16LE")
-    val unicodeNewPassword = ("\"" + newPassword + "\"").getBytes("UTF-16LE")
-    connect(domainName + "\\" + username, oldPassword) { ctx =>
-      getUserDN(ctx, username).map { userDN =>
-        val mods = Array(
-          new ModificationItem(DirContext.REMOVE_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeOldPassword)),
-          new ModificationItem(DirContext.ADD_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeNewPassword))
-        )
-        ctx.modifyAttributes(userDN, mods)
+  def changePassword(username: String, oldPassword: String, newPassword: String): Try[Unit] =
+    if (oldPassword.isEmpty || newPassword.isEmpty)
+      Failure(AuthorizationError("Change password failure"))
+    else {
+
+      val unicodeOldPassword = ("\"" + oldPassword + "\"").getBytes("UTF-16LE")
+      val unicodeNewPassword = ("\"" + newPassword + "\"").getBytes("UTF-16LE")
+      connect(domainName + "\\" + username, oldPassword) { ctx =>
+        getUserDN(ctx, username).map { userDN =>
+          val mods = Array(
+            new ModificationItem(DirContext.REMOVE_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeOldPassword)),
+            new ModificationItem(DirContext.ADD_ATTRIBUTE, new BasicAttribute("unicodePwd", unicodeNewPassword))
+          )
+          ctx.modifyAttributes(userDN, mods)
+        }
       }
     }
-  }
 }
 
 object ADConnection {

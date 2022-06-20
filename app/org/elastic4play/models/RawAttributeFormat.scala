@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
 import com.sksamuel.elastic4s.ElasticDsl.binaryField
-import com.sksamuel.elastic4s.requests.mappings.BasicField
+import com.sksamuel.elastic4s.fields.ElasticField
 import org.elastic4play.controllers.{InputValue, JsonInputValue}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
 import org.scalactic._
@@ -18,7 +18,7 @@ class RawAttributeFormat extends AttributeFormat[String]("raw") {
       case other                                       => other
     }
 
-  override def elasticType(attributeName: String): BasicField = binaryField(attributeName)
+  override def elasticType(attributeName: String): ElasticField = binaryField(attributeName)
 }
 
 object RawAttributeFormat extends RawAttributeFormat

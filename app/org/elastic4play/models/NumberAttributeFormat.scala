@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
 import com.sksamuel.elastic4s.ElasticDsl.longField
-import com.sksamuel.elastic4s.requests.mappings.BasicField
+import com.sksamuel.elastic4s.fields.ElasticField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
 import org.scalactic._
@@ -19,16 +19,15 @@ class NumberAttributeFormat extends AttributeFormat[Long]("number") {
     else
       value match {
         case StringInputValue(Seq(v)) =>
-          try {
-            Good(v.toLong)
-          } catch {
+          try Good(v.toLong)
+          catch {
             case _: Throwable => formatError(value)
           }
         case JsonInputValue(JsNumber(v)) => Good(v.longValue)
         case _                           => formatError(value)
       }
 
-  override def elasticType(attributeName: String): BasicField = longField(attributeName)
+  override def elasticType(attributeName: String): ElasticField = longField(attributeName)
 
 }
 

@@ -1,6 +1,6 @@
 package org.elastic4play.models
 
-import com.sksamuel.elastic4s.requests.mappings.FieldDefinition
+import com.sksamuel.elastic4s.fields.ElasticField
 import com.sksamuel.elastic4s.requests.mappings.dynamictemplate.DynamicTemplateRequest
 import org.elastic4play.AttributeError
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
@@ -41,7 +41,7 @@ case class MultiAttributeFormat[T](attributeFormat: AttributeFormat[T])
     case _ => formatError(value)
   }
 
-  override def elasticType(attributeName: String): FieldDefinition = attributeFormat.elasticType(attributeName)
+  override def elasticType(attributeName: String): ElasticField = attributeFormat.elasticType(attributeName)
 
   override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] = attributeFormat.elasticTemplate(attributePath)
 
