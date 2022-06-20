@@ -1,6 +1,6 @@
 import sbt.url
 
-version := "1.13.3-SNAPSHOT"
+version := "1.13.4"
 
 name := "elastic4play"
 
