@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.13.5](https://github.com/TheHive-Project/elastic4play/milestone/48) (2022-06-22)
+
+**Fixed bugs:**
+
+- Null values in objects are moved during json serialisation [\#106](https://github.com/TheHive-Project/elastic4play/issues/106)
+
 ## [1.13.4](https://github.com/TheHive-Project/elastic4play/milestone/47) (2022-06-20)
 
 **Implemented enhancements:**
