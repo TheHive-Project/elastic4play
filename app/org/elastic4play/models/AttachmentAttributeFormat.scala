@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
 import com.sksamuel.elastic4s.ElasticDsl.{keywordField, longField, nestedField}
-import com.sksamuel.elastic4s.requests.mappings.NestedField
+import com.sksamuel.elastic4s.fields.NestedField
 import org.elastic4play.controllers.JsonFormat._
 import org.elastic4play.controllers.{AttachmentInputValue, FileInputValue, InputValue, JsonInputValue}
 import org.elastic4play.services.JsonFormat.attachmentFormat

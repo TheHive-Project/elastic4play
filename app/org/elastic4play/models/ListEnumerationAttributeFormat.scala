@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
 import com.sksamuel.elastic4s.ElasticDsl.keywordField
-import com.sksamuel.elastic4s.requests.mappings.KeywordField
+import com.sksamuel.elastic4s.fields.ElasticField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.services.DBLists
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
@@ -25,7 +25,7 @@ case class ListEnumerationAttributeFormat(enumerationName: String)(dblists: DBLi
         case _                                                => formatError(value)
       }
 
-  override def elasticType(attributeName: String): KeywordField = keywordField(attributeName)
+  override def elasticType(attributeName: String): ElasticField = keywordField(attributeName)
 
   override def definition(dblists: DBLists, attribute: Attribute[String]): Seq[AttributeDefinition] =
     Seq(AttributeDefinition(attribute.attributeName, name, attribute.description, items.map(JsString.apply).toSeq, Nil))

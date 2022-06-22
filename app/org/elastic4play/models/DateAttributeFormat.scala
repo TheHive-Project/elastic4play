@@ -2,9 +2,8 @@ package org.elastic4play.models
 
 import java.text.SimpleDateFormat
 import java.util.Date
-
 import com.sksamuel.elastic4s.ElasticDsl.dateField
-import com.sksamuel.elastic4s.requests.mappings.BasicField
+import com.sksamuel.elastic4s.fields.ElasticField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
 import org.scalactic._
@@ -40,7 +39,7 @@ class DateAttributeFormat extends AttributeFormat[Date]("date") {
       }
     }
 
-  override def elasticType(attributeName: String): BasicField = dateField(attributeName).format("epoch_millis||basic_date_time_no_millis")
+  override def elasticType(attributeName: String): ElasticField = dateField(attributeName).format("epoch_millis||basic_date_time_no_millis")
 }
 
 object DateAttributeFormat extends DateAttributeFormat

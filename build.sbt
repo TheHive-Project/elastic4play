@@ -1,6 +1,6 @@
 import sbt.url
 
-version := "1.13.2"
+version := "1.13.4"
 
 name := "elastic4play"
 
@@ -21,7 +21,7 @@ lazy val elastic4play = (project in file("."))
 // Add Http2 support to be able to ask client certificate
 // cf. https://github.com/playframework/playframework/issues/8143
 
-scalaVersion := "2.12.12"
+scalaVersion := "2.12.16"
 
 resolvers += "elasticsearch-releases" at "https://artifacts.elastic.co/maven"
 
@@ -43,15 +43,15 @@ developers := List(
 
 licenses += ("AGPL-3", url("https://www.gnu.org/licenses/agpl-3.0.html"))
 
-val elastic4sVersion = "7.9.1"
+val elastic4sVersion = "7.17.2"
 libraryDependencies ++= Seq(
   cacheApi,
   "com.sksamuel.elastic4s" %% "elastic4s-core"          % elastic4sVersion,
   "com.sksamuel.elastic4s" %% "elastic4s-http-streams"  % elastic4sVersion,
   "com.sksamuel.elastic4s" %% "elastic4s-client-esjava" % elastic4sVersion,
   "com.typesafe.akka"      %% "akka-stream-testkit"     % play.core.PlayVersion.akkaVersion % Test,
-  "org.scalactic"          %% "scalactic"               % "3.1.2",
-  "org.bouncycastle"        % "bcprov-jdk15on"          % "1.58",
+  "org.scalactic"          %% "scalactic"               % "3.2.12",
+  "org.bouncycastle"        % "bcprov-jdk15on"          % "1.61",
   specs2                    % Test
 )
 dependencyOverrides ++= Seq(

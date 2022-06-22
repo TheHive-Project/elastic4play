@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
 import com.sksamuel.elastic4s.ElasticDsl.booleanField
-import com.sksamuel.elastic4s.requests.mappings.BasicField
+import com.sksamuel.elastic4s.fields.ElasticField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
 import org.scalactic._
@@ -19,16 +19,15 @@ class BooleanAttributeFormat extends AttributeFormat[Boolean]("boolean") {
     else
       value match {
         case StringInputValue(Seq(v)) =>
-          try {
-            Good(v.toBoolean)
-          } catch {
+          try Good(v.toBoolean)
+          catch {
             case _: Throwable => formatError(value)
           }
         case JsonInputValue(JsBoolean(v)) => Good(v)
         case _                            => formatError(value)
       }
 
-  override def elasticType(attributeName: String): BasicField = booleanField(attributeName)
+  override def elasticType(attributeName: String): ElasticField = booleanField(attributeName)
 }
 
 object BooleanAttributeFormat extends BooleanAttributeFormat

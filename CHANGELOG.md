@@ -1,5 +1,17 @@
 # Change Log
 
+## [1.13.4](https://github.com/TheHive-Project/elastic4play/milestone/47) (2022-06-20)
+
+**Implemented enhancements:**
+
+- Update libraries [\#105](https://github.com/TheHive-Project/elastic4play/issues/105)
+
+## [1.13.3](https://github.com/TheHive-Project/elastic4play/milestone/46) (2021-11-05)
+
+**Fixed bugs:**
+
+- The jar is not compatible with java 8 [\#103](https://github.com/TheHive-Project/elastic4play/issues/103)
+
 ## [1.13.2](https://github.com/TheHive-Project/elastic4play/milestone/45) (2021-10-29)
 
 **Closed issues:**

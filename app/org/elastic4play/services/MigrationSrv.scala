@@ -183,7 +183,8 @@ trait Operation extends ((String => Source[JsObject, NotUsed]) => (String => Sou
 
 object Operation {
 
-  def apply(o: (String => Source[JsObject, NotUsed]) => String => Source[JsObject, NotUsed]): Operation = (f: String => Source[JsObject, NotUsed]) => o(f)
+  def apply(o: (String => Source[JsObject, NotUsed]) => String => Source[JsObject, NotUsed]): Operation =
+    (f: String => Source[JsObject, NotUsed]) => o(f)
 
   def renameEntity(previous: String, next: String): Operation =
     Operation((f: String => Source[JsObject, NotUsed]) => {
@@ -242,7 +243,7 @@ object Operation {
       val tail = path.tail
       value \ head match {
         case JsDefined(v) if tail.isEmpty => value - head + (newName -> v)
-        case JsDefined(v: JsObject)       => value - head + (head -> rename(v, newName, tail))
+        case JsDefined(v: JsObject)       => value - head + (head    -> rename(v, newName, tail))
         case _                            => value
       }
     }
@@ -289,14 +290,16 @@ object Operation {
   def addAttribute(table: String, attributes: (String, JsValue)*): Operation = addAttribute(_ == table, attributes: _*)
 
   def addAttributeIfAbsent(tableFilter: String => Boolean, attributes: (String, JsValue)*): Operation =
-    mapEntity(tableFilter, { x =>
-      attributes.foldLeft(x) { (y, a) =>
-        y \ a._1 match {
-          case _: JsUndefined => x + a
-          case _              => x
+    mapEntity(
+      tableFilter,
+      x =>
+        attributes.foldLeft(x) { (y, a) =>
+          y \ a._1 match {
+            case _: JsUndefined => x + a
+            case _              => x
+          }
         }
-      }
-    })
+    )
 
   def addAttributeIfAbsent(tables: Seq[String], attributes: (String, JsValue)*): Operation = addAttribute(t => tables.contains(t), attributes: _*)
 

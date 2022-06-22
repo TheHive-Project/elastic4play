@@ -10,13 +10,13 @@ object Fabricator {
   def long: Long                                          = Random.nextLong
 
   def jsValue: JsValue = int % 4 match {
-    case 0 ⇒ JsNumber(long)
-    case 1 ⇒ JsBoolean(boolean)
-    case _ ⇒ JsString(string())
+    case 0 => JsNumber(long)
+    case 1 => JsBoolean(boolean)
+    case _ => JsString(string())
   }
 
   def jsObject(maxSize: Int = 10): JsObject = {
-    val fields = Seq.fill(int % maxSize)(string() → jsValue)
+    val fields = Seq.fill(int % maxSize)(string() -> jsValue)
     JsObject(fields)
   }
 }

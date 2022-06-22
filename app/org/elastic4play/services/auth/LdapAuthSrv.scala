@@ -29,27 +29,29 @@ case class LdapConnection(serverNames: Seq[String], useSSL: Boolean, bindDN: Str
   }
 
   private def connect[A](username: String, password: String)(f: InitialDirContext => Try[A]): Try[A] =
-    serverNames.foldLeft[Try[A]](Failure(noLdapServerAvailableException)) {
-      case (Failure(e), serverName) if !isFatal(e) =>
-        val protocol = if (useSSL) "ldaps://" else "ldap://"
-        val env      = new util.Hashtable[Any, Any]
-        env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
-        env.put(Context.PROVIDER_URL, protocol + serverName)
-        env.put(Context.SECURITY_AUTHENTICATION, "simple")
-        env.put(Context.SECURITY_PRINCIPAL, username)
-        env.put(Context.SECURITY_CREDENTIALS, password)
-        Try {
-          val ctx = new InitialDirContext(env)
-          try f(ctx)
-          finally ctx.close()
-        }.flatten
-          .recoverWith {
-            case ldapError =>
-              logger.debug("LDAP connect error", ldapError)
-              Failure(ldapError)
-          }
-      case (r, _) => r
-    }
+    if (password.isEmpty) Failure(AuthenticationError("Authentication failure"))
+    else
+      serverNames.foldLeft[Try[A]](Failure(noLdapServerAvailableException)) {
+        case (Failure(e), serverName) if !isFatal(e) =>
+          val protocol = if (useSSL) "ldaps://" else "ldap://"
+          val env      = new util.Hashtable[Any, Any]
+          env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
+          env.put(Context.PROVIDER_URL, protocol + serverName)
+          env.put(Context.SECURITY_AUTHENTICATION, "simple")
+          env.put(Context.SECURITY_PRINCIPAL, username)
+          env.put(Context.SECURITY_CREDENTIALS, password)
+          Try {
+            val ctx = new InitialDirContext(env)
+            try f(ctx)
+            finally ctx.close()
+          }.flatten
+            .recoverWith {
+              case ldapError =>
+                logger.debug("LDAP connect error", ldapError)
+                Failure(ldapError)
+            }
+        case (r, _) => r
+      }
 
   private def getUserDN(ctx: InitialDirContext, username: String): Try[String] =
     Try {

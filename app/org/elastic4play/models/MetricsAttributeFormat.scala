@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
-import com.sksamuel.elastic4s.ElasticDsl.{dynamicLongField, dynamicTemplate, nestedField}
-import com.sksamuel.elastic4s.requests.mappings.NestedField
+import com.sksamuel.elastic4s.ElasticDsl.nestedField
+import com.sksamuel.elastic4s.fields.{ElasticField, LongField}
 import com.sksamuel.elastic4s.requests.mappings.dynamictemplate.DynamicTemplateRequest
 import org.elastic4play.AttributeError
 import org.elastic4play.controllers.{InputValue, JsonInputValue}
@@ -30,12 +30,13 @@ class MetricsAttributeFormat extends AttributeFormat[JsValue]("metrics") {
       OptionalAttributeFormat(NumberAttributeFormat).inputValueToJson(subNames.tail, value) //.map(v ⇒ JsObject(Seq(subNames.head → v)))
     }
 
-  override def elasticType(attributeName: String): NestedField = nestedField(attributeName)
+  override def elasticType(attributeName: String): ElasticField = nestedField(attributeName)
 
-  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] =
-    dynamicTemplate(attributePath.mkString("_"))
-      .mapping(dynamicLongField())
+  override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] = {
+    val name = attributePath.mkString("_")
+    DynamicTemplateRequest(name, LongField(name))
       .pathMatch(attributePath.mkString(".") + ".*") :: Nil
+  }
 
   override def definition(dblists: DBLists, attribute: Attribute[JsValue]): Seq[AttributeDefinition] =
     dblists("case_metrics").cachedItems.flatMap { item =>
