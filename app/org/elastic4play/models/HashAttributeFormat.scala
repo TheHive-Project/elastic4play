@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
 import com.sksamuel.elastic4s.ElasticDsl.keywordField
-import com.sksamuel.elastic4s.requests.mappings.KeywordField
+import com.sksamuel.elastic4s.fields.ElasticField
 import org.elastic4play.controllers.{InputValue, JsonInputValue, StringInputValue}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
 import org.scalactic._
@@ -12,7 +12,7 @@ object HashAttributeFormat extends AttributeFormat[String]("hash") {
 
   override def checkJson(subNames: Seq[String], value: JsValue): Or[JsValue, One[InvalidFormatAttributeError]] = value match {
     case JsString(v) if subNames.isEmpty && v.forall(c => validDigits.contains(c)) => Good(value)
-    case _                                                                        => formatError(JsonInputValue(value))
+    case _                                                                         => formatError(JsonInputValue(value))
   }
 
   override def fromInputValue(subNames: Seq[String], value: InputValue): String Or Every[AttributeError] =
@@ -22,8 +22,8 @@ object HashAttributeFormat extends AttributeFormat[String]("hash") {
       value match {
         case StringInputValue(Seq(v)) if v.forall(c => validDigits.contains(c))    => Good(v.toLowerCase)
         case JsonInputValue(JsString(v)) if v.forall(c => validDigits.contains(c)) => Good(v.toLowerCase)
-        case _                                                                    => formatError(value)
+        case _                                                                     => formatError(value)
       }
 
-  override def elasticType(attributeName: String): KeywordField = keywordField(attributeName)
+  override def elasticType(attributeName: String): ElasticField = keywordField(attributeName)
 }

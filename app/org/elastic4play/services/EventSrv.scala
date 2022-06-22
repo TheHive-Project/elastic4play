@@ -1,21 +1,18 @@
 package org.elastic4play.services
 
-import java.util.Date
-import javax.inject.{Inject, Singleton}
-
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
-
+import akka.actor.ActorRef
+import akka.event.{ActorEventBus, SubchannelClassification}
+import akka.stream.Materializer
+import akka.util.Subclassification
+import org.elastic4play.models.{BaseEntity, HiveEnumeration}
 import play.api.Logger
 import play.api.libs.json.JsObject
 import play.api.mvc.{Filter, RequestHeader, Result}
 
-import akka.actor.{actorRef2Scala, ActorRef}
-import akka.event.{ActorEventBus, SubchannelClassification}
-import akka.stream.Materializer
-import akka.util.Subclassification
-
-import org.elastic4play.models.{BaseEntity, HiveEnumeration}
+import java.util.Date
+import javax.inject.{Inject, Singleton}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 trait EventMessage
 

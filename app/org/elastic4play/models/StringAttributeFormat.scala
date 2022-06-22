@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
 import com.sksamuel.elastic4s.ElasticDsl.keywordField
-import com.sksamuel.elastic4s.requests.mappings.KeywordField
+import com.sksamuel.elastic4s.fields.ElasticField
 import org.elastic4play.controllers.{InputValue, JsonInputValue}
 import org.elastic4play.{AttributeError, InvalidFormatAttributeError}
 import org.scalactic._
@@ -19,7 +19,7 @@ class StringAttributeFormat extends AttributeFormat[String]("string") {
       case other                                       => other
     }
 
-  override def elasticType(attributeName: String): KeywordField = keywordField(attributeName)
+  override def elasticType(attributeName: String): ElasticField = keywordField(attributeName)
 }
 
 object StringAttributeFormat extends StringAttributeFormat

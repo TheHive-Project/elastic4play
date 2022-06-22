@@ -29,15 +29,14 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
 
   private[DBIndex] lazy val logger = Logger(getClass)
 
-  /**
-    * Create a new index. Collect mapping for all attributes of all entities
+  /** Create a new index. Collect mapping for all attributes of all entities
     *
     * @param models list of all ModelAttributes to used in order to build index mapping
     * @return a future which is completed when index creation is finished
     */
   def createIndex(models: Iterable[ModelAttributes])(implicit ec: ExecutionContext): Future[Unit] = {
     val mappingTemplates = Collection.distinctBy(models.flatMap(_.attributes).flatMap(_.elasticTemplate()))(_.name)
-    val fields           = models.flatMap(_.attributes.filterNot(_.attributeName == "_id").map(_.elasticMapping)).toSeq
+    val fields           = Collection.distinctBy(models.flatMap(_.attributes.filterNot(_.attributeName == "_id")))(_.attributeName).map(_.elasticMapping).toSeq
     val relationsField = models
       .map {
         case child: ChildModelDef[_, _, _, _] => child.parentModel.modelName -> Seq(child.modelName)
@@ -71,8 +70,7 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
     } yield ()
   }
 
-  /**
-    * Tests whether the index exists
+  /** Tests whether the index exists
     *
     * @return future of true if the index exists
     */
@@ -84,8 +82,7 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
         _.isExists
       }
 
-  /**
-    * Tests whether the index exists
+  /** Tests whether the index exists
     *
     * @return true if the index exists
     */
@@ -93,8 +90,7 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
     getIndexStatus.await
   }
 
-  /**
-    * Get the number of document of this type
+  /** Get the number of document of this type
     *
     * @param modelName name of the document type from which the count must be done
     * @return document count
@@ -108,8 +104,7 @@ class DBIndex(db: DBConfiguration, nbShards: Int, nbReplicas: Int, settings: Map
       }
       .recover { case _ => 0L }
 
-  /**
-    * Get cluster status:
+  /** Get cluster status:
     * 0: green
     * 1: yellow
     * 2: red

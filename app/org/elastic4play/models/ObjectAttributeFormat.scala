@@ -1,7 +1,7 @@
 package org.elastic4play.models
 
 import com.sksamuel.elastic4s.ElasticDsl.nestedField
-import com.sksamuel.elastic4s.requests.mappings.NestedField
+import com.sksamuel.elastic4s.fields.ElasticField
 import com.sksamuel.elastic4s.requests.mappings.dynamictemplate.DynamicTemplateRequest
 import org.elastic4play.controllers.JsonFormat.inputValueFormat
 import org.elastic4play.controllers.{InputValue, JsonInputValue}
@@ -94,7 +94,7 @@ case class ObjectAttributeFormat(subAttributes: Seq[Attribute[_]]) extends Attri
     result
   }
 
-  override def elasticType(attributeName: String): NestedField = nestedField(attributeName).fields(subAttributes.map(_.elasticMapping))
+  override def elasticType(attributeName: String): ElasticField = nestedField(attributeName).fields(subAttributes.map(_.elasticMapping))
 
   override def elasticTemplate(attributePath: Seq[String]): Seq[DynamicTemplateRequest] =
     subAttributes.flatMap(_.elasticTemplate(attributePath))
